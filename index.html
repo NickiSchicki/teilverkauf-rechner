@@ -191,8 +191,16 @@
     position: sticky; left: 0; z-index: 1; background: var(--surface);
     text-align: left; padding-left: 0; padding-right: 12px;
   }
+  /* Die ganze Zeile öffnet das Projekt — das muss man ihr ansehen */
+  table.obj tbody tr.zeile { cursor: pointer; }
   table.obj tbody tr:hover td { background: var(--s1-wash); }
   table.obj tbody tr:hover td.c-name { background: linear-gradient(var(--s1-wash), var(--s1-wash)), var(--surface); }
+  table.obj tbody td.c-name { color: var(--accent); font-weight: 600; }
+  table.obj tbody tr:hover td.c-name { text-decoration: underline; text-underline-offset: 2px; }
+  table.obj tbody tr:hover button.open { color: var(--accent); transform: translateX(2px); }
+  table.obj tbody tr:focus-within td { background: var(--s1-wash); }
+  button.open { transition: transform 0.12s, color 0.12s; }
+  @media (prefers-reduced-motion: reduce) { button.open { transition: none; } }
   table.obj tfoot td {
     font-weight: 700; border-top: 1px solid var(--axis); border-bottom: none;
     font-variant-numeric: tabular-nums; padding-top: 8px;
@@ -294,7 +302,9 @@
   .contrib { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
   .contrib-row { display: grid; grid-template-columns: 130px 1fr auto; gap: 12px; align-items: center; font-size: 13px; }
   @media (max-width: 620px) { .contrib-row { grid-template-columns: 1fr auto; } .contrib-row .cb { grid-column: 1 / -1; } }
-  .contrib-name { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .contrib-row { cursor: pointer; }
+  .contrib-row:hover .contrib-name { text-decoration: underline; text-underline-offset: 2px; }
+  .contrib-name { color: var(--accent); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cb { height: 22px; background: var(--bg); border-radius: 4px; overflow: hidden; }
   .cb > div { height: 100%; background: var(--s1); border-radius: 4px; }
   .cb > div.neg { background: var(--s2); }
@@ -343,10 +353,10 @@
     background: var(--s1-wash); border-radius: 5px; padding: 9px 12px; margin-top: 12px;
   }
   button.open {
-    font: inherit; font-size: 15px; line-height: 1; color: var(--ink-3);
+    font: inherit; font-size: 16px; line-height: 1; color: var(--accent);
     background: none; border: none; cursor: pointer; padding: 3px 5px; border-radius: 4px;
   }
-  button.open:hover { color: var(--accent); background: var(--bg); }
+  button.open:hover { background: var(--bg); }
   .crumb {
     display: inline-flex; align-items: center; gap: 6px;
     font: inherit; font-size: 13px; font-weight: 600; color: var(--ink-2);
@@ -423,7 +433,7 @@
         <div class="head-row">
           <div>
             <h2>Objekte</h2>
-            <p class="sub">Eine Zeile je Vertrag · „›“ öffnet das Projekt</p>
+            <p class="sub">Zeile anklicken, um ein Projekt zu öffnen und seine Annahmen zu bearbeiten</p>
           </div>
           <button type="button" class="act primary" id="addBtn">+ Objekt hinzufügen</button>
         </div>
@@ -1112,6 +1122,7 @@
     });
     t.querySelectorAll("tr.zeile").forEach(function (tr) {
       tr.addEventListener("click", function () { openDetail(+tr.dataset.row); });
+      tr.setAttribute("title", "Projekt öffnen");
     });
 
     var perObj = OBJ.length ? G.opex / OBJ.length : 0;
@@ -1348,7 +1359,7 @@
     var h = '<div class="contrib">';
     P.objs.forEach(function (x, i) {
       var anteil = summe !== 0 ? x.beitrag / summe * 100 : 0;
-      h += '<div class="contrib-row">' +
+      h += '<div class="contrib-row" data-open="' + i + '" role="button" tabindex="0">' +
         '<div class="contrib-name" title="' + (x.o.name || "").replace(/"/g, "&quot;") + '">' +
           (x.o.name || "Objekt " + (i + 1)) + "</div>" +
         '<div class="cb"><div class="' + (x.beitrag < 0 ? "neg" : "") + '" style="width:' +
@@ -1359,6 +1370,12 @@
     });
     h += "</div>";
     host.innerHTML = h;
+    host.querySelectorAll(".contrib-row[data-open]").forEach(function (r) {
+      r.addEventListener("click", function () { openDetail(+r.dataset.open); });
+      r.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(+r.dataset.open); }
+      });
+    });
     document.getElementById("contribCaption").textContent =
       "Summe der direkt zurechenbaren Beiträge: " + fEur(summe) + ". Nicht enthalten sind " +
       fEur(P.opexSum) + " laufende Kosten, " + fEur(P.taxSum) + " Steuern sowie Zinsen auf Guthaben und Kontokorrent — " +
