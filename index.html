@@ -539,7 +539,7 @@
   var OBJ_DEF = {
     name: "Neues Objekt", v0: 500000, share: 50, ne: 4.5, start: 0, hold: 15,
     alter: 75, haus: "Paar", pflege: 2.5,
-    growth: 2, verfall: 0.75,
+    growth: 2, verfall: 0.75, abschlag: 0,
     esc: 0, de: 0, min: 0, vkKosten: 3.5,
     grest: 6.5, notar: 2.0,
     holdAuto: false,
@@ -636,7 +636,8 @@
       { id: "haus", label: "Haushalt", choices: ["m", "w", "Paar"], note: "bei Paaren zählt die zuletzt lebende Person" },
       { id: "pflege", label: "Auszugswahrscheinlichkeit", min: 0, max: 6, step: 0.5, fmt: function (v) { return fPct(v, 1) + " p.a."; }, note: "Pflegeheim oder Auszug, zusätzlich zur Sterblichkeit" },
       { id: "growth", label: "Wertentwicklung", min: -2, max: 5, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "Marktentwicklung dieser Lage" },
-      { id: "verfall", label: "Instandhaltungsverfall", min: 0, max: 3, step: 0.25, fmt: function (v) { return v === 0 ? "keiner" : "−" + fPct(v, 2) + " p.a."; }, note: "Wertverlust durch unterlassene Instandhaltung" }
+      { id: "verfall", label: "Instandhaltungsverfall", min: 0, max: 3, step: 0.25, fmt: function (v) { return v === 0 ? "keiner" : "−" + fPct(v, 2) + " p.a."; }, note: "Wertverlust durch unterlassene Instandhaltung" },
+      { id: "abschlag", label: "Ankaufsabschlag", min: 0, max: 40, step: 0.5, fmt: function (v) { return v === 0 ? "keiner" : "−" + fPct(v, 1); }, note: "unter dem anteiligen Verkehrswert gekaufter Anteil" }
     ] },
     { title: "Vertrag", dot: "s1", items: [
       { id: "ne", label: "Nutzungsentgelt", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "auf den Auszahlungsbetrag, fest" },
@@ -795,7 +796,11 @@
   // und wird beim Aufbau der Kurven nicht gebraucht.
   function buildObject(o, schnell) {
     var s = o.share / 100, g = o.growth / 100;
-    var P = s * o.v0;
+    // Der Ankaufsabschlag mindert nur den Kaufpreis. Der spätere Anteil am
+    // Verkaufserlös richtet sich weiter nach der Beteiligungsquote — genau darin
+    // liegt der Renditehebel des Abschlags.
+    var vollpreis = s * o.v0;
+    var P = vollpreis * (1 - (o.abschlag || 0) / 100);
     var invest0 = P * (1 + o.grest / 100 + o.notar / 100);
     var loan0 = P * o.ltv / 100;
     var equity0 = invest0 - loan0;
@@ -841,7 +846,7 @@
     years.forEach(function (r) { if (r.y === exitY) restBeiExit = r.rest; });
 
     return {
-      o: o, P: P, invest0: invest0, loan0: loan0, equity0: equity0, annuity: annuity,
+      o: o, P: P, vollpreis: vollpreis, invest0: invest0, loan0: loan0, equity0: equity0, annuity: annuity,
       years: years, exitY: exitY, ablöseY: ablöseY, darlehensJahre: darlehensJahre,
       restBeiExit: restBeiExit, VT: VT, B: B, DE: DE,
       vkTotal: vkTotal, vkBuyer: vkBuyer, proceeds: proceeds,
@@ -1074,6 +1079,7 @@
   // gewichtete Kapitalwert, der ohne unterstellte Haltedauer auskommt.
   var STELLSCHRAUBEN = [
     { k: "ne", label: "Nutzungsentgelt", min: 0.5, max: 15, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
+    { k: "abschlag", label: "Ankaufsabschlag", min: 0, max: 60, fmt: function (v) { return fPct(v, 1); }, richtung: "mehr" },
     { k: "growth", label: "Wertentwicklung", min: -5, max: 10, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
     { k: "verfall", label: "Instandhaltungsverfall", min: 0, max: 6, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "weniger" },
     { k: "zins", label: "Sollzins", min: 0, max: 12, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "weniger" },
@@ -1604,6 +1610,10 @@
     var mo = x.P * (o.ne / 100) / 12;
     var moLast = x.P * (o.ne / 100) * Math.pow(1 + o.esc / 100, o.hold - 1) / 12;
     var neSum = x.years.reduce(function (a, r) { return a + r.ne; }, 0);
+    if (o.abschlag > 0) {
+      h += "<tr><td>Anteiliger Verkehrswert</td><td>" + fEur(x.vollpreis) + "</td></tr>";
+      h += "<tr><td>Ankaufsabschlag " + fPct(o.abschlag, 1) + "</td><td>−" + fEur(x.vollpreis - x.P) + "</td></tr>";
+    }
     h += "<tr><td>Auszahlung heute</td><td>" + fEur(x.P) + "</td></tr>";
     h += "<tr><td>Monatliche Rate</td><td>" + (o.esc === 0 ? fEur(mo) + " (fest)" : fEur(mo) + " → " + fEur(moLast)) + "</td></tr>";
     h += "<tr><td>Σ Nutzungsentgelte bis Verkauf</td><td>−" + fEur(neSum) + "</td></tr>";
@@ -1705,7 +1715,21 @@
         var sch = STELLSCHRAUBEN[+b.dataset.setz];
         var K = F.stell[+b.dataset.setz];
         if (K.status !== "gefunden") return;
-        OBJ[detailIdx][sch.k] = K.wert;
+        // Auf die Schrittweite des Reglers runden, damit Anzeige und Rechnung
+        // übereinstimmen — und zwar in die Richtung, die die Hürde sicher erreicht.
+        var reg = null;
+        OBJ_GROUPS.forEach(function (g) {
+          g.items.forEach(function (it) { if (it.id === sch.k) reg = it; });
+        });
+        var wert = K.wert;
+        if (reg && reg.step) {
+          var auf = Math.ceil(K.wert / reg.step) * reg.step;
+          var ab = Math.floor(K.wert / reg.step) * reg.step;
+          wert = K.reichtRichtungMehr === false ? ab : auf;
+          if (sch.richtung === "weniger") wert = ab;
+          wert = Math.max(reg.min, Math.min(reg.max, Math.round(wert * 100) / 100));
+        }
+        OBJ[detailIdx][sch.k] = wert;
         // Panel neu aufbauen, damit der Regler den übernommenen Wert zeigt
         document.getElementById("panelObjekt").dataset.idx = "";
         refresh();
