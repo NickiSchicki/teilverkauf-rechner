@@ -531,7 +531,7 @@
   // Gesellschaftsebene: gilt für die GmbH als Ganzes
   var G = {
     opex: 3000, hebesatz: 400, erwKuerzung: true, ausschuetten: false,
-    anlage: 3.0, kkZins: 6.0, zielAufschlag: 1.0, opexAufKandidat: false
+    anlage: 3.0, kkZins: 6.0, mindestRendite: 5.5, opexAufKandidat: false
   };
 
   // Objektebene: jedes Objekt trägt seine Annahmen selbst.
@@ -610,9 +610,10 @@
     return o.holdAuto ? exitGewichte(o).median : o.hold;
   }
 
-  // Renditehürde eines Objekts: Sollzins plus Aufschlag. Dieselbe Größe dient als
-  // Nulllinie im Diagramm, als Break-even-Maßstab und als Ziel des Ankaufsfilters.
-  function zielZins(o) { return o.zins + G.zielAufschlag; }
+  // Renditehürde: was das eingesetzte Eigenkapital mindestens bringen muss.
+  // Bewusst unabhängig vom Sollzins — Eigenkapital haftet und ist lange gebunden,
+  // der Maßstab ist die Alternativanlage, nicht die Bankkondition.
+  function zielZins(o) { return G.mindestRendite; }
 
   // Gesellschaftsebene — gilt für alle Objekte
   var GES_GROUPS = [
@@ -621,7 +622,7 @@
       { id: "hebesatz", label: "Gewerbesteuer-Hebesatz", min: 200, max: 600, step: 10, fmt: function (v) { return fPct(v, 0); }, note: "nur ohne erweiterte Kürzung relevant" },
       { id: "anlage", label: "Anlagezins", min: 0, max: 6, step: 0.1, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "Bundeswertpapiere für geparkte Mittel" },
       { id: "kkZins", label: "Kontokorrentzins", min: 0, max: 12, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "bei negativem Konto der Gesellschaft" },
-      { id: "zielAufschlag", label: "Renditeaufschlag", min: 0, max: 5, step: 0.25, fmt: function (v) { return "+" + fPct(v, 2); }, note: "über den Sollzins — Hürde für Break-even und Ankaufsfilter" }
+      { id: "mindestRendite", label: "Mindestrendite", min: 0, max: 12, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "auf das Eigenkapital — Maßstab für Break-even und Ankaufsfilter" }
     ], tax: true }
   ];
 
@@ -1067,6 +1068,44 @@
   // gerade null wird? Die Zielgröße ist haltedauerfrei, deshalb entfällt jede Annahme
   // darüber, wie lange der Eigentümer bleibt.
   var NE_MIN = 1, NE_MAX = 9;
+
+  // Umkehrrechnung für beliebige Stellschrauben: Welcher Wert bringt — bei sonst
+  // unveränderten Annahmen — genau die Mindestrendite? Grundlage ist derselbe
+  // gewichtete Kapitalwert, der ohne unterstellte Haltedauer auskommt.
+  var STELLSCHRAUBEN = [
+    { k: "ne", label: "Nutzungsentgelt", min: 0.5, max: 15, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
+    { k: "growth", label: "Wertentwicklung", min: -5, max: 10, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
+    { k: "verfall", label: "Instandhaltungsverfall", min: 0, max: 6, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "weniger" },
+    { k: "zins", label: "Sollzins", min: 0, max: 12, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "weniger" },
+    { k: "grest", label: "Grunderwerbsteuer", min: 0, max: 10, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" },
+    { k: "vkKosten", label: "Verkaufskosten", min: 0, max: 12, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" }
+  ];
+
+  function kritischerWert(o, sch, opexShare, taxRate) {
+    var disk = zielZins(o) / 100;
+    var w = exitGewichte(o).w;
+    function kwBei(v) {
+      var oo = Object.assign({}, o); oo[sch.k] = v;
+      return eKapitalwert(kwKurve(oo, opexShare, taxRate, disk), w, disk);
+    }
+    var kwMin = kwBei(sch.min), kwMax = kwBei(sch.max);
+    var jetzt = kwBei(o[sch.k]);
+    // Die Wirkungsrichtung wird gemessen, nicht unterstellt
+    var steigend = kwMax > kwMin;
+    var gut = steigend ? sch.max : sch.min;
+    var schlecht = steigend ? sch.min : sch.max;
+    if (kwBei(gut) < 0) return { status: "unerreichbar", jetzt: jetzt };
+    if (kwBei(schlecht) >= 0) return { status: "unkritisch", jetzt: jetzt };
+    var lo = schlecht, hi = gut;
+    for (var i = 0; i < 22 && Math.abs(hi - lo) > 0.005; i++) {
+      var mid = (lo + hi) / 2;
+      if (kwBei(mid) < 0) lo = mid; else hi = mid;
+    }
+    var wert = Math.round(hi * 100) / 100;
+    // Toleranz, damit an der Nullstelle kein Rundungsrest als Unterschreitung erscheint
+    return { status: "gefunden", wert: wert, jetzt: jetzt,
+      reicht: steigend ? o[sch.k] >= wert - 0.02 : o[sch.k] <= wert + 0.02 };
+  }
 
   function mindestEntgelt(o, opexShare, taxRate) {
     var disk = zielZins(o) / 100;
@@ -1654,11 +1693,24 @@
     // ---- Teil 3: Analyse ----
     h += '<div class="section-head"><h3>Analyse</h3><span class="sh-note">Wie belastbar die angenommene Haltedauer ist</span></div>';
     var A = exitAnalyse(o, opexShare, P.taxRate / 100);
-    var F = mindestEntgelt(o, G.opexAufKandidat ? opexShare : 0, P.taxRate / 100);
+    var oShare = G.opexAufKandidat ? opexShare : 0;
+    var F = mindestEntgelt(o, oShare, P.taxRate / 100);
+    F.stell = STELLSCHRAUBEN.map(function (sch) { return kritischerWert(o, sch, oShare, P.taxRate / 100); });
     h += objektAnalyseHtml(o, A, F);
 
     host.innerHTML = h;
     document.getElementById("backBtn").addEventListener("click", closeDetail);
+    host.querySelectorAll("button[data-setz]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var sch = STELLSCHRAUBEN[+b.dataset.setz];
+        var K = F.stell[+b.dataset.setz];
+        if (K.status !== "gefunden") return;
+        OBJ[detailIdx][sch.k] = K.wert;
+        // Panel neu aufbauen, damit der Regler den übernommenen Wert zeigt
+        document.getElementById("panelObjekt").dataset.idx = "";
+        refresh();
+      });
+    });
   }
 
   // ---------- Analyseseite ----------
@@ -1742,7 +1794,7 @@
     if (F) {
       h += '<div class="card"><h2>Trägt sich dieser Vertrag?</h2>';
       h += '<p class="sub">Gemessen am gewichteten Kapitalwert über alle möglichen Haltedauern, gegen eine Hürde von ' +
-        fPct(zielZins(o), 2) + " (Sollzins plus Aufschlag).</p>";
+        fPct(zielZins(o), 2) + " Mindestrendite auf das eingesetzte Eigenkapital.</p>";
       h += '<div class="derived"><span>Vereinbartes Nutzungsentgelt</span><b>' + fPct(o.ne, 2) + " p.a.</b></div>";
       if (F.status === "gefunden") {
         var reserve = o.ne - F.ne;
@@ -1760,6 +1812,32 @@
         h += '<div class="ctl-note" style="margin-top:8px">Auch bei ' + fPct(NE_MAX, 2) +
           " bleibt der gewichtete Kapitalwert negativ. Ursache sind meist zu kurze erwartete Haltedauer, hohe Kaufnebenkosten oder Instandhaltungsverfall.</div>";
       }
+      h += "</div>";
+
+      // Umkehrrechnung je Stellschraube
+      h += '<div class="card"><h2>Welche Stellschraube bringt die Mindestrendite?</h2>';
+      h += '<p class="sub">Jede Zeile verändert genau eine Größe, alle übrigen bleiben unverändert. Der kritische Wert ist der Punkt, an dem der gewichtete Kapitalwert gerade null wird.</p>';
+      h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
+        "<th>Stellschraube</th><th>eingestellt</th><th>kritischer Wert</th><th>Abstand</th><th>Status</th><th></th></tr></thead><tbody>";
+      STELLSCHRAUBEN.forEach(function (sch, si) {
+        var K = F.stell[si];
+        var ist = o[sch.k];
+        h += "<tr><td>" + sch.label + "</td><td>" + sch.fmt(ist) + "</td>";
+        if (K.status === "gefunden") {
+          var delta = Math.abs(ist - K.wert);
+          h += "<td>" + sch.fmt(K.wert) + "</td>";
+          h += "<td>" + (K.reicht ? "+" : "−") + sch.fmt(delta).replace(" p.a.", "") + "</td>";
+          h += '<td class="' + (K.reicht ? "" : "neg") + '">' + (K.reicht ? "reicht" : "reicht nicht") + "</td>";
+          h += '<td><button type="button" class="act" data-setz="' + si + '" title="Diesen Wert übernehmen">setzen</button></td>';
+        } else if (K.status === "unkritisch") {
+          h += '<td colspan="3">im gesamten Bereich unkritisch</td><td></td>';
+        } else {
+          h += '<td colspan="3" class="neg">reicht allein nicht aus</td><td></td>';
+        }
+        h += "</tr>";
+      });
+      h += "</tbody></table></div>";
+      h += '<p class="caption">„Reicht allein nicht aus“ bedeutet: Selbst am günstigsten Ende dieser Größe bleibt der Kapitalwert negativ — dann müssen mehrere Stellschrauben zusammen bewegt werden. Über „setzen“ wird der kritische Wert übernommen; danach zeigen alle übrigen Zeilen, was sich dadurch verschoben hat.</p>';
       h += "</div>";
     }
     h += '<div class="card"><div class="stat-row">';
@@ -1885,7 +1963,7 @@
     h += '<div><div class="stat-label"><span class="dot s2"></span>Frühexit-Risiko</div><div class="stat-num">' + fPct(gewFrueh, 0) +
       '</div><div class="stat-sub">' + (ohneBE ? ohneBE + " von " + R.reihen.length + " ohne Break-even" : "alle Objekte erreichen den Break-even") + "</div></div>";
     h += '<div><div class="stat-label"><span class="dot s3"></span>Kapitalwert</div><div class="stat-num' + (kwSumme < 0 ? " warnzahl" : "") + '">' + fEur(kwSumme) +
-      '</div><div class="stat-sub">gewichtet, über der Hürde von Sollzins + ' + fPct(G.zielAufschlag, 2) + "</div></div>";
+      '</div><div class="stat-sub">gewichtet, gegen die Mindestrendite von ' + fPct(G.mindestRendite, 2) + "</div></div>";
     h += '<div><div class="stat-label">Abweichung</div><div class="stat-num">' +
       abweichung.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
       '</div><div class="stat-sub">Jahre zwischen Eingabe und Erwartung</div></div>';
