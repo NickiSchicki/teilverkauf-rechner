@@ -1562,13 +1562,16 @@
     h += '<p class="caption">Die maßgebliche Steuer entsteht auf Gesellschaftsebene: Im Portfolio werden Gewinne und Verluste aller Projekte verrechnet, hier wird das Projekt isoliert gerechnet. Die Summe der Einzelsteuern kann daher von der Portfoliosteuer abweichen.</p>';
     h += "</div>";
 
+    // ---- Teil 3: Analyse ----
+    h += '<div class="section-head"><h3>Analyse</h3><span class="sh-note">Wie belastbar die angenommene Haltedauer ist</span></div>';
+    var A = exitAnalyse(o, opexShare, P.taxRate / 100);
+    h += objektAnalyseHtml(o, A);
+
     host.innerHTML = h;
     document.getElementById("backBtn").addEventListener("click", closeDetail);
   }
 
   // ---------- Analyseseite ----------
-  var analyseIdx = 0;
-
   function exitChart(A, o) {
     var W = 820, H = 300, m = { l: 58, r: 58, t: 12, b: 26 };
     var pw = W - m.l - m.r, ph = H - m.t - m.b;
@@ -1642,32 +1645,14 @@
     return '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Exitwahrscheinlichkeit je Jahr und Kapitalwert über die Haltedauer">' + s.join("") + "</svg>";
   }
 
-  function renderAnalyse(P) {
-    var host = document.getElementById("viewAnalyse");
-    if (!P.objs.length) {
-      host.innerHTML = '<div class="card"><h2>Analyse</h2><p class="sub">Noch keine Objekte — im Portfolio ein Objekt anlegen.</p></div>';
-      return;
-    }
-    if (analyseIdx >= P.objs.length) analyseIdx = 0;
-    var opexShare = OBJ.length ? G.opex / OBJ.length : 0;
-    var o = OBJ[analyseIdx];
-    var A = exitAnalyse(o, opexShare, P.taxRate / 100);
+  // Objektbezogene Analyse — auf der Objektseite und in der Portfoliosicht wiederverwendet
+  function objektAnalyseHtml(o, A) {
     var gew = A.gewaehlt;
-
     var h = "";
-    h += '<div class="card">';
-    h += "<h2>Wann endet der Vertrag — und was heißt das?</h2>";
-    h += '<p class="sub">Die Haltedauer ist keine Entscheidung, sondern eine Verteilung. Sie hängt daran, wie lange der Eigentümer im Haus bleibt.</p>';
-    h += '<div class="obj-pick">';
-    OBJ.forEach(function (ob, i) {
-      h += '<button type="button" data-pick="' + i + '" aria-pressed="' + (i === analyseIdx) + '">' +
-        (ob.name || "Objekt " + (i + 1)) + "</button>";
-    });
-    h += "</div>";
-    h += '<div class="stat-row">';
+    h += '<div class="card"><div class="stat-row">';
     h += '<div><div class="stat-label">Erwartete Haltedauer</div><div class="stat-num">' +
       A.eH.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
-      '</div><div class="stat-sub">Median ' + (A.median || "–") + " Jahre · gewählt " + o.hold + "</div></div>";
+      '</div><div class="stat-sub">Median ' + (A.median || "–") + " Jahre · eingestellt " + o.hold + "</div></div>";
     h += '<div><div class="stat-label"><span class="dot s2"></span>Break-even</div><div class="stat-num">' +
       (A.beKW ? A.beKW + " J." : "nie") +
       '</div><div class="stat-sub">' +
@@ -1686,41 +1671,148 @@
         ? "Bei Paaren endet der Vertrag mit der zuletzt lebenden Person — das verlängert die Haltedauer um mehrere Jahre gegenüber einer Einzelperson. "
         : "Bei einer Einzelperson endet der Vertrag deutlich früher als bei einem Paar gleichen Alters. ") +
       (diff !== null
-        ? "Über die gesamte Verteilung gerechnet liegt die Rendite bei " + fPct(A.eIrr) + ", die Eingabe von " + o.hold +
-          " Jahren zeigt " + fPct(gew.irr) + " — eine Abweichung von " + fPct(Math.abs(diff)) + "-Punkten."
+        ? "Über die gesamte Verteilung gerechnet liegt die Rendite bei " + fPct(A.eIrr) + ", die eingestellten " + o.hold +
+          " Jahre ergeben " + fPct(gew.irr) + " — eine Abweichung von " + fPct(Math.abs(diff)) + "-Punkten."
         : "") +
-      "</div>";
-    h += "</div>";
+      "</div></div>";
 
     h += '<div class="card">';
     h += '<div class="legend"><span><span class="swatch" style="background:var(--s3)"></span>Verkaufswahrscheinlichkeit je Jahr</span>' +
       '<span><span class="swatch" style="background:var(--s1)"></span>Kapitalwert der Beteiligung</span></div>';
     h += '<div class="chart-box">' + exitChart(A, o) + "</div>";
     h += '<p class="caption">Der Kapitalwert misst gegen den Sollzins von ' + fPct(o.zins, 2) +
-      " — oberhalb der Nulllinie verdient das Projekt mehr als die Finanzierung kostet. " +
+      " — oberhalb der Nulllinie verdient das Projekt mehr, als die Finanzierung kostet. " +
       "Als Maßstab dient bewusst der Kapitalwert und nicht der interne Zinsfuß, der bei kurzen Haltedauern nicht eindeutig ist. " +
-      "Die rot hinterlegte Zone links ist die Verlustzone: Grunderwerbsteuer und Notarkosten sind dort noch nicht verdient.</p>";
+      "Die rot hinterlegte Zone ist die Verlustzone: Dort sind Grunderwerbsteuer und Notarkosten noch nicht verdient.</p>";
+    h += "</div>";
+    return h;
+  }
+
+  // Erwartete Rückflüsse aller Objekte auf der Portfolio-Zeitachse
+  function portfolioRueckfluss(P, opexShare) {
+    var maxJ = 0, reihen = [];
+    P.objs.forEach(function (x, i) {
+      var o = OBJ[i];
+      var A = exitAnalyse(o, opexShare, P.taxRate / 100);
+      var norm = 0;
+      for (var k = 1; k <= HMAX; k++) norm += A.V.p[k];
+      reihen.push({ o: o, x: x, A: A, norm: norm });
+      maxJ = Math.max(maxJ, o.start + HMAX);
+    });
+    var rueck = [], wahr = [];
+    for (var j = 0; j <= maxJ; j++) { rueck.push(0); wahr.push(0); }
+    reihen.forEach(function (r) {
+      for (var k = 1; k <= HMAX; k++) {
+        var w = r.norm > 0 ? r.A.V.p[k] / r.norm : 0;
+        var jVerkauf = r.o.start + k;
+        var jGeld = r.o.start + r.A.kurve[k - 1].ende;
+        if (jVerkauf <= maxJ) wahr[jVerkauf] += w;
+        if (jGeld <= maxJ) rueck[jGeld] += w * r.A.kurve[k - 1].endwert;
+      }
+    });
+    return { reihen: reihen, rueck: rueck, wahr: wahr, maxJ: maxJ };
+  }
+
+  function rueckflussChart(R) {
+    var W = 820, H = 250, m = { l: 62, r: 16, t: 14, b: 26 };
+    var pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var T = Math.max(1, R.maxJ);
+    var maxV = Math.max.apply(null, R.rueck) || 1;
+    function x(j) { return m.l + j / T * pw; }
+    function y(v) { return m.t + ph - v / maxV * ph; }
+    var s = [];
+    [0, maxV / 2, maxV].forEach(function (v) {
+      s.push('<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="' + (v === 0 ? "var(--axis)" : "var(--grid)") + '" stroke-width="1"/>');
+      s.push('<text x="' + (m.l - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end" font-size="10.5" fill="var(--ink-3)">' + fShort(v) + "</text>");
+    });
+    var bw = Math.max(2, pw / (T + 1) - 2);
+    R.rueck.forEach(function (v, j) {
+      if (v <= 0) return;
+      var bh = v / maxV * ph;
+      s.push('<rect x="' + (x(j) - bw / 2).toFixed(1) + '" y="' + y(v).toFixed(1) + '" width="' + bw.toFixed(1) +
+        '" height="' + bh.toFixed(1) + '" rx="1.5" fill="var(--s1)" opacity="0.75"><title>Jahr ' + j + ": " + fEur(v) + "</title></rect>");
+    });
+    var tick = T <= 12 ? 2 : (T <= 30 ? 5 : 10);
+    for (var t = 0; t <= T; t += tick) {
+      s.push('<text x="' + x(t) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">' + t + "</text>");
+    }
+    s.push('<text x="' + (W - m.r) + '" y="' + (H - 6) + '" text-anchor="end" font-size="10.5" fill="var(--ink-3)">Jahr</text>');
+    return '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Erwartete Rückflüsse je Jahr über alle Objekte">' + s.join("") + "</svg>";
+  }
+
+  // Portfolioweite Analyse — Gesamtsicht statt Einzelobjekt
+  function renderAnalyse(P) {
+    var host = document.getElementById("viewAnalyse");
+    if (!P.objs.length) {
+      host.innerHTML = '<div class="card"><h2>Analyse</h2><p class="sub">Noch keine Objekte — im Portfolio ein Objekt anlegen.</p></div>';
+      return;
+    }
+    var opexShare = OBJ.length ? G.opex / OBJ.length : 0;
+    var R = portfolioRueckfluss(P, opexShare);
+
+    // Gewichtung nach Kapitaleinsatz
+    var ekSumme = R.reihen.reduce(function (a, r) { return a + r.x.equity0; }, 0) || 1;
+    var gewFrueh = 0, ohneBE = 0, gewRendite = 0, gewDauer = 0, abweichung = 0;
+    R.reihen.forEach(function (r) {
+      var g = r.x.equity0 / ekSumme;
+      gewFrueh += g * r.A.pVorBE;
+      gewDauer += g * r.A.eH;
+      if (r.A.eIrr !== null) gewRendite += g * r.A.eIrr;
+      if (!r.A.beKW) ohneBE++;
+      abweichung += Math.abs(r.o.hold - r.A.eH) * g;
+    });
+
+    var h = "";
+    h += '<div class="card">';
+    h += "<h2>Wann kommt das Geld zurück?</h2>";
+    h += '<p class="sub">Die Haltedauer ist keine Entscheidung, sondern eine Verteilung — sie hängt daran, wie lange die Eigentümer wohnen bleiben. Diese Sicht fasst alle Verträge zusammen.</p>';
+    h += '<div class="stat-row">';
+    h += '<div><div class="stat-label">Erwartete Haltedauer</div><div class="stat-num">' +
+      gewDauer.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
+      '</div><div class="stat-sub">nach Kapitaleinsatz gewichtet</div></div>';
+    h += '<div><div class="stat-label"><span class="dot s2"></span>Frühexit-Risiko</div><div class="stat-num">' + fPct(gewFrueh, 0) +
+      '</div><div class="stat-sub">' + (ohneBE ? ohneBE + " von " + R.reihen.length + " ohne Break-even" : "alle Objekte erreichen den Break-even") + "</div></div>";
+    h += '<div><div class="stat-label"><span class="dot s3"></span>Erwartete Rendite</div><div class="stat-num">' + fPct(gewRendite) +
+      '</div><div class="stat-sub">über die Verteilung gerechnet</div></div>';
+    h += '<div><div class="stat-label">Abweichung</div><div class="stat-num">' +
+      abweichung.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
+      '</div><div class="stat-sub">Jahre zwischen Eingabe und Erwartung</div></div>';
+    h += "</div>";
+    if (abweichung >= 2) {
+      h += '<div class="warn-note">Die eingestellten Haltedauern weichen im Mittel um ' +
+        abweichung.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
+        " Jahre von der statistischen Erwartung ab. Da alle Geldzahlen des Modells auf der eingestellten Haltedauer beruhen, " +
+        "verschiebt das auch Rendite, Bilanz und Liquiditätsverlauf. Die Werte lassen sich je Objekt anpassen.</div>";
+    }
     h += "</div>";
 
-    // Tabelle je Objekt
-    h += '<div class="card"><h2>Alle Objekte im Vergleich</h2>';
-    h += '<p class="sub">Wie belastbar die eingegebene Haltedauer je Vertrag ist.</p>';
+    h += '<div class="card"><h2>Erwartete Rückflüsse je Jahr</h2>';
+    h += '<p class="sub">Wahrscheinlichkeitsgewichtet über alle Objekte. Der Rückfluss steht dort, wo das Geld tatsächlich frei wird — bei laufender Zinsbindung also erst nach deren Ende.</p>';
+    h += '<div class="chart-box">' + rueckflussChart(R) + "</div>";
+    var spitze = 0, spitzeJ = 0;
+    R.rueck.forEach(function (v, j) { if (v > spitze) { spitze = v; spitzeJ = j; } });
+    h += '<p class="caption">Größter erwarteter Rückfluss im Jahr ' + spitzeJ + " mit " + fEur(spitze) +
+      ". Je stärker sich Rückflüsse auf wenige Jahre bündeln, desto mehr hängt das Ergebnis am Marktumfeld genau dieser Jahre.</p>";
+    h += "</div>";
+
+    h += '<div class="card"><h2>Objekte im Vergleich</h2>';
+    h += '<p class="sub">Wie belastbar die eingestellte Haltedauer je Vertrag ist. Ein Klick öffnet das Projekt.</p>';
     h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
-      "<th>Objekt</th><th>Haushalt</th><th>Alter</th><th>gewählt</th><th>Median</th><th>erwartet</th><th>Break-even</th><th>Frühexit</th><th>Rendite gewählt</th><th>Rendite erwartet</th>" +
+      "<th>Objekt</th><th>Haushalt</th><th>Alter</th><th>eingestellt</th><th>Median</th><th>erwartet</th><th>Break-even</th><th>Frühexit</th><th>Rendite eingestellt</th><th>Rendite erwartet</th>" +
       "</tr></thead><tbody>";
-    OBJ.forEach(function (ob, i) {
-      var Ai = i === analyseIdx ? A : exitAnalyse(ob, opexShare, P.taxRate / 100);
-      var g2 = Ai.gewaehlt;
-      h += "<tr" + (i === analyseIdx ? ' class="exit-row"' : "") + "><td>" + (ob.name || "Objekt " + (i + 1)) + "</td>";
-      h += "<td>" + (ob.haus || "Paar") + "</td><td>" + (ob.alter || 75) + "</td>";
-      h += "<td>" + ob.hold + "</td><td>" + (Ai.median || "–") + "</td>";
-      h += "<td>" + Ai.eH.toLocaleString("de-DE", { maximumFractionDigits: 1 }) + "</td>";
-      h += "<td>" + (Ai.beKW ? Ai.beKW : "nie") + "</td>";
-      h += '<td class="' + (Ai.pVorBE > 25 ? "neg" : "") + '">' + fPct(Ai.pVorBE, 0) + "</td>";
-      h += "<td>" + fPct(g2.irr) + "</td><td>" + fPct(Ai.eIrr) + "</td></tr>";
+    R.reihen.forEach(function (r, i) {
+      var g2 = r.A.gewaehlt;
+      h += '<tr class="zeile" data-open="' + i + '" style="cursor:pointer" title="Projekt öffnen"><td style="color:var(--accent);font-weight:600">' +
+        (r.o.name || "Objekt " + (i + 1)) + "</td>";
+      h += "<td>" + (r.o.haus || "Paar") + "</td><td>" + (r.o.alter || 75) + "</td>";
+      h += "<td>" + r.o.hold + "</td><td>" + (r.A.median || "–") + "</td>";
+      h += "<td>" + r.A.eH.toLocaleString("de-DE", { maximumFractionDigits: 1 }) + "</td>";
+      h += "<td>" + (r.A.beKW ? r.A.beKW : "nie") + "</td>";
+      h += '<td class="' + (r.A.pVorBE > 25 ? "neg" : "") + '">' + fPct(r.A.pVorBE, 0) + "</td>";
+      h += "<td>" + fPct(g2.irr) + "</td><td>" + fPct(r.A.eIrr) + "</td></tr>";
     });
     h += "</tbody></table></div>";
-    h += '<p class="caption">Der Erwartungswert ist der interne Zinsfuß des wahrscheinlichkeitsgewichteten Zahlungsstroms — nicht der gewichtete Mittelwert der Renditen, der rechnerisch falsch wäre.</p>';
+    h += '<p class="caption">Der Erwartungswert ist der interne Zinsfuß des wahrscheinlichkeitsgewichteten Zahlungsstroms — nicht der gewichtete Mittelwert der Renditen, der rechnerisch falsch wäre. Die Verteilung eines einzelnen Objekts steht auf dessen Projektseite.</p>';
     h += "</div>";
 
     h += '<div class="card fine"><h2>Woher die Sterbewahrscheinlichkeiten kommen</h2>' +
@@ -1729,14 +1821,13 @@
       "berechnet aus zwei unabhängigen Verläufen für Mann und Frau gleichen Alters.</p>" +
       "<p>Zwei bewusste Vereinfachungen, die in dieselbe Richtung wirken: Es handelt sich um eine Periodentafel, " +
       "eine Generationentafel läge höher. Und wer ein schuldenfreies Eigenheim besitzt, hat statistisch eine " +
-      "überdurchschnittliche Lebenserwartung. Die tatsächliche Haltedauer dürfte daher eher über den hier gezeigten Werten liegen — " +
-      "was die Frühexit-Gefahr überzeichnet und die Kapitalbindung unterzeichnet.</p>" +
-      "<p>Die Auszugswahrscheinlichkeit für Pflegeheim oder freiwilligen Auszug ist ein Schätzwert und als Regler einstellbar; " +
+      "überdurchschnittliche Lebenserwartung. Die tatsächliche Haltedauer dürfte daher eher über den hier gezeigten Werten liegen.</p>" +
+      "<p>Die Auszugswahrscheinlichkeit für Pflegeheim oder freiwilligen Auszug ist ein Schätzwert und je Objekt einstellbar; " +
       "sie dominiert die ersten Jahre der Verteilung.</p></div>";
 
     host.innerHTML = h;
-    host.querySelectorAll("button[data-pick]").forEach(function (b) {
-      b.addEventListener("click", function () { analyseIdx = +b.dataset.pick; refresh(); });
+    host.querySelectorAll("tr.zeile[data-open]").forEach(function (tr) {
+      tr.addEventListener("click", function () { openDetail(+tr.dataset.open); });
     });
   }
 
