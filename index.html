@@ -494,7 +494,8 @@
         <p><b>Kapitalfluss:</b> Bei jedem Ankauf legen die Gesellschafter genau das benötigte Eigenkapital ein, der Rest wird über ein Annuitätendarlehen finanziert (Zins und Anfangstilgung fest, 0 % Tilgung = endfällig). Danach bleiben alle Mittel in der Gesellschaft, es wird nie ausgeschüttet.</p>
         <p><b>Zinsbindung und Geldanlage:</b> Fällt der Verkauf in die Zinsbindung, lässt sich das Darlehen nicht entschädigungsfrei ablösen. Ist der entsprechende Schalter gesetzt, läuft es bis zum Ende der Zinsbindung weiter, während der Verkaufserlös zum Anlagezins geparkt wird — als Näherung für kurzlaufende Bundeswertpapiere. Aus der Differenz zwischen Sollzins und Anlagezins entsteht ein laufender Verlust auf dem geparkten Betrag; im Gegenzug entfällt eine Vorfälligkeitsentschädigung, die hier nicht gerechnet wird. Ohne den Schalter wird beim Verkauf abgelöst, ebenfalls ohne Entschädigung — die Wahrheit liegt dazwischen. Guthaben werden durchgehend zum Anlagezins verzinst, negative Salden zum Sollzins plus Aufschlag; beides läuft über die GuV und erhöht oder mindert die Steuer. Eine Zinsänderung nach Ablauf der Bindung ist nicht modelliert. Die Rendite ist der interne Zinsfuß der Einlagen gegen die Schlussliquidität; der Schalter „Abgeltungsteuer“ zeigt als Nebenrechnung, was nach einer späteren Entnahme bliebe (26,375 % auf den Betrag oberhalb der Einlagen).</p>
         <p><b>Haltedauer:</b> Sie lässt sich je Objekt frei setzen oder über den Schalter „Haltedauer aus Sterbetafel“ an den Median der Exit-Verteilung koppeln. Ist die Kopplung aktiv, wirkt das Alter des Haushalts bis in Bilanz, Rendite und Liquiditätsverlauf durch; andernfalls beeinflusst es nur die Analyse. Verwendet wird der Median und nicht der Erwartungswert, weil die Rechenwerke eine ganze Zahl brauchen und der Median einen konkreten Vertrag beschreibt, während der Erwartungswert durch die lange rechte Flanke der Verteilung nach oben gezogen wird.</p>
-        <p><b>Ankaufsfilter:</b> Die Umkehrung der Renditerechnung — gesucht wird das Nutzungsentgelt, bei dem der wahrscheinlichkeitsgewichtete Kapitalwert gerade null wird, gemessen gegen den Sollzins plus Renditeaufschlag. Diese Zielgröße kommt <b>ohne unterstellte Haltedauer</b> aus: Weil der Kapitalwert linear in den Zahlungen ist, entspricht der gewichtete Kapitalwert exakt dem Kapitalwert des gewichteten Zahlungsstroms. Die Suche läuft als Bisektion zwischen 1 und 9 Prozent; liegt die Lösung außerhalb, wird das als „nicht bindend“ oder „nicht erreichbar“ ausgewiesen statt an den Rand geklemmt. Die laufenden Kosten der Gesellschaft gehen dabei standardmäßig <em>nicht</em> in die Prüfung ein, weil sie je Geschäftsjahr anfallen und nicht je Objekt — die Mehrkosten eines zusätzlichen Vertrags entstehen nur, soweit er die Gesamtlaufzeit verlängert.</p>
+        <p><b>Ankaufsfilter:</b> Die Umkehrung der Renditerechnung — gesucht wird der Wert, bei dem der wahrscheinlichkeitsgewichtete Kapitalwert gerade null wird, gemessen gegen die auf Gesellschaftsebene eingestellte Mindestrendite. Diese Zielgröße kommt <b>ohne unterstellte Haltedauer</b> aus: Weil der Kapitalwert linear in den Zahlungen ist, entspricht der gewichtete Kapitalwert exakt dem Kapitalwert des gewichteten Zahlungsstroms. Gerechnet wird einschließlich der anteiligen laufenden Kosten der Gesellschaft — dieselbe Kostenbasis wie in der übrigen Objektrechnung, damit auf einer Seite nicht zwei verschiedene Renditen für denselben Vertrag stehen.</p>
+        <p><b>Umkehrrechnung je Stellschraube:</b> Jede Zeile der Stellschraubentabelle beantwortet dieselbe Frage für genau eine Größe, alle übrigen unverändert. Die Suche läuft als Bisektion; die Wirkungsrichtung wird gemessen und nicht unterstellt. Liegt die Lösung außerhalb des zulässigen Bereichs, erscheint „reicht allein nicht aus“ oder „im gesamten Bereich unkritisch“ statt eines an den Rand geklemmten Werts. Die erste Zeile behandelt die Mindestrendite selbst als Stellschraube: Ihr kritischer Wert ist die Rendite, die der Vertrag bei den aktuellen Annahmen tatsächlich abwirft, und stimmt mit der erwarteten Rendite der Analyse überein — beides ist der Zinsfuß, bei dem derselbe gewichtete Kapitalwert null wird.</p>
         <p><b>Effektive Kosten je Eigentümer</b> sind der interne Zinsfuß aus dessen Sicht: Auszahlung heute gegen Nutzungsentgelte und den Anteil, der beim Verkauf an die GmbH geht. Verkaufskosten des Eigentümers zählen nicht dazu, weil sie bei einem Verkauf ohne Teilverkauf ebenso anfielen.</p>
         <p>Alle Werte jährlich nachschüssig, vor Inflation. Ausfall-, Instandhaltungs- und Bewertungsrisiken sind nicht modelliert.</p>
       </div>
@@ -531,7 +532,7 @@
   // Gesellschaftsebene: gilt für die GmbH als Ganzes
   var G = {
     opex: 3000, hebesatz: 400, erwKuerzung: true, ausschuetten: false,
-    anlage: 3.0, kkZins: 6.0, mindestRendite: 5.5, opexAufKandidat: false
+    anlage: 3.0, kkZins: 6.0, mindestRendite: 5.5
   };
 
   // Objektebene: jedes Objekt trägt seine Annahmen selbst.
@@ -1086,6 +1087,23 @@
     { k: "grest", label: "Grunderwerbsteuer", min: 0, max: 10, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" },
     { k: "vkKosten", label: "Verkaufskosten", min: 0, max: 12, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" }
   ];
+
+  // Die Hürde selbst ist ebenfalls eine Stellschraube: Ihr kritischer Wert ist die
+  // Rendite, die der Vertrag bei den aktuellen Annahmen tatsächlich abwirft.
+  function kritischeRendite(o, opexShare, taxRate) {
+    var w = exitGewichte(o).w;
+    function kwBei(r) { return eKapitalwert(kwKurve(o, opexShare, taxRate, r / 100), w, r / 100); }
+    var lo = -20, hi = 40;
+    if (kwBei(lo) < 0) return { status: "unerreichbar", jetzt: kwBei(G.mindestRendite) };
+    if (kwBei(hi) >= 0) return { status: "unkritisch", jetzt: kwBei(G.mindestRendite) };
+    for (var i = 0; i < 26 && hi - lo > 0.005; i++) {
+      var mid = (lo + hi) / 2;
+      if (kwBei(mid) >= 0) lo = mid; else hi = mid;
+    }
+    var wert = Math.round(lo * 100) / 100;
+    return { status: "gefunden", wert: wert, jetzt: kwBei(G.mindestRendite),
+      reicht: G.mindestRendite <= wert + 0.02 };
+  }
 
   function kritischerWert(o, sch, opexShare, taxRate) {
     var disk = zielZins(o) / 100;
@@ -1703,13 +1721,24 @@
     // ---- Teil 3: Analyse ----
     h += '<div class="section-head"><h3>Analyse</h3><span class="sh-note">Wie belastbar die angenommene Haltedauer ist</span></div>';
     var A = exitAnalyse(o, opexShare, P.taxRate / 100);
-    var oShare = G.opexAufKandidat ? opexShare : 0;
+    // Dieselbe Kostenbasis wie in der übrigen Objektrechnung, sonst stünden auf
+    // einer Seite zwei verschiedene Renditen für denselben Vertrag.
+    var oShare = opexShare;
     var F = mindestEntgelt(o, oShare, P.taxRate / 100);
     F.stell = STELLSCHRAUBEN.map(function (sch) { return kritischerWert(o, sch, oShare, P.taxRate / 100); });
+    F.rendite = kritischeRendite(o, oShare, P.taxRate / 100);
     h += objektAnalyseHtml(o, A, F);
 
     host.innerHTML = h;
     document.getElementById("backBtn").addEventListener("click", closeDetail);
+    var bR = host.querySelector("button[data-setzR]");
+    if (bR) bR.addEventListener("click", function () {
+      if (F.rendite.status !== "gefunden") return;
+      G.mindestRendite = Math.max(0, Math.floor(F.rendite.wert * 4) / 4); // Schrittweite 0,25
+      document.getElementById("panelGes").dataset.rebuild = "1";
+      baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", function () { refresh(); });
+      refresh();
+    });
     host.querySelectorAll("button[data-setz]").forEach(function (b) {
       b.addEventListener("click", function () {
         var sch = STELLSCHRAUBEN[+b.dataset.setz];
@@ -1777,7 +1806,7 @@
       if (Math.abs(yK(v) - yK(0)) < 14) return;
       s.push('<text x="' + (m.l - 8) + '" y="' + (yK(v) + 4) + '" text-anchor="end" font-size="10.5" fill="var(--ink-3)">' + fShort(v) + "</text>");
     });
-    s.push('<text x="' + m.l + '" y="' + (m.t + obereH + luecke + 10) + '" font-size="10.5" fill="var(--ink-3)">Kapitalwert bei ' + fPct(o.zins, 2) + " Mindestverzinsung</text>");
+    s.push('<text x="' + m.l + '" y="' + (m.t + obereH + luecke + 10) + '" font-size="10.5" fill="var(--ink-3)">Kapitalwert bei ' + fPct(G.mindestRendite, 2) + " Mindestrendite</text>");
 
     var p = "";
     A.kurve.forEach(function (pt) { p += (p === "" ? "M" : "L") + x(pt.h).toFixed(1) + " " + yK(pt.kw).toFixed(1); });
@@ -1840,9 +1869,23 @@
 
       // Umkehrrechnung je Stellschraube
       h += '<div class="card"><h2>Welche Stellschraube bringt die Mindestrendite?</h2>';
-      h += '<p class="sub">Jede Zeile verändert genau eine Größe, alle übrigen bleiben unverändert. Der kritische Wert ist der Punkt, an dem der gewichtete Kapitalwert gerade null wird.</p>';
+      h += '<p class="sub">Ziel sind ' + fPct(G.mindestRendite, 2) +
+        ' auf das Eigenkapital, gerechnet einschließlich der anteiligen Gemeinkosten. Jede Zeile verändert genau eine Größe, alle übrigen bleiben unverändert; der kritische Wert ist der Punkt, an dem der gewichtete Kapitalwert gerade null wird.</p>';
       h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
         "<th>Stellschraube</th><th>eingestellt</th><th>kritischer Wert</th><th>Abstand</th><th>Status</th><th></th></tr></thead><tbody>";
+
+      // Die Hürde selbst zuerst — sie zeigt, was der Vertrag tatsächlich abwirft
+      var R = F.rendite;
+      h += '<tr class="exit-row"><td>Mindestrendite</td><td>' + fPct(G.mindestRendite, 2) + " p.a.</td>";
+      if (R.status === "gefunden") {
+        h += "<td>" + fPct(R.wert, 2) + " p.a.</td>";
+        h += "<td>" + (R.reicht ? "+" : "−") + fPct(Math.abs(G.mindestRendite - R.wert), 2) + "</td>";
+        h += '<td class="' + (R.reicht ? "" : "neg") + '">' + (R.reicht ? "erreicht" : "verfehlt") + "</td>";
+        h += '<td><button type="button" class="act" data-setzR="1" title="Anspruch auf das Erreichbare senken">setzen</button></td>';
+      } else {
+        h += '<td colspan="3" class="neg">kein Wert im Bereich −20 bis 40 %</td><td></td>';
+      }
+      h += "</tr>";
       STELLSCHRAUBEN.forEach(function (sch, si) {
         var K = F.stell[si];
         var ist = o[sch.k];
@@ -1861,7 +1904,7 @@
         h += "</tr>";
       });
       h += "</tbody></table></div>";
-      h += '<p class="caption">„Reicht allein nicht aus“ bedeutet: Selbst am günstigsten Ende dieser Größe bleibt der Kapitalwert negativ — dann müssen mehrere Stellschrauben zusammen bewegt werden. Über „setzen“ wird der kritische Wert übernommen; danach zeigen alle übrigen Zeilen, was sich dadurch verschoben hat.</p>';
+      h += '<p class="caption">Die erste Zeile ist die Hürde selbst: Ihr kritischer Wert ist die Rendite, die dieser Vertrag bei den aktuellen Annahmen tatsächlich abwirft. Sie gilt für die ganze Gesellschaft — wird sie gesenkt, ändert sich der Maßstab für alle Objekte. Die übrigen Zeilen betreffen nur dieses Objekt. „Reicht allein nicht aus“ bedeutet: Selbst am günstigsten Ende dieser Größe bleibt der Kapitalwert negativ, dann müssen mehrere Stellschrauben zusammen bewegt werden.</p>';
       h += "</div>";
     }
     h += '<div class="card"><div class="stat-row">';
@@ -1871,7 +1914,7 @@
     h += '<div><div class="stat-label"><span class="dot s2"></span>Break-even</div><div class="stat-num">' +
       (A.beKW ? A.beKW + " J." : "nie") +
       '</div><div class="stat-sub">' +
-      (A.beKW ? "ab hier über " + fPct(o.zins, 2) : "Mindestverzinsung nie erreicht") +
+      (A.beKW ? "ab hier über " + fPct(G.mindestRendite, 2) : "Mindestrendite nie erreicht") +
       (A.beNull ? " · Kapitalerhalt ab " + A.beNull + " J." : "") + "</div></div>";
     h += '<div><div class="stat-label">Verkauf davor</div><div class="stat-num">' + fPct(A.pVorBE, 0) +
       '</div><div class="stat-sub">' + (A.beKW ? "Wahrscheinlichkeit eines Frühexits" : "kein Zeitpunkt erreicht die Hürde") + "</div></div>";
@@ -1895,8 +1938,8 @@
     h += '<div class="legend"><span><span class="swatch" style="background:var(--s3)"></span>Verkaufswahrscheinlichkeit je Jahr</span>' +
       '<span><span class="swatch" style="background:var(--s1)"></span>Kapitalwert der Beteiligung</span></div>';
     h += '<div class="chart-box">' + exitChart(A, o) + "</div>";
-    h += '<p class="caption">Der Kapitalwert misst gegen den Sollzins von ' + fPct(o.zins, 2) +
-      " — oberhalb der Nulllinie verdient das Projekt mehr, als die Finanzierung kostet. " +
+    h += '<p class="caption">Der Kapitalwert misst gegen die Mindestrendite von ' + fPct(G.mindestRendite, 2) +
+      " — oberhalb der Nulllinie erreicht das Projekt den geforderten Anspruch. " +
       "Als Maßstab dient bewusst der Kapitalwert und nicht der interne Zinsfuß, der bei kurzen Haltedauern nicht eindeutig ist. " +
       "Die rot hinterlegte Zone ist die Verlustzone: Dort sind Grunderwerbsteuer und Notarkosten noch nicht verdient.</p>";
     h += "</div>";
@@ -2018,7 +2061,7 @@
       var g2 = r.A.gewaehlt;
       h += '<tr class="zeile" data-open="' + i + '" style="cursor:pointer" title="Projekt öffnen"><td style="color:var(--accent);font-weight:600">' +
         (r.o.name || "Objekt " + (i + 1)) + "</td>";
-      var F = mindestEntgelt(r.o, G.opexAufKandidat ? opexShare : 0, P.taxRate / 100);
+      var F = mindestEntgelt(r.o, opexShare, P.taxRate / 100);
       var noetig = F.status === "gefunden" ? fPct(F.ne, 2)
         : (F.status === "nicht bindend" ? "unter " + fPct(NE_MIN, 0) : "nicht erreichbar");
       var knapp = F.status === "nicht erreichbar" || (F.status === "gefunden" && F.ne > r.o.ne);

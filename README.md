@@ -29,7 +29,8 @@ Jedes Objekt trägt seine Annahmen selbst — Immobilienwert, Anteil, Nutzungsen
 - **Steuern** mit Körperschaftsteuer und Solidaritätszuschlag (15,825 %), optionaler Gewerbesteuer und konsolidierter Verlustverrechnung über alle Objekte.
 - **Abschreibung** auf den Gebäudeanteil der Anschaffungskosten; Anschaffungsnebenkosten werden aktiviert und wirken über den Buchwert.
 - **Verkaufszeitpunkt** als Verteilung statt als Annahme, berechnet aus einer an die amtliche Sterbetafel 2022/24 kalibrierten Gompertz-Makeham-Funktion zuzüglich einer einstellbaren Auszugswahrscheinlichkeit. Bei Paaren ist die zuletzt lebende Person maßgeblich.
-- **Break-even** über den Kapitalwert beim Sollzins, nicht über den internen Zinsfuß, der bei kurzen Haltedauern nicht eindeutig ist.
+- **Break-even** über den Kapitalwert gegen eine frei einstellbare Mindestrendite, nicht über den internen Zinsfuß, der bei kurzen Haltedauern nicht eindeutig ist.
+- **Ankaufsfilter** als Umkehrrechnung: Zu jeder Stellschraube — Nutzungsentgelt, Ankaufsabschlag, Wertentwicklung, Sollzins, Erwerbsnebenkosten — wird der Wert bestimmt, bei dem die Mindestrendite ceteris paribus gerade erreicht wird. Die Mindestrendite selbst steht als erste Zeile in derselben Tabelle; ihr kritischer Wert ist die Rendite, die der Vertrag tatsächlich abwirft.
 
 Bilanz, Kapitalflussrechnung und Kassenfortschreibung prüfen sich gegenseitig: Aktiva und Passiva stimmen in jedem Jahr überein, und die drei Cashflow-Bereiche summieren sich auf die ausgewiesene Bestandsveränderung.
 
