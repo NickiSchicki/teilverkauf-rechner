@@ -1,0 +1,1834 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teilverkauf-Portfolio</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --ink-3: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --accent: #256abf;
+    --s1: #2a78d6;
+    --s2: #eb6834;
+    --s3: #1baf7a;
+    --s1-wash: rgba(42, 120, 214, 0.08);
+    --tooltip-bg: #ffffff;
+    --field: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --bg: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --ink-3: #898781;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --accent: #3987e5;
+      --s1: #3987e5;
+      --s2: #d95926;
+      --s3: #199e70;
+      --s1-wash: rgba(57, 135, 229, 0.12);
+      --tooltip-bg: #262624;
+      --field: #131312;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-3: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --accent: #3987e5;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --s1-wash: rgba(57, 135, 229, 0.12);
+    --tooltip-bg: #262624;
+    --field: #131312;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 36px 20px 72px; }
+
+  .eyebrow {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-3); margin: 0 0 8px;
+  }
+  h1 {
+    font-family: Charter, "Bitstream Charter", Cambria, Georgia, serif;
+    font-size: clamp(26px, 4vw, 34px);
+    font-weight: 700; line-height: 1.15; margin: 0 0 10px; text-wrap: balance;
+  }
+  .lede { color: var(--ink-2); max-width: 64ch; margin: 0 0 6px; }
+  .chip {
+    display: inline-block; font-size: 12px; color: var(--ink-2);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 3px 11px; margin-top: 10px; background: var(--surface);
+  }
+
+  .layout { display: grid; grid-template-columns: 320px 1fr; gap: 26px; align-items: start; margin-top: 30px; }
+  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+
+  aside { display: flex; flex-direction: column; gap: 14px; }
+  #panelObjekt, #panelGes { display: flex; flex-direction: column; gap: 14px; }
+  #panelObjekt[hidden] { display: none; }
+  .panel-kopf {
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-3); padding: 0 2px 2px;
+  }
+  input.textfeld {
+    font: inherit; font-size: 13px; width: 100%;
+    background: var(--field); color: var(--ink);
+    border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px;
+  }
+  input.textfeld:focus { border-color: var(--accent); outline: none; }
+  .seg { display: flex; gap: 4px; }
+  .seg button {
+    flex: 1; font: inherit; font-size: 12.5px; color: var(--ink-2);
+    background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+    padding: 5px 4px; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] {
+    color: var(--ink); border-color: var(--accent); background: var(--s1-wash); font-weight: 600;
+  }
+  @media (min-width: 981px) { aside { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; padding-right: 2px; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 18px 18px 16px;
+  }
+  .card h2 {
+    font-family: Charter, "Bitstream Charter", Cambria, Georgia, serif;
+    font-size: 18px; font-weight: 700; margin: 0 0 4px;
+  }
+  .card .sub { font-size: 13px; color: var(--ink-2); margin: 0 0 14px; }
+
+  .grp-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin: 0 0 10px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .dot.s1 { background: var(--s1); }
+  .dot.s2 { background: var(--s2); }
+  .dot.s3 { background: var(--s3); }
+
+  .ctl { margin-bottom: 13px; }
+  .ctl:last-child { margin-bottom: 2px; }
+  .ctl-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 3px; }
+  .ctl-head label { font-size: 13px; color: var(--ink-2); }
+  .ctl-val { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ctl-note { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); margin: 2px 0 0; }
+  input:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .check { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--ink-2); margin-top: 10px; cursor: pointer; }
+  .check input { accent-color: var(--accent); margin-top: 3px; }
+  .derived {
+    font-size: 13px; border-top: 1px dashed var(--grid);
+    margin-top: 12px; padding-top: 10px;
+    display: flex; justify-content: space-between; gap: 10px; color: var(--ink-2);
+  }
+  .derived b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .derived.tight { border-top: none; margin-top: 0; padding-top: 4px; }
+  .derived.need { border-top: 1px solid var(--axis); margin-top: 8px; padding-top: 8px; }
+  .derived.need span, .derived.need b { color: var(--ink); font-weight: 700; }
+
+  main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  @media (max-width: 860px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 460px) { .stat-row { grid-template-columns: 1fr; } }
+  .stat-label { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); }
+  .stat-num { font-size: clamp(21px, 2.6vw, 27px); font-weight: 700; line-height: 1.2; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .stat-sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  .stat-foot { color: var(--ink-2); font-size: 13px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--grid); }
+
+  .head-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+  .head-row .sub { margin-bottom: 0; }
+  button.act {
+    flex: none; font: inherit; font-size: 13px; color: var(--ink-2);
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 5px; padding: 6px 12px; cursor: pointer;
+  }
+  button.act:hover { color: var(--ink); border-color: var(--axis); }
+  button.act.primary { color: var(--ink); border-color: var(--axis); font-weight: 600; }
+
+  .obj-scroll { overflow-x: auto; margin-top: 8px; }
+  table.obj {
+    width: 100%; min-width: 790px; table-layout: fixed;
+    border-collapse: separate; border-spacing: 0; font-size: 13px;
+  }
+  table.obj th, table.obj td {
+    padding: 5px 3px; border-bottom: 1px solid var(--grid); text-align: right; vertical-align: middle;
+  }
+  table.obj th {
+    color: var(--ink-2); font-weight: 600; font-size: 12px; white-space: nowrap;
+    border-bottom: 1px solid var(--axis); padding-bottom: 7px;
+  }
+  table.obj th .h-sub {
+    display: block; font-weight: 400; color: var(--ink-3);
+    font-size: 10.5px; letter-spacing: 0.03em; margin-top: 1px;
+  }
+  table.obj th.c-name, table.obj td.c-name {
+    position: sticky; left: 0; z-index: 1; background: var(--surface);
+    text-align: left; padding-left: 0; padding-right: 12px;
+  }
+  table.obj tbody tr:hover td { background: var(--s1-wash); }
+  table.obj tbody tr:hover td.c-name { background: linear-gradient(var(--s1-wash), var(--s1-wash)), var(--surface); }
+  table.obj tfoot td {
+    font-weight: 700; border-top: 1px solid var(--axis); border-bottom: none;
+    font-variant-numeric: tabular-nums; padding-top: 8px;
+  }
+  table.obj tfoot td.c-name { background: var(--surface); }
+
+  table.obj input {
+    font: inherit; font-size: 12.5px; width: 100%;
+    text-align: right; font-variant-numeric: tabular-nums;
+    background: transparent; color: var(--ink);
+    border: 1px solid transparent; border-radius: 4px; padding: 4px 4px;
+    -moz-appearance: textfield;
+  }
+  table.obj input::-webkit-outer-spin-button,
+  table.obj input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  table.obj input:hover { border-color: var(--border); }
+  table.obj input:focus {
+    background: var(--field); border-color: var(--accent);
+    outline: none; box-shadow: 0 0 0 3px var(--s1-wash);
+  }
+  table.obj input.name { text-align: left; font-weight: 600; font-size: 13px; }
+  table.obj td.calc { font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; padding-right: 5px; }
+  table.obj td.calc.lead { color: var(--ink); }
+  table.obj col.w-name { width: 112px; }
+  table.obj col.w-num { width: 90px; }
+  table.obj col.w-narrow { width: 50px; }
+  table.obj col.w-mid { width: 68px; }
+  table.obj col.w-calc { width: 80px; }
+  table.obj col.w-act { width: 26px; }
+
+  button.del {
+    font: inherit; font-size: 14px; line-height: 1; color: var(--ink-3);
+    background: none; border: none; cursor: pointer;
+    padding: 3px 5px; border-radius: 4px; opacity: 0;
+  }
+  tr:hover button.del, button.del:focus-visible { opacity: 1; }
+  button.del:hover { color: var(--s2); background: var(--bg); }
+  @media (hover: none) { button.del { opacity: 1; } }
+  .empty { color: var(--ink-3); font-size: 13px; padding: 14px 0; }
+
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin: 2px 0 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 14px; height: 4px; border-radius: 2px; flex: none; }
+
+  .chart-box { position: relative; }
+  .chart-box svg { display: block; width: 100%; height: auto; }
+  .tooltip {
+    position: absolute; pointer-events: none; background: var(--tooltip-bg);
+    border: 1px solid var(--border); border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    padding: 8px 11px; font-size: 12.5px; line-height: 1.45;
+    display: none; z-index: 3; white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  .tooltip .t-row { display: flex; align-items: center; gap: 7px; }
+  .caption { font-size: 12.5px; color: var(--ink-3); margin-top: 10px; }
+
+  .fin-scroll { overflow: auto; max-height: 620px; margin-top: 4px; }
+  table.fin { border-collapse: separate; border-spacing: 0; font-size: 12.5px; white-space: nowrap; }
+  table.fin th, table.fin td { text-align: right; padding: 5px 12px; font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--grid); }
+  table.fin thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); color: var(--ink-2); font-weight: 600; border-bottom: 1px solid var(--axis); }
+  table.fin th:first-child, table.fin td:first-child {
+    position: sticky; left: 0; z-index: 1; background: var(--surface);
+    text-align: left; padding-left: 2px; padding-right: 20px;
+    min-width: 215px; border-right: 1px solid var(--grid);
+  }
+  table.fin thead th:first-child { z-index: 3; }
+  table.fin tr.grp td {
+    background: linear-gradient(var(--s1-wash), var(--s1-wash)), var(--surface);
+    font-weight: 700; color: var(--ink);
+    letter-spacing: 0.04em; text-transform: uppercase; font-size: 11px;
+    border-bottom: 1px solid var(--axis);
+  }
+  table.fin tr.sum td { font-weight: 700; border-top: 1px solid var(--axis); }
+  table.fin .neg { color: var(--s2); }
+  table.fin tr.spacer td { height: 10px; border-bottom: none; padding: 0; }
+
+  .fine { font-size: 12.5px; color: var(--ink-3); line-height: 1.55; }
+  .fine p { margin: 0 0 8px; }
+
+  /* Portfolio: eine Leitzahl mit Nebenwerten — bewusst anders als das Kachelraster der Objektseite */
+  .hero-card { display: grid; grid-template-columns: minmax(240px, 1fr) auto; gap: 28px; align-items: start; }
+  @media (max-width: 820px) { .hero-card { grid-template-columns: 1fr; gap: 18px; } }
+  .hero-big {
+    font-family: Charter, "Bitstream Charter", Cambria, Georgia, serif;
+    font-size: clamp(34px, 6vw, 52px); font-weight: 700; line-height: 1.05;
+    margin-top: 6px; font-variant-numeric: tabular-nums; color: var(--s3);
+  }
+  .hero-big.neg { color: var(--s2); }
+  .hero-note { color: var(--ink-2); font-size: 13.5px; margin-top: 10px; max-width: 46ch; }
+  .hero-side { display: flex; flex-direction: column; gap: 0; min-width: 236px; }
+  .hero-side .hs {
+    display: flex; justify-content: space-between; gap: 18px;
+    font-size: 13px; color: var(--ink-2);
+    padding: 7px 0; border-bottom: 1px solid var(--grid);
+  }
+  .hero-side .hs:last-child { border-bottom: none; }
+  .hero-side .hs b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  .contrib { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+  .contrib-row { display: grid; grid-template-columns: 130px 1fr auto; gap: 12px; align-items: center; font-size: 13px; }
+  @media (max-width: 620px) { .contrib-row { grid-template-columns: 1fr auto; } .contrib-row .cb { grid-column: 1 / -1; } }
+  .contrib-name { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cb { height: 22px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+  .cb > div { height: 100%; background: var(--s1); border-radius: 4px; }
+  .cb > div.neg { background: var(--s2); }
+  .contrib-val { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; white-space: nowrap; }
+  .contrib-sub { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+  /* Objektseite: zwei klar abgesetzte Teile */
+  .section-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin: 10px 2px -4px;
+  }
+  .section-head h3 {
+    font-family: Charter, "Bitstream Charter", Cambria, Georgia, serif;
+    font-size: 20px; font-weight: 700; margin: 0;
+  }
+  .section-head .sh-note { font-size: 12.5px; color: var(--ink-3); }
+  .section-head::after {
+    content: ""; flex: 1; height: 1px; background: var(--axis); align-self: center;
+  }
+
+  .tabs { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: -4px; }
+  .tab-sep { color: var(--ink-3); font-size: 15px; padding: 0 2px; }
+  .tab-sep[hidden] { display: none; }
+  .tab-obj[hidden] { display: none; }
+  .tab-obj { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tab {
+    font: inherit; font-size: 14px; font-weight: 600; color: var(--ink-3);
+    background: none; border: none; border-bottom: 2px solid transparent;
+    padding: 8px 14px; cursor: pointer; margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--ink-2); }
+  .tab[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+
+  #viewPortfolio, #viewDetail, #viewAnalyse { display: flex; flex-direction: column; gap: 18px; }
+  #viewPortfolio[hidden], #viewDetail[hidden], #viewAnalyse[hidden] { display: none; }
+
+  .obj-pick { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .obj-pick button {
+    font: inherit; font-size: 12.5px; color: var(--ink-2);
+    background: var(--bg); border: 1px solid var(--border); border-radius: 999px;
+    padding: 4px 12px; cursor: pointer;
+  }
+  .obj-pick button[aria-pressed="true"] { color: var(--ink); border-color: var(--accent); background: var(--s1-wash); font-weight: 600; }
+  .warn-note {
+    font-size: 12.5px; color: var(--ink-2); line-height: 1.5;
+    background: var(--s1-wash); border-radius: 5px; padding: 9px 12px; margin-top: 12px;
+  }
+  button.open {
+    font: inherit; font-size: 15px; line-height: 1; color: var(--ink-3);
+    background: none; border: none; cursor: pointer; padding: 3px 5px; border-radius: 4px;
+  }
+  button.open:hover { color: var(--accent); background: var(--bg); }
+  .crumb {
+    display: inline-flex; align-items: center; gap: 6px;
+    font: inherit; font-size: 13px; font-weight: 600; color: var(--ink-2);
+    background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+    cursor: pointer; padding: 5px 11px 5px 8px; margin-bottom: 12px;
+  }
+  .crumb:hover { color: var(--ink); border-color: var(--axis); }
+  table.cmp { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.cmp td { text-align: right; padding: 8px 0 8px 10px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+  table.cmp td:first-child { text-align: left; padding-left: 0; color: var(--ink-2); }
+  table.cmp tr.big td { font-weight: 700; font-size: 16px; }
+  table.cmp tr:last-child td { border-bottom: none; }
+  .bar-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); margin-bottom: 6px; }
+  .bar-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sq { width: 11px; height: 11px; border-radius: 2px; flex: none; border: 1px solid var(--border); }
+  .bar { display: flex; height: 26px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--bg); }
+  .bar > div { min-width: 0; }
+  .bar-caption { font-size: 12.5px; color: var(--ink-2); margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .seg-owner { background: var(--grid); }
+  .seg-buy { background: var(--s1); }
+  .seg-fee { background: var(--ink-3); }
+  .seg-cost { background: var(--s2); }
+  .sched-scroll { overflow-x: auto; overflow-y: auto; max-height: 440px; margin-top: 4px; }
+  table.sched { width: 100%; border-collapse: collapse; font-size: 12.5px; white-space: nowrap; }
+  table.sched th, table.sched td { text-align: right; padding: 5px 10px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+  table.sched thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); color: var(--ink-2); font-weight: 600; border-bottom: 1px solid var(--axis); }
+  table.sched th:first-child, table.sched td:first-child { text-align: left; padding-left: 2px; }
+  table.sched tr.exit-row td { background: var(--s1-wash); font-weight: 600; border-bottom: 1px solid var(--axis); }
+  table.sched tfoot td { font-weight: 700; border-top: 1px solid var(--axis); border-bottom: none; }
+  table.sched .neg { color: var(--s2); }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Modellrechner</p>
+    <h1>Teilverkauf-Portfolio in der GmbH</h1>
+    <p class="lede">Mehrere Verträge in einer Gesellschaft: Objekte einzeln anlegen, Ergebnis konsolidiert über alle Jahre. Laufende Kosten und Steuern fallen auf Gesellschaftsebene an, nicht je Vertrag.</p>
+    <span class="chip">Vereinfachte Modellrechnung mit Beispielwerten · keine Rechts-, Steuer- oder Finanzberatung</span>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <div id="panelObjekt" hidden></div>
+      <div id="panelGes"></div>
+    </aside>
+
+    <main>
+      <nav class="tabs" id="tabs" aria-label="Ansicht">
+        <button type="button" class="tab" data-view="portfolio">Portfolio</button>
+        <button type="button" class="tab" data-view="analyse">Analyse</button>
+        <span class="tab-sep" id="tabSep" hidden>›</span>
+        <button type="button" class="tab tab-obj" id="tabObjekt" hidden></button>
+      </nav>
+
+      <div id="viewAnalyse" hidden></div>
+
+      <div id="viewPortfolio">
+      <div class="card hero-card">
+        <div class="hero-main">
+          <div class="stat-label" id="hLabel">Vermögenszuwachs der Gesellschaft</div>
+          <div class="hero-big" id="hZuwachs">–</div>
+          <div class="hero-note" id="hNote"></div>
+        </div>
+        <div class="hero-side">
+          <div class="hs"><span>Objekte</span><b id="kObj">–</b></div>
+          <div class="hs"><span>Kapitalbedarf</span><b id="kNeed">–</b></div>
+          <div class="hs"><span>Rendite nach Steuern</span><b id="kIrr">–</b></div>
+          <div class="hs"><span>Liquidität am Ende</span><b id="kCash">–</b></div>
+          <div class="hs"><span>Steuern &amp; Gemeinkosten</span><b id="kCost">–</b></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="head-row">
+          <div>
+            <h2>Objekte</h2>
+            <p class="sub">Eine Zeile je Vertrag · „›“ öffnet das Projekt</p>
+          </div>
+          <button type="button" class="act primary" id="addBtn">+ Objekt hinzufügen</button>
+        </div>
+        <div class="obj-scroll">
+          <table class="obj" id="objTable"></table>
+        </div>
+        <p class="caption" id="objCaption"></p>
+      </div>
+
+      <div class="card">
+        <h2>Beitrag der Objekte</h2>
+        <p class="sub">Direkt zurechenbares Ergebnis je Projekt über die gesamte Laufzeit, vor Gemeinkosten und Steuern.</p>
+        <div id="contribList"></div>
+        <p class="caption" id="contribCaption"></p>
+      </div>
+
+      <div class="card">
+        <h2>Liquidität und Eigenkapital im Zeitverlauf</h2>
+        <p class="sub">Das Bankkonto der GmbH über alle Jahre. Unter der Nulllinie besteht Finanzierungsbedarf, den Kontokorrent oder Gesellschafterdarlehen decken müssen.</p>
+        <div class="legend">
+          <span><span class="swatch" style="background:var(--s1)"></span>Bankguthaben</span>
+          <span><span class="swatch" style="background:var(--s3)"></span>Eigenkapital</span>
+          <span><span class="swatch" style="background:var(--s2)"></span>Kumulierte Einlagen</span>
+        </div>
+        <div class="chart-box" id="chartBox">
+          <svg id="chart" viewBox="0 0 820 340" role="img" aria-label="Liniendiagramm: Bankguthaben, Eigenkapital und kumulierte Einlagen der GmbH über die Jahre"></svg>
+          <div class="tooltip" id="tip"></div>
+        </div>
+        <p class="caption" id="chartCaption"></p>
+      </div>
+
+      <div class="card">
+        <div class="head-row">
+          <div>
+            <h2>Bilanz, GuV und Cashflow</h2>
+            <p class="sub" id="finSub"></p>
+          </div>
+          <button type="button" class="act" id="csvBtn">Als CSV kopieren</button>
+        </div>
+        <div class="fin-scroll">
+          <table class="fin" id="finTable"></table>
+        </div>
+        <p class="caption" id="finCaption"></p>
+      </div>
+
+      </div><!-- /viewPortfolio -->
+
+      <div id="viewDetail" hidden></div>
+
+      <div class="card fine">
+        <h2>Methodik &amp; Annahmen</h2>
+        <p><b>Portfolio:</b> Alle Objekte liegen in derselben GmbH. Je Objekt zahlt der Eigentümer ein Nutzungsentgelt auf den Auszahlungsbetrag; beim Gesamtverkauf erhält die GmbH ihren Anteil am dann erzielten Preis, mindestens aber den Mindesterlös. <b>Jedes Objekt trägt seine Annahmen selbst</b> — Immobilienwert, Anteil, Haushalt und Alter, Wertentwicklung und Instandhaltungsverfall, sämtliche Vertragskonditionen, die komplette Finanzierung samt Zins, Tilgung und Zinsbindung sowie Grunderwerbsteuer, AfA-Satz und Gebäudeanteil. Sie werden auf der jeweiligen Objektseite eingestellt. Auf Gesellschaftsebene verbleiben nur die laufenden Kosten, der Gewerbesteuer-Hebesatz, die erweiterte Kürzung, die Abgeltungsteuer sowie Anlage- und Kontokorrentzins. Das Portfolio rechnet die Objekte lediglich zusammen. Neue Objekte starten mit festen Standardwerten.</p>
+        <p><b>Steuern:</b> Körperschaftsteuer 15 % plus Solidaritätszuschlag ergibt 15,825 %. Gewerbesteuer entfällt bei erweiterter Kürzung nach § 9 Nr. 1 S. 2 GewStG, sonst kommen 3,5 % Messzahl × Hebesatz hinzu. <b>Die Besteuerung erfolgt konsolidiert:</b> Gewinne und Verluste aller Objekte werden im selben Wirtschaftsjahr verrechnet, verbleibende Verluste vorgetragen. Genau das unterscheidet ein Portfolio von mehreren Einzelrechnungen — ein anlaufendes Objekt mindert die Steuer eines ertragreichen.</p>
+        <p><b>Laufende Kosten</b> (Steuerberater, Jahresabschluss, Handelsregister, Versicherungen) fallen einmal je Geschäftsjahr an, unabhängig von der Objektzahl. Sie sind der Grund, warum sich ein einzelner Vertrag kaum trägt und erst mehrere Objekte die Struktur finanzieren.</p>
+        <p><b>Anschaffungsnebenkosten</b> (Grunderwerbsteuer, Notar, Grundbuch) werden aktiviert und erhöhen den Bilanzwert; sie wirken über die AfA und den Buchwert beim Verkauf, nicht als Aufwand. <b>AfA</b> läuft auf den Gebäudeanteil der Anschaffungskosten; Grund und Boden wird nicht abgeschrieben. Beim Verkauf erhöht die kumulierte AfA über den niedrigeren Buchwert den steuerpflichtigen Gewinn — sie wirkt als Stundung, nicht als dauerhafte Ersparnis.</p>
+        <p><b>Verkaufskosten</b> tragen beide Eigentümer nach ihrem Anteil; der Teil der GmbH mindert Erlös und Veräußerungsgewinn.</p>
+        <p><b>Kapitalfluss:</b> Bei jedem Ankauf legen die Gesellschafter genau das benötigte Eigenkapital ein, der Rest wird über ein Annuitätendarlehen finanziert (Zins und Anfangstilgung fest, 0 % Tilgung = endfällig). Danach bleiben alle Mittel in der Gesellschaft, es wird nie ausgeschüttet.</p>
+        <p><b>Zinsbindung und Geldanlage:</b> Fällt der Verkauf in die Zinsbindung, lässt sich das Darlehen nicht entschädigungsfrei ablösen. Ist der entsprechende Schalter gesetzt, läuft es bis zum Ende der Zinsbindung weiter, während der Verkaufserlös zum Anlagezins geparkt wird — als Näherung für kurzlaufende Bundeswertpapiere. Aus der Differenz zwischen Sollzins und Anlagezins entsteht ein laufender Verlust auf dem geparkten Betrag; im Gegenzug entfällt eine Vorfälligkeitsentschädigung, die hier nicht gerechnet wird. Ohne den Schalter wird beim Verkauf abgelöst, ebenfalls ohne Entschädigung — die Wahrheit liegt dazwischen. Guthaben werden durchgehend zum Anlagezins verzinst, negative Salden zum Sollzins plus Aufschlag; beides läuft über die GuV und erhöht oder mindert die Steuer. Eine Zinsänderung nach Ablauf der Bindung ist nicht modelliert. Die Rendite ist der interne Zinsfuß der Einlagen gegen die Schlussliquidität; der Schalter „Abgeltungsteuer“ zeigt als Nebenrechnung, was nach einer späteren Entnahme bliebe (26,375 % auf den Betrag oberhalb der Einlagen).</p>
+        <p><b>Effektive Kosten je Eigentümer</b> sind der interne Zinsfuß aus dessen Sicht: Auszahlung heute gegen Nutzungsentgelte und den Anteil, der beim Verkauf an die GmbH geht. Verkaufskosten des Eigentümers zählen nicht dazu, weil sie bei einem Verkauf ohne Teilverkauf ebenso anfielen.</p>
+        <p>Alle Werte jährlich nachschüssig, vor Inflation. Ausfall-, Instandhaltungs- und Bewertungsrisiken sind nicht modelliert.</p>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+  function fEur(v) { var n = v < 0 ? -Math.round(-v) : Math.round(v); return eur.format(n === 0 ? 0 : n); }
+  function fPct(v, d) {
+    if (v === null || v === undefined || !isFinite(v)) return "–";
+    d = d === undefined ? 1 : d;
+    return v.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d }) + " %";
+  }
+  function csvNum(v) { return (Math.round(v * 100) / 100).toFixed(2).replace(".", ","); }
+
+  var KST = 15.825, ABGELT = 26.375;
+
+  // Gompertz-Makeham, kalibriert an die ferneren Lebenserwartungen der amtlichen
+  // Sterbetafel 2022/24 (Alter 65/70/80, Abweichung unter 0,4 Jahren).
+  var MORT = {
+    m: { A: 4.46e-3, B: 1.44125e-6, C: 0.132 },
+    w: { A: 0, B: 1.438727e-6, C: 0.128 }
+  };
+  function jahresQ(par, alter) {
+    var H = par.A + par.B * Math.exp(par.C * alter) * (Math.exp(par.C) - 1) / par.C;
+    return 1 - Math.exp(-H);
+  }
+
+  // Gesellschaftsebene: gilt für die GmbH als Ganzes
+  var G = {
+    opex: 3000, hebesatz: 400, erwKuerzung: true, ausschuetten: false,
+    anlage: 3.0, kkZins: 6.0
+  };
+
+  // Objektebene: jedes Objekt trägt seine Annahmen selbst.
+  // Neue Objekte starten mit diesen festen Standardwerten.
+  var OBJ_DEF = {
+    name: "Neues Objekt", v0: 500000, share: 50, ne: 4.5, start: 0, hold: 15,
+    alter: 75, haus: "Paar", pflege: 2.5,
+    growth: 2, verfall: 0.75,
+    esc: 0, de: 0, min: 0, vkKosten: 3.5,
+    grest: 6.5, notar: 2.0,
+    ltv: 60, zins: 3.9, tilg: 2.0, zinsbindung: 15, weiterfuehren: true,
+    afaSatz: 2, gebAnteil: 70
+  };
+
+  function neuesObjekt(name) {
+    var o = {};
+    Object.keys(OBJ_DEF).forEach(function (k) { o[k] = OBJ_DEF[k]; });
+    if (name) o.name = name;
+    return o;
+  }
+
+  // Beispielobjekte mit generischen Werten — keine echten Vertragsdaten
+  var OBJ = [
+    Object.assign(neuesObjekt("Beispielobjekt A"), { v0: 500000, share: 50, alter: 75, haus: "Paar" }),
+    Object.assign(neuesObjekt("Beispielobjekt B"), { v0: 400000, share: 40, start: 2, hold: 15, alter: 80, haus: "w" })
+  ];
+
+  // Verteilung des Exit-Zeitpunkts: Sterblichkeit (bei Paaren der Letztversterbende)
+  // plus eine konstante Wahrscheinlichkeit für Pflegeheim oder Auszug.
+  function exitVerteilung(o, maxJahre) {
+    var art = (o.haus || "Paar").toLowerCase();
+    var alter = Math.max(50, Math.min(100, o.alter || 75));
+    var sM = 1, sW = 1, lebt = 1;
+    var p = [0], kum = [0], rest = 1;
+    for (var k = 1; k <= maxJahre; k++) {
+      var a = alter + k - 1;
+      if (art === "paar") {
+        sM *= 1 - jahresQ(MORT.m, a);
+        sW *= 1 - jahresQ(MORT.w, a);
+        lebt = sM + sW - sM * sW; // mindestens eine Person lebt noch
+      } else {
+        lebt *= 1 - jahresQ(art === "m" ? MORT.m : MORT.w, a);
+      }
+      var ohnePflege = Math.pow(1 - (o.pflege || 0) / 100, k);
+      var bleibt = lebt * ohnePflege;
+      var pk = Math.max(0, rest - bleibt);
+      p.push(pk);
+      rest = bleibt;
+      kum.push(1 - rest);
+    }
+    return { p: p, kum: kum, restNachEnde: rest };
+  }
+
+  // Gesellschaftsebene — gilt für alle Objekte
+  var GES_GROUPS = [
+    { title: "Gesellschaft", dot: "s3", items: [
+      { id: "opex", label: "Laufende Kosten", min: 0, max: 20000, step: 250, fmt: function (v) { return fEur(v) + " / Jahr"; }, note: "je Geschäftsjahr, unabhängig von der Objektzahl" },
+      { id: "hebesatz", label: "Gewerbesteuer-Hebesatz", min: 200, max: 600, step: 10, fmt: function (v) { return fPct(v, 0); }, note: "nur ohne erweiterte Kürzung relevant" },
+      { id: "anlage", label: "Anlagezins", min: 0, max: 6, step: 0.1, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "Bundeswertpapiere für geparkte Mittel" },
+      { id: "kkZins", label: "Kontokorrentzins", min: 0, max: 12, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "bei negativem Konto der Gesellschaft" }
+    ], tax: true }
+  ];
+
+  // Objektebene — jedes Objekt trägt diese Annahmen selbst
+  var OBJ_GROUPS = [
+    { title: "Immobilie & Haushalt", items: [
+      { id: "name", label: "Bezeichnung", text: true },
+      { id: "v0", label: "Wert bei Erwerb", min: 50000, max: 2000000, step: 10000, fmt: fEur },
+      { id: "share", label: "Verkaufter Anteil", min: 5, max: 90, step: 1, fmt: function (v) { return fPct(v, 0); } },
+      { id: "alter", label: "Alter im Haushalt", min: 55, max: 95, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "bei Paaren die jüngere Person" },
+      { id: "haus", label: "Haushalt", choices: ["m", "w", "Paar"], note: "bei Paaren zählt die zuletzt lebende Person" },
+      { id: "pflege", label: "Auszugswahrscheinlichkeit", min: 0, max: 6, step: 0.5, fmt: function (v) { return fPct(v, 1) + " p.a."; }, note: "Pflegeheim oder Auszug, zusätzlich zur Sterblichkeit" },
+      { id: "growth", label: "Wertentwicklung", min: -2, max: 5, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "Marktentwicklung dieser Lage" },
+      { id: "verfall", label: "Instandhaltungsverfall", min: 0, max: 3, step: 0.25, fmt: function (v) { return v === 0 ? "keiner" : "−" + fPct(v, 2) + " p.a."; }, note: "Wertverlust durch unterlassene Instandhaltung" }
+    ] },
+    { title: "Vertrag", dot: "s1", items: [
+      { id: "ne", label: "Nutzungsentgelt", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "auf den Auszahlungsbetrag, fest" },
+      { id: "esc", label: "Jährliche Anpassung", min: 0, max: 4, step: 0.25, fmt: function (v) { return v === 0 ? "keine" : fPct(v, 2) + " p.a."; }, note: "0 % = feste Rate bis zum Verkauf" },
+      { id: "start", label: "Erwerbsjahr", min: 0, max: 20, step: 1, fmt: function (v) { return v === 0 ? "heute" : "in " + v + " Jahren"; } },
+      { id: "hold", label: "Haltedauer", min: 1, max: 40, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "Annahme — die Verteilung steht in der Analyse" },
+      { id: "de", label: "Durchführungsentgelt", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "vom Gesamterlös beim Verkauf" },
+      { id: "min", label: "Mindesterlös", min: 0, max: 140, step: 1, fmt: function (v) { return v === 0 ? "keiner" : fPct(v, 0); }, note: "garantierter Rückfluss in % der Auszahlung" },
+      { id: "vkKosten", label: "Verkaufskosten beim Exit", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "Makler etc., anteilig getragen" }
+    ] },
+    { title: "Ankauf & Finanzierung", dot: "s2", items: [
+      { id: "grest", label: "Grunderwerbsteuer", min: 3.5, max: 6.5, step: 0.5, fmt: function (v) { return fPct(v, 1); }, note: "je Bundesland verschieden" },
+      { id: "notar", label: "Notar & Grundbuch", min: 0, max: 3, step: 0.25, fmt: function (v) { return fPct(v, 2); } },
+      { id: "ltv", label: "Beleihung", min: 0, max: 95, step: 5, fmt: function (v) { return fPct(v, 0); }, note: "Darlehen in % des Anteilskaufpreises" },
+      { id: "zins", label: "Sollzins", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; } },
+      { id: "tilg", label: "Anfangstilgung", min: 0, max: 5, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "0 % = endfälliges Darlehen" },
+      { id: "zinsbindung", label: "Zinsbindung", min: 5, max: 30, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "vorher keine Ablösung ohne Entschädigung" },
+      { id: "weiterfuehren", label: "Bei Verkauf weiterführen", bool: true, note: "Darlehen läuft bis Ende der Zinsbindung, Erlös wird angelegt" }
+    ] },
+    { title: "Steuerliche Angaben", items: [
+      { id: "afaSatz", label: "AfA-Satz", min: 1, max: 4, step: 0.5, fmt: function (v) { return fPct(v, 1) + " p.a."; }, note: "2 % Standard · 2,5 % vor 1925 · 3 % Neubau" },
+      { id: "gebAnteil", label: "Gebäudeanteil", min: 40, max: 90, step: 5, fmt: function (v) { return fPct(v, 0); }, note: "AfA-Basis, Rest ist Grund und Boden" }
+    ] }
+  ];
+
+  var fmtOf = {};
+
+  // Baut eine Reglergruppe. quelle ist das Objekt, dessen Werte bearbeitet werden.
+  function baueGruppen(host, gruppen, quelle, praefix, nachAenderung) {
+    host.innerHTML = "";
+    gruppen.forEach(function (g) {
+      var card = document.createElement("div");
+      card.className = "card";
+      var kopf = document.createElement("div");
+      kopf.className = "grp-title";
+      if (g.dot) { var d = document.createElement("span"); d.className = "dot " + g.dot; kopf.appendChild(d); }
+      kopf.appendChild(document.createTextNode(g.title));
+      card.appendChild(kopf);
+
+      g.items.forEach(function (it) {
+        if (praefix === "g") fmtOf[it.id] = it.fmt;
+        var ctl = document.createElement("div");
+        ctl.className = "ctl";
+
+        if (it.bool) {
+          var lb = document.createElement("label");
+          lb.className = "check";
+          lb.style.marginTop = "0";
+          var cb = document.createElement("input");
+          cb.type = "checkbox"; cb.checked = !!quelle[it.id];
+          cb.addEventListener("change", function () { quelle[it.id] = cb.checked; nachAenderung(); });
+          lb.appendChild(cb);
+          lb.appendChild(document.createTextNode(it.label));
+          ctl.appendChild(lb);
+          if (it.note) { var n0 = document.createElement("div"); n0.className = "ctl-note"; n0.style.marginLeft = "22px"; n0.textContent = it.note; ctl.appendChild(n0); }
+          card.appendChild(ctl);
+          return;
+        }
+
+        var head = document.createElement("div");
+        head.className = "ctl-head";
+        var lab = document.createElement("label");
+        lab.htmlFor = praefix + "_" + it.id;
+        lab.textContent = it.label;
+        head.appendChild(lab);
+        if (!it.text && !it.choices) {
+          var val = document.createElement("span");
+          val.className = "ctl-val";
+          val.id = "val" + praefix + "_" + it.id;
+          val.textContent = it.fmt(quelle[it.id]);
+          head.appendChild(val);
+        }
+        ctl.appendChild(head);
+
+        if (it.text) {
+          var tin = document.createElement("input");
+          tin.type = "text"; tin.id = praefix + "_" + it.id;
+          tin.className = "textfeld";
+          tin.value = quelle[it.id];
+          tin.addEventListener("input", function () { quelle[it.id] = tin.value; nachAenderung(true); });
+          ctl.appendChild(tin);
+        } else if (it.choices) {
+          var seg = document.createElement("div");
+          seg.className = "seg";
+          it.choices.forEach(function (c) {
+            var b = document.createElement("button");
+            b.type = "button";
+            b.textContent = c;
+            b.setAttribute("aria-pressed", String(quelle[it.id] === c));
+            b.addEventListener("click", function () {
+              quelle[it.id] = c;
+              [].forEach.call(seg.children, function (x) { x.setAttribute("aria-pressed", String(x.textContent === c)); });
+              nachAenderung();
+            });
+            seg.appendChild(b);
+          });
+          ctl.appendChild(seg);
+        } else {
+          var inp = document.createElement("input");
+          inp.type = "range"; inp.id = praefix + "_" + it.id;
+          inp.min = it.min; inp.max = it.max; inp.step = it.step; inp.value = quelle[it.id];
+          inp.addEventListener("input", function () {
+            quelle[it.id] = parseFloat(inp.value);
+            var v = document.getElementById("val" + praefix + "_" + it.id);
+            if (v) v.textContent = it.fmt(quelle[it.id]);
+            nachAenderung();
+          });
+          ctl.appendChild(inp);
+        }
+        if (it.note) { var n = document.createElement("div"); n.className = "ctl-note"; n.textContent = it.note; ctl.appendChild(n); }
+        card.appendChild(ctl);
+      });
+
+      if (g.tax) {
+        [["erwKuerzung", "Erweiterte Kürzung (§ 9 Nr. 1 S. 2 GewStG)"], ["ausschuetten", "Abgeltungsteuer auf die Schlussentnahme"]].forEach(function (pair) {
+          var lb2 = document.createElement("label");
+          lb2.className = "check";
+          var cb2 = document.createElement("input");
+          cb2.type = "checkbox"; cb2.checked = G[pair[0]];
+          cb2.addEventListener("change", function () { G[pair[0]] = cb2.checked; nachAenderung(); });
+          lb2.appendChild(cb2);
+          lb2.appendChild(document.createTextNode(pair[1]));
+          card.appendChild(lb2);
+        });
+        var t1 = document.createElement("div");
+        t1.className = "derived";
+        t1.innerHTML = '<span>Steuersatz</span><b id="taxRateOut">–</b>';
+        card.appendChild(t1);
+        var t2 = document.createElement("div");
+        t2.className = "derived tight";
+        t2.innerHTML = '<span>Investition gesamt</span><b id="investOut">–</b>';
+        card.appendChild(t2);
+        var t3 = document.createElement("div");
+        t3.className = "derived tight";
+        t3.innerHTML = '<span>Einlagen gesamt</span><b id="equityOut">–</b>';
+        card.appendChild(t3);
+      }
+      host.appendChild(card);
+    });
+  }
+
+  function irr(cfs) {
+    function npv(r) { var a = 0; for (var i = 0; i < cfs.length; i++) a += cfs[i] / Math.pow(1 + r, i); return a; }
+    var lo = -0.95, hi = 5, flo = npv(lo), fhi = npv(hi);
+    if (!isFinite(flo) || !isFinite(fhi) || flo * fhi > 0) return null;
+    for (var k = 0; k < 200; k++) {
+      var mid = (lo + hi) / 2, fm = npv(mid);
+      if (flo * fm <= 0) { hi = mid; fhi = fm; } else { lo = mid; flo = fm; }
+    }
+    return (lo + hi) / 2;
+  }
+
+  // Zahlungsströme eines einzelnen Objekts, auf absolute Portfoliojahre bezogen
+  function buildObject(o) {
+    var s = o.share / 100, g = o.growth / 100;
+    var P = s * o.v0;
+    var invest0 = P * (1 + o.grest / 100 + o.notar / 100);
+    var loan0 = P * o.ltv / 100;
+    var equity0 = invest0 - loan0;
+    var annuity = loan0 * (o.zins + o.tilg) / 100;
+    var afaBase = invest0 * o.gebAnteil / 100;
+    var afaYear = afaBase * o.afaSatz / 100;
+
+    // Bei Verkauf vor Ende der Zinsbindung kann das Darlehen nicht entschädigungsfrei
+    // abgelöst werden — es läuft weiter, während der Erlös verzinst angelegt wird.
+    var darlehensJahre = o.weiterfuehren ? Math.max(o.hold, o.zinsbindung) : o.hold;
+
+    var bal = loan0, cumAfa = 0;
+    var years = [];
+    var ownerFlows = [P];
+    for (var k = 1; k <= darlehensJahre; k++) {
+      var imBestand = k <= o.hold;
+      var ne = imBestand ? P * (o.ne / 100) * Math.pow(1 + o.esc / 100, k - 1) : 0;
+      var zins = bal * o.zins / 100;
+      var pay = Math.min(annuity, bal + zins);
+      var tilg = pay - zins;
+      bal = bal + zins - pay;
+      if (bal < 0.005) bal = 0;
+      var afa = imBestand ? Math.min(afaYear, Math.max(0, afaBase - cumAfa)) : 0;
+      cumAfa += afa;
+      years.push({ y: o.start + k, ne: ne, zins: zins, tilg: tilg, pay: pay, afa: afa,
+        buchwert: invest0 - cumAfa, rest: bal, imBestand: imBestand });
+      if (imBestand) ownerFlows.push(-ne);
+    }
+    // Marktentwicklung und Zustandsverfall wirken multiplikativ auf den Verkaufspreis
+    var VT = o.v0 * Math.pow(1 + g, o.hold) * Math.pow(1 - o.verfall / 100, o.hold);
+    var B = Math.max(s * VT, (o.min / 100) * P);
+    var DE = (o.de / 100) * VT;
+    var vkTotal = (o.vkKosten / 100) * VT;
+    var vkBuyer = s * vkTotal;
+    var proceeds = B + DE - vkBuyer;
+    var buchwert = invest0 - cumAfa;
+    ownerFlows[o.hold] -= (B + DE);
+    var oc = irr(ownerFlows);
+
+    var exitY = o.start + o.hold;
+    var ablöseY = o.start + darlehensJahre;
+    var restBeiExit = 0;
+    years.forEach(function (r) { if (r.y === exitY) restBeiExit = r.rest; });
+
+    return {
+      o: o, P: P, invest0: invest0, loan0: loan0, equity0: equity0, annuity: annuity,
+      years: years, exitY: exitY, ablöseY: ablöseY, darlehensJahre: darlehensJahre,
+      restBeiExit: restBeiExit, VT: VT, B: B, DE: DE,
+      vkTotal: vkTotal, vkBuyer: vkBuyer, proceeds: proceeds,
+      buchwert: buchwert, restAtExit: bal, cumAfa: cumAfa,
+      gewinn: proceeds - buchwert,
+      ownerCost: oc === null ? null : oc * 100,
+      ownerGets: Math.max(0, VT - B - DE - (vkTotal - vkBuyer))
+    };
+  }
+
+  function portfolio() {
+    var objs = OBJ.map(buildObject);
+    // direkt zurechenbares Ergebnis je Projekt, vor Gemeinkosten und Steuern
+    objs.forEach(function (x) {
+      x.beitrag = x.years.reduce(function (a, r) { return a + r.ne - r.zins - r.afa; }, 0) + x.gewinn;
+    });
+    var T = 0;
+    objs.forEach(function (x) { T = Math.max(T, x.ablöseY); });
+    var start0 = objs.length ? Math.min.apply(null, objs.map(function (x) { return x.o.start; })) : 0;
+
+    var gewst = G.erwKuerzung ? 0 : 3.5 * G.hebesatz / 100;
+    var taxRate = (KST + gewst) / 100;
+
+    var Y = [];
+    for (var y = 0; y <= T; y++) {
+      Y.push({ y: y, ne: 0, zins: 0, tilg: 0, pay: 0, afa: 0, opex: 0, vGewinn: 0, proceeds: 0, payoff: 0, invest: 0, loanNew: 0, einlage: 0, buchwert: 0, rest: 0, aktiv: 0 });
+    }
+
+    objs.forEach(function (x) {
+      Y[x.o.start].invest += x.invest0;
+      Y[x.o.start].loanNew += x.loan0;
+      Y[x.o.start].einlage += x.equity0;
+      x.years.forEach(function (r) {
+        var t = Y[r.y];
+        t.ne += r.ne; t.zins += r.zins; t.tilg += r.tilg; t.pay += r.pay; t.afa += r.afa;
+      });
+      Y[x.exitY].vGewinn += x.gewinn;
+      Y[x.exitY].proceeds += x.proceeds;
+      Y[x.ablöseY].payoff += x.restAtExit;
+    });
+
+    // Bestände am Jahresende: Buchwerte nur solange gehalten, Restschuld bis zur Ablösung
+    objs.forEach(function (x) {
+      Y[x.o.start].buchwert += x.invest0;
+      Y[x.o.start].rest += x.loan0;
+      Y[x.o.start].aktiv += 1;
+      x.years.forEach(function (r) {
+        if (r.y < x.exitY) { Y[r.y].buchwert += r.buchwert; Y[r.y].aktiv += 1; }
+        if (r.y < x.ablöseY) Y[r.y].rest += r.rest;
+      });
+    });
+
+    var lossCarry = 0, cash = 0, cumProfit = 0, cumEinlage = 0, taxSum = 0, opexSum = 0;
+    var flows = [];
+    var rows = [];
+    for (var i = 0; i <= T; i++) {
+      var t = Y[i];
+      // Die GmbH trägt laufende Kosten von der ersten Anschaffung bis zum letzten Verkauf
+      var opex = (objs.length && i >= start0) ? G.opex : 0;
+      t.opex = opex;
+      opexSum += opex;
+
+      // Zinsen auf den Kassenbestand des Vorjahres: Guthaben in Anleihen, Fehlbetrag im Kontokorrent
+      var anlageErtrag = Math.max(0, cash) * G.anlage / 100;
+      var kkZins = Math.max(0, -cash) * G.kkZins / 100;
+
+      var ebt = t.ne + anlageErtrag - t.afa - t.zins - kkZins - opex + t.vGewinn;
+      var tax = 0;
+      {
+        if (ebt > 0) {
+          var used = Math.min(lossCarry, ebt);
+          lossCarry -= used;
+          tax = (ebt - used) * taxRate;
+        } else {
+          lossCarry += -ebt;
+        }
+      }
+      taxSum += tax;
+      var jue = ebt - tax;
+      cumProfit += jue;
+      cumEinlage += t.einlage;
+
+      var cashChange = t.einlage + t.loanNew - t.invest + t.ne - t.pay - opex - tax
+        + t.proceeds - t.payoff + anlageErtrag - kkZins;
+      cash += cashChange;
+
+      flows.push(-t.einlage);
+
+      rows.push({
+        y: i, ne: t.ne, afa: t.afa, zins: t.zins, opex: opex, vGewinn: t.vGewinn,
+        anlageErtrag: anlageErtrag, kkZins: kkZins,
+        ebt: ebt, tax: tax, jue: jue,
+        buchwert: t.buchwert, cash: cash, ek: cumEinlage + cumProfit, rest: t.rest,
+        einlage: t.einlage, loanNew: t.loanNew, invest: t.invest,
+        proceeds: t.proceeds, payoff: t.payoff, tilg: t.tilg, pay: t.pay,
+        cashChange: cashChange, aktiv: t.aktiv
+      });
+    }
+
+    var cashFinal = cash;
+    var austax = G.ausschuetten ? Math.max(0, cashFinal - cumEinlage) * ABGELT / 100 : 0;
+    var payout = cashFinal - austax;
+    if (flows.length) flows[T] += payout;
+    // ohne Objekte oder ohne Einlage gibt es keinen sinnvollen Zinsfuß
+    var r = (objs.length && cumEinlage > 0) ? irr(flows) : null;
+
+    var minCash = 0;
+    rows.forEach(function (x) { minCash = Math.min(minCash, x.cash); });
+
+    return {
+      objs: objs, rows: rows, T: T, start0: start0, taxRate: taxRate * 100,
+      cashFinal: cashFinal, payout: payout, austax: austax, taxSum: taxSum, opexSum: opexSum,
+      cumEinlage: cumEinlage, ekFinal: cumEinlage + cumProfit, minCash: minCash,
+      irr: r === null ? null : r * 100,
+      investTotal: objs.reduce(function (a, x) { return a + x.invest0; }, 0),
+      loanTotal: objs.reduce(function (a, x) { return a + x.loan0; }, 0),
+      payoutTotal: objs.reduce(function (a, x) { return a + x.P; }, 0)
+    };
+  }
+
+  // Eigenständige Rechenwerke für ein einzelnes Projekt.
+  // Die Gemeinkosten der GmbH werden dabei anteilig zugeordnet, die Steuer auf das
+  // Projekt allein gerechnet — die maßgebliche Steuer steht in der Portfolioansicht.
+  function objectDetail(x, opexShare, taxRate) {
+    var lossCarry = 0, cash = 0, cumProfit = 0, taxSum = 0, neSum = 0, opexSum = 0, dsSum = 0;
+    var rows = [{
+      y: x.o.start, ne: 0, afa: 0, zins: 0, opex: 0, vGewinn: 0, ebt: 0, tax: 0, jue: 0,
+      buchwert: x.invest0, cash: 0, ek: x.equity0, rest: x.loan0,
+      einlage: x.equity0, loanNew: x.loan0, invest: x.invest0,
+      proceeds: 0, payoff: 0, tilg: 0, pay: 0, cashChange: 0, erwerb: true
+    }];
+
+    x.years.forEach(function (r) {
+      var isExit = r.y === x.exitY;
+      var isAbloese = r.y === x.ablöseY;
+      var vG = isExit ? x.gewinn : 0;
+      neSum += r.ne; opexSum += opexShare; dsSum += r.pay;
+      var anlageErtrag = Math.max(0, cash) * G.anlage / 100;
+      var kkZins = Math.max(0, -cash) * G.kkZins / 100;
+      var ebt = r.ne + anlageErtrag - r.afa - r.zins - kkZins - opexShare + vG;
+      var tax = 0;
+      if (ebt > 0) {
+        var used = Math.min(lossCarry, ebt);
+        lossCarry -= used;
+        tax = (ebt - used) * taxRate;
+      } else { lossCarry += -ebt; }
+      taxSum += tax;
+      var jue = ebt - tax;
+      cumProfit += jue;
+      var cashChange = r.ne - r.pay - opexShare - tax + anlageErtrag - kkZins +
+        (isExit ? x.proceeds : 0) - (isAbloese ? x.restAtExit : 0);
+      cash += cashChange;
+      rows.push({
+        y: r.y, ne: r.ne, afa: r.afa, zins: r.zins, opex: opexShare, vGewinn: vG,
+        anlageErtrag: anlageErtrag, kkZins: kkZins,
+        ebt: ebt, tax: tax, jue: jue,
+        buchwert: r.y >= x.exitY ? 0 : r.buchwert, cash: cash, ek: x.equity0 + cumProfit,
+        rest: r.y >= x.ablöseY ? 0 : r.rest,
+        einlage: 0, loanNew: 0, invest: 0,
+        proceeds: isExit ? x.proceeds : 0, payoff: isAbloese ? x.restAtExit : 0,
+        tilg: r.tilg, pay: r.pay, cashChange: cashChange, exit: isExit, abloese: isAbloese
+      });
+    });
+
+    var flows = [-x.equity0];
+    for (var k = 1; k < rows.length; k++) flows.push(0);
+    flows[flows.length - 1] += cash;
+    var ri = irr(flows);
+    return {
+      rows: rows, cashFinal: cash, taxSum: taxSum, neSum: neSum, opexSum: opexSum, dsSum: dsSum,
+      gewinn: cash - x.equity0, irr: ri === null ? null : ri * 100
+    };
+  }
+
+  // ---------- Exit-Analyse je Objekt ----------
+  var HMAX = 40; // muss mindestens dem Maximum des Haltedauer-Reglers entsprechen
+
+  // Zahlungsströme des Objekts bei Haltedauer h, aus Sicht der GmbH (Eigenkapital).
+  // Die Steuer wird hier objektbezogen mit anteiligen Gemeinkosten gerechnet.
+  function ekStrom(o, h, opexShare, taxRate) {
+    var x = buildObject(Object.assign({}, o, { hold: h }));
+    var D = objectDetail(x, opexShare, taxRate);
+    // Der Rückfluss steht erst zur Verfügung, wenn auch das Darlehen abgelöst ist.
+    // Läuft es nach dem Verkauf bis zum Ende der Zinsbindung weiter, ist das später
+    // als der Verkaufszeitpunkt — sonst würde die Rendite zu gut gerechnet.
+    var ende = x.darlehensJahre;
+    var f = [-x.equity0];
+    for (var k = 1; k <= ende; k++) f.push(0);
+    f[ende] += D.cashFinal;
+    return { flows: f, cashFinal: D.cashFinal, equity0: x.equity0, obj: x, ende: ende };
+  }
+
+  function kapitalwert(flows, r) {
+    var a = 0;
+    for (var i = 0; i < flows.length; i++) a += flows[i] / Math.pow(1 + r, i);
+    return a;
+  }
+
+  function exitAnalyse(o, opexShare, taxRate) {
+    var V = exitVerteilung(o, HMAX);
+    var disk = o.zins / 100; // Sollzins des Objekts als Mindestverzinsung
+    var kurve = [];
+    for (var h = 1; h <= HMAX; h++) {
+      var s = ekStrom(o, h, opexShare, taxRate);
+      var xo = s.obj;
+      kurve.push({
+        h: h,
+        ende: s.ende,
+        irr: (function () { var r = irr(s.flows); return r === null ? null : r * 100; })(),
+        kw: kapitalwert(s.flows, disk),
+        endwert: s.cashFinal,
+        equity0: s.equity0,
+        ownerCost: xo.ownerCost
+      });
+    }
+
+    // Break-even über den Kapitalwert beim Sollzins — bei kurzen Haltedauern mit
+    // stark negativen Anfangszahlungen ist der interne Zinsfuß nicht eindeutig.
+    var beKW = null, beNull = null;
+    kurve.forEach(function (p) {
+      if (beKW === null && p.kw >= 0) beKW = p.h;
+      if (beNull === null && p.endwert >= p.equity0) beNull = p.h;
+    });
+
+    // Erwartungswerte: Wahrscheinlichkeiten auf den Horizont normiert
+    var summe = 0;
+    for (var k = 1; k <= HMAX; k++) summe += V.p[k];
+    var eH = 0, eEnd = 0, median = null, kumP = 0, pVorBE = 0;
+    for (var k2 = 1; k2 <= HMAX; k2++) {
+      var w = summe > 0 ? V.p[k2] / summe : 0;
+      eH += w * k2;
+      eEnd += w * kurve[k2 - 1].endwert;
+      kumP += w;
+      if (median === null && kumP >= 0.5) median = k2;
+      // Wird die Mindestverzinsung nie erreicht, liegt jeder Verkauf davor
+      if (beKW === null || k2 < beKW) pVorBE += w;
+    }
+
+    // Erwartungswert der Rendite als interner Zinsfuß des erwarteten Zahlungsstroms
+    var maxEnde = HMAX;
+    kurve.forEach(function (p) { maxEnde = Math.max(maxEnde, p.ende); });
+    var eFlows = [-kurve[0].equity0];
+    for (var k3 = 1; k3 <= maxEnde; k3++) eFlows.push(0);
+    for (var k4 = 1; k4 <= HMAX; k4++) {
+      var w2 = summe > 0 ? V.p[k4] / summe : 0;
+      // Rückfluss zum tatsächlichen Ablösejahr, nicht zum Verkaufsjahr
+      eFlows[kurve[k4 - 1].ende] += w2 * kurve[k4 - 1].endwert;
+    }
+    var eIrrRaw = irr(eFlows);
+
+    return {
+      V: V, kurve: kurve, beKW: beKW, beNull: beNull,
+      median: median, eH: eH, eEnd: eEnd, pVorBE: pVorBE * 100,
+      eIrr: eIrrRaw === null ? null : eIrrRaw * 100,
+      gewaehlt: kurve[Math.min(HMAX, Math.max(1, o.hold)) - 1]
+    };
+  }
+
+  // ---------- Objekttabelle: reine Übersicht, Bearbeitung auf der Objektseite ----------
+  var SPALTEN = [
+    { h: "Objekt", sub: "Bezeichnung", col: "w-name", links: true, get: function (o, x, i) { return o.name || "Objekt " + (i + 1); } },
+    { h: "Wert", sub: "bei Erwerb", col: "w-num", get: function (o) { return fEur(o.v0); } },
+    { h: "Anteil", sub: "%", col: "w-narrow", get: function (o) { return fPct(o.share, 0); } },
+    { h: "Entgelt", sub: "% p.a.", col: "w-mid", get: function (o) { return fPct(o.ne, 2); } },
+    { h: "Erwerb", sub: "Jahr", col: "w-narrow", get: function (o) { return String(o.start); } },
+    { h: "Dauer", sub: "Jahre", col: "w-narrow", get: function (o) { return String(o.hold); } },
+    { h: "Haushalt", sub: "Art / Alter", col: "w-mid", get: function (o) { return (o.haus || "Paar") + " " + (o.alter || 75); } },
+    { h: "Auszahlung", sub: "heute", col: "w-calc", lead: true, get: function (o, x) { return fEur(x.P); } },
+    { h: "Eigenkapital", sub: "beim Erwerb", col: "w-calc", get: function (o, x) { return fEur(x.equity0); } },
+    { h: "Kosten", sub: "Eigentümer", col: "w-calc", get: function (o, x) { return fPct(x.ownerCost); } }
+  ];
+
+  function buildObjectTable(P) {
+    var t = document.getElementById("objTable");
+    if (!OBJ.length) {
+      t.innerHTML = '<tbody><tr><td class="empty">Noch keine Objekte — oben rechts ein Objekt hinzufügen.</td></tr></tbody>';
+      document.getElementById("objCaption").textContent = "";
+      return;
+    }
+    var html = "<colgroup>";
+    SPALTEN.forEach(function (c) { html += '<col class="' + c.col + '">'; });
+    html += '<col class="w-act"><col class="w-act"></colgroup><thead><tr>';
+    SPALTEN.forEach(function (c, i) {
+      html += "<th" + (i === 0 ? ' class="c-name"' : "") + "><span>" + c.h + '</span><span class="h-sub">' + c.sub + "</span></th>";
+    });
+    html += "<th></th><th></th></tr></thead><tbody>";
+
+    OBJ.forEach(function (o, idx) {
+      var x = P.objs[idx];
+      html += '<tr class="zeile" data-row="' + idx + '">';
+      SPALTEN.forEach(function (c, i) {
+        html += "<td class=\"" + (i === 0 ? "c-name" : "calc") + (c.lead ? " lead" : "") + "\">" + c.get(o, x, idx) + "</td>";
+      });
+      html += '<td><button type="button" class="open" data-open="' + idx +
+        '" aria-label="Objekt ' + (idx + 1) + ' öffnen" title="Öffnen">›</button></td>';
+      html += '<td><button type="button" class="del" data-del="' + idx +
+        '" aria-label="Objekt ' + (idx + 1) + ' entfernen" title="Entfernen">✕</button></td>';
+      html += "</tr>";
+    });
+
+    html += '</tbody><tfoot><tr><td class="c-name">Summe</td>';
+    for (var c2 = 1; c2 < 7; c2++) html += "<td></td>";
+    html += "<td>" + fEur(P.payoutTotal) + "</td><td>" + fEur(P.cumEinlage) + "</td><td></td><td></td><td></td></tr></tfoot>";
+    t.innerHTML = html;
+
+    t.querySelectorAll("button[data-del]").forEach(function (b) {
+      b.addEventListener("click", function (e) {
+        e.stopPropagation();
+        OBJ.splice(+b.dataset.del, 1);
+        refresh();
+      });
+    });
+    t.querySelectorAll("button[data-open]").forEach(function (b) {
+      b.addEventListener("click", function (e) { e.stopPropagation(); openDetail(+b.dataset.open); });
+    });
+    t.querySelectorAll("tr.zeile").forEach(function (tr) {
+      tr.addEventListener("click", function () { openDetail(+tr.dataset.row); });
+    });
+
+    var perObj = OBJ.length ? G.opex / OBJ.length : 0;
+    document.getElementById("objCaption").textContent =
+      "Laufende Kosten von " + fEur(G.opex) + " je Jahr verteilen sich auf " + OBJ.length +
+      (OBJ.length === 1 ? " Objekt" : " Objekte") + " — " + fEur(perObj) +
+      " je Vertrag und Jahr. Alle weiteren Annahmen stehen auf der jeweiligen Objektseite.";
+  }
+
+  document.getElementById("addBtn").addEventListener("click", function () {
+    var n = OBJ.length + 1;
+    OBJ.push(neuesObjekt("Objekt " + n));
+    refresh();
+  });
+
+  // ---------- Chart ----------
+  var CW = 820, CH = 340, M = { l: 62, r: 16, t: 14, b: 30 };
+  var chartRows = [], chartGeom = null;
+
+  function niceStep(range) {
+    if (range <= 0) return 1;
+    var raw = range / 5;
+    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var steps = [1, 2, 2.5, 5, 10];
+    for (var i = 0; i < steps.length; i++) if (steps[i] * mag >= raw) return steps[i] * mag;
+    return 10 * mag;
+  }
+  function fShort(v) {
+    var a = Math.abs(v);
+    if (a >= 1000000) return (v / 1000000).toLocaleString("de-DE", { maximumFractionDigits: 1 }) + " Mio";
+    if (a >= 1000) return Math.round(v / 1000) + "k";
+    return String(Math.round(v));
+  }
+
+  function buildChart(P) {
+    chartRows = P.rows;
+    var svgEl = document.getElementById("chart");
+    if (!chartRows.length || P.T === 0) {
+      svgEl.innerHTML = '<text x="' + (CW / 2) + '" y="' + (CH / 2) + '" text-anchor="middle" font-size="13" fill="var(--ink-3)">Noch keine Daten</text>';
+      document.getElementById("chartCaption").textContent = "";
+      return;
+    }
+    var maxV = 0, minV = 0;
+    chartRows.forEach(function (r) {
+      [r.cash, r.ek, 0].forEach(function (v) { maxV = Math.max(maxV, v); minV = Math.min(minV, v); });
+      maxV = Math.max(maxV, r.ek);
+    });
+    var cumE = 0;
+    var einlagen = chartRows.map(function (r) { cumE += r.einlage; maxV = Math.max(maxV, cumE); return cumE; });
+
+    var step = niceStep(maxV - minV);
+    var yMax = step * Math.ceil(maxV / step || 1);
+    // Die Unterdeckung ist oft klein gegenüber dem Vermögensaufbau — dann nur so weit
+    // unter null gehen, wie tatsächlich gebraucht wird, statt eine volle Gitterstufe
+    var yMin = minV < 0 ? Math.min(minV * 1.15, -step * 0.12) : 0;
+    if (yMax === yMin) yMax = yMin + step;
+
+    var plotW = CW - M.l - M.r, plotH = CH - M.t - M.b;
+    var T = P.T;
+    function x(y) { return M.l + (T === 0 ? 0 : y / T * plotW); }
+    function yy(v) { return M.t + plotH - (v - yMin) / (yMax - yMin) * plotH; }
+
+    var svg = [];
+    var ticks = [];
+    for (var v = 0; v <= yMax + 1e-6; v += step) ticks.push(v);
+    for (var vn = -step; vn >= yMin; vn -= step) ticks.push(vn);
+    if (minV < 0) ticks.push(minV);
+    ticks.forEach(function (tv) {
+      var py = yy(tv);
+      var istNull = Math.abs(tv) < 1e-6;
+      var istTief = tv === minV && minV < 0;
+      svg.push('<line x1="' + M.l + '" x2="' + (CW - M.r) + '" y1="' + py + '" y2="' + py + '" stroke="' + (istNull ? "var(--axis)" : "var(--grid)") + '" stroke-width="1"' + (istTief ? ' stroke-dasharray="2 3"' : "") + "/>");
+      svg.push('<text x="' + (M.l - 8) + '" y="' + (py + 4) + '" text-anchor="end" font-size="11" fill="' + (istTief ? "var(--s2)" : "var(--ink-3)") + '" style="font-variant-numeric:tabular-nums">' + fShort(tv) + "</text>");
+    });
+    var tickEvery = T <= 12 ? 1 : (T <= 25 ? 5 : 10);
+    for (var ty = 0; ty <= T; ty += tickEvery) {
+      svg.push('<text x="' + x(ty) + '" y="' + (CH - 8) + '" text-anchor="middle" font-size="11" fill="var(--ink-3)">' + ty + "</text>");
+    }
+    svg.push('<text x="' + (CW - M.r) + '" y="' + (CH - 8) + '" text-anchor="end" font-size="11" fill="var(--ink-3)">Jahr</text>');
+
+    P.objs.forEach(function (o) {
+      svg.push('<line x1="' + x(o.exitY) + '" x2="' + x(o.exitY) + '" y1="' + M.t + '" y2="' + (CH - M.b) + '" stroke="var(--axis)" stroke-width="1" stroke-dasharray="2 4"/>');
+    });
+
+    function path(get) {
+      var p = "";
+      chartRows.forEach(function (r, i) {
+        p += (p === "" ? "M" : "L") + x(r.y).toFixed(1) + " " + yy(get(r, i)).toFixed(1);
+      });
+      return p;
+    }
+    svg.push('<path d="' + path(function (r, i) { return einlagen[i]; }) + '" fill="none" stroke="var(--s2)" stroke-width="2" stroke-linejoin="round"/>');
+    svg.push('<path d="' + path(function (r) { return r.ek; }) + '" fill="none" stroke="var(--s3)" stroke-width="2" stroke-linejoin="round"/>');
+    svg.push('<path d="' + path(function (r) { return r.cash; }) + '" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round"/>');
+
+    svg.push('<line id="cross" x1="0" x2="0" y1="' + M.t + '" y2="' + (CH - M.b) + '" stroke="var(--ink-3)" stroke-width="1" visibility="hidden"/>');
+    svg.push('<rect x="' + M.l + '" y="' + M.t + '" width="' + plotW + '" height="' + plotH + '" fill="transparent" id="hover"/>');
+    svgEl.innerHTML = svg.join("");
+    chartGeom = { x: x, y: yy, T: T, einlagen: einlagen };
+    bindHover();
+
+    document.getElementById("chartCaption").textContent =
+      (P.minCash < -1
+        ? "Tiefster Kontostand " + fEur(P.minCash) + " im Jahr " + chartRows.reduce(function (a, r) { return r.cash < a.c ? { y: r.y, c: r.cash } : a; }, { y: 0, c: 0 }).y + ". "
+        : "Das Bankkonto bleibt durchgehend positiv. ") +
+      "Gestrichelte Linien markieren die Verkaufszeitpunkte der einzelnen Objekte.";
+  }
+
+  function bindHover() {
+    var svgEl = document.getElementById("chart");
+    var box = document.getElementById("chartBox");
+    var tip = document.getElementById("tip");
+    var cross = svgEl.querySelector("#cross");
+    var hover = svgEl.querySelector("#hover");
+    if (!hover) return;
+
+    function move(cx, cy) {
+      var rect = svgEl.getBoundingClientRect();
+      var sx = (cx - rect.left) / rect.width * CW;
+      var y = Math.round((sx - M.l) / (CW - M.l - M.r) * chartGeom.T);
+      y = Math.max(0, Math.min(chartGeom.T, y));
+      var r = chartRows[y];
+      cross.setAttribute("x1", chartGeom.x(y));
+      cross.setAttribute("x2", chartGeom.x(y));
+      cross.setAttribute("visibility", "visible");
+      tip.innerHTML =
+        "<b>Jahr " + y + (r.aktiv ? " · " + r.aktiv + (r.aktiv === 1 ? " Objekt" : " Objekte") : "") + "</b>" +
+        '<div class="t-row"><span class="swatch" style="background:var(--s1)"></span>Bankguthaben: <b>' + fEur(r.cash) + "</b></div>" +
+        '<div class="t-row"><span class="swatch" style="background:var(--s3)"></span>Eigenkapital: <b>' + fEur(r.ek) + "</b></div>" +
+        '<div class="t-row"><span class="swatch" style="background:var(--s2)"></span>Einlagen: <b>' + fEur(chartGeom.einlagen[y]) + "</b></div>" +
+        '<div class="t-row" style="color:var(--ink-3)">Jahresüberschuss ' + fEur(r.jue) + "</div>";
+      tip.style.display = "block";
+      var bx = box.getBoundingClientRect();
+      var px = cx - bx.left, py = cy - bx.top;
+      var tw = tip.offsetWidth;
+      tip.style.left = (px + tw + 24 > bx.width ? px - tw - 14 : px + 14) + "px";
+      tip.style.top = Math.max(0, py - 20) + "px";
+    }
+    hover.addEventListener("mousemove", function (e) { move(e.clientX, e.clientY); });
+    hover.addEventListener("mouseleave", function () { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); });
+    hover.addEventListener("touchstart", function (e) { if (e.touches[0]) move(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+    hover.addEventListener("touchmove", function (e) { if (e.touches[0]) move(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+  }
+
+  // ---------- Rechenwerke ----------
+  var csvFin = [];
+
+  function buildStatements(P) {
+    var rows = P.rows, T = P.T;
+    var groups = [
+      { title: "Gewinn- und Verlustrechnung", rows: [
+        { l: "Nutzungsentgelte", f: function (r) { return r.ne; } },
+        { l: "Zinserträge aus Geldanlage", f: function (r) { return r.anlageErtrag; } },
+        { l: "Abschreibungen (AfA)", f: function (r) { return -r.afa; } },
+        { l: "Sonstige betriebliche Aufwendungen", f: function (r) { return -r.opex; } },
+        { l: "Zinsaufwand Darlehen", f: function (r) { return -r.zins; } },
+        { l: "Zinsaufwand Kontokorrent", f: function (r) { return -r.kkZins; } },
+        { l: "Ergebnis Anteilsverkäufe", f: function (r) { return r.vGewinn; } },
+        { l: "Ergebnis vor Steuern", sum: true, f: function (r) { return r.ebt; } },
+        { l: "Steuern (KSt, Soli, GewSt)", f: function (r) { return -r.tax; } },
+        { l: "Jahresüberschuss", sum: true, f: function (r) { return r.jue; } }
+      ] },
+      { title: "Bilanz (Stichtag 31.12.)", rows: [
+        { l: "Immobilienanteile (Buchwert)", f: function (r) { return r.buchwert; } },
+        { l: "Guthaben und Wertpapiere", f: function (r) { return r.cash; } },
+        { l: "Summe Aktiva", sum: true, f: function (r) { return r.buchwert + r.cash; } },
+        { l: "Eigenkapital", f: function (r) { return r.ek; } },
+        { l: "Bankdarlehen", f: function (r) { return r.rest; } },
+        { l: "Summe Passiva", sum: true, f: function (r) { return r.ek + r.rest; } }
+      ] },
+      { title: "Kapitalflussrechnung", rows: [
+        { l: "Operativer Cashflow", f: function (r) { return r.ne + r.anlageErtrag - r.zins - r.kkZins - r.opex - r.tax; } },
+        { l: "Investitionscashflow", f: function (r) { return r.proceeds - r.invest; } },
+        { l: "Finanzierungscashflow", f: function (r) { return r.einlage + r.loanNew - r.tilg - r.payoff; } },
+        { l: "davon Einlagen", f: function (r) { return r.einlage; } },
+        { l: "Veränderung Zahlungsmittel", sum: true, f: function (r) { return r.cashChange; } },
+        { l: "Bestand Zahlungsmittel", f: function (r) { return r.cash; } }
+      ] }
+    ];
+
+    var html = "<thead><tr><th>in Euro</th>";
+    rows.forEach(function (r) { html += "<th>Jahr " + r.y + "</th>"; });
+    html += "</tr></thead><tbody>";
+    csvFin = [["in Euro"].concat(rows.map(function (r) { return "Jahr " + r.y; }))];
+
+    groups.forEach(function (g, gi) {
+      if (gi > 0) html += '<tr class="spacer"><td colspan="' + (rows.length + 1) + '"></td></tr>';
+      html += '<tr class="grp"><td>' + g.title + "</td>";
+      rows.forEach(function () { html += "<td></td>"; });
+      html += "</tr>";
+      csvFin.push([g.title]);
+      g.rows.forEach(function (row) {
+        html += '<tr' + (row.sum ? ' class="sum"' : "") + "><td>" + row.l + "</td>";
+        var line = [row.l];
+        rows.forEach(function (r) {
+          var v = row.f(r);
+          html += '<td class="' + (v < -0.5 ? "neg" : "") + '">' + fEur(v) + "</td>";
+          line.push(csvNum(v));
+        });
+        html += "</tr>";
+        csvFin.push(line);
+      });
+    });
+    html += "</tbody>";
+    document.getElementById("finTable").innerHTML = html;
+
+    document.getElementById("finSub").textContent =
+      "Konsolidiert über " + OBJ.length + (OBJ.length === 1 ? " Objekt" : " Objekte") +
+      ", Jahr 0 bis " + T + " · Steuersatz " + fPct(P.taxRate, 2);
+    document.getElementById("finCaption").textContent =
+      "Steuern werden auf Gesellschaftsebene über alle Objekte gerechnet; Verluste einzelner Jahre werden vorgetragen. " +
+      "Nach dem letzten Verkauf besteht die Bilanz nur noch aus Bankguthaben und Eigenkapital — dann zeigt sie, was aus " +
+      fEur(P.cumEinlage) + " Einlagen geworden ist.";
+  }
+
+  document.getElementById("csvBtn").addEventListener("click", function () {
+    var btn = this;
+    var text = csvFin.map(function (r) { return r.join(";"); }).join("\n");
+    function done(m) { btn.textContent = m; setTimeout(function () { btn.textContent = "Als CSV kopieren"; }, 1800); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done("Kopiert ✓"); }, function () { done("Fehlgeschlagen"); });
+    } else { done("Nicht möglich"); }
+  });
+
+  function renderContrib(P) {
+    var host = document.getElementById("contribList");
+    if (!P.objs.length) {
+      host.innerHTML = '<div class="empty">Noch keine Objekte.</div>';
+      document.getElementById("contribCaption").textContent = "";
+      return;
+    }
+    var max = Math.max.apply(null, P.objs.map(function (x) { return Math.abs(x.beitrag); })) || 1;
+    var summe = P.objs.reduce(function (a, x) { return a + x.beitrag; }, 0);
+    var h = '<div class="contrib">';
+    P.objs.forEach(function (x, i) {
+      var anteil = summe !== 0 ? x.beitrag / summe * 100 : 0;
+      h += '<div class="contrib-row">' +
+        '<div class="contrib-name" title="' + (x.o.name || "").replace(/"/g, "&quot;") + '">' +
+          (x.o.name || "Objekt " + (i + 1)) + "</div>" +
+        '<div class="cb"><div class="' + (x.beitrag < 0 ? "neg" : "") + '" style="width:' +
+          (Math.abs(x.beitrag) / max * 100).toFixed(1) + '%"></div></div>' +
+        '<div style="text-align:right"><div class="contrib-val">' + fEur(x.beitrag) + "</div>" +
+        '<div class="contrib-sub">' + fPct(anteil, 0) + " · Jahr " + x.o.start + "–" + x.exitY + "</div></div>" +
+        "</div>";
+    });
+    h += "</div>";
+    host.innerHTML = h;
+    document.getElementById("contribCaption").textContent =
+      "Summe der direkt zurechenbaren Beiträge: " + fEur(summe) + ". Nicht enthalten sind " +
+      fEur(P.opexSum) + " laufende Kosten, " + fEur(P.taxSum) + " Steuern sowie Zinsen auf Guthaben und Kontokorrent — " +
+      "diese entstehen auf Gesellschaftsebene. Die Summe entspricht daher nicht dem Vermögenszuwachs oben.";
+  }
+
+  // ---------- Detailansicht je Projekt ----------
+  var detailIdx = null;
+  var view = "portfolio";
+
+  function openDetail(i) { detailIdx = i; refresh(); window.scrollTo(0, 0); }
+  function closeDetail() { detailIdx = null; refresh(); window.scrollTo(0, 0); }
+
+  function finTableHtml(rows, groups, yLabel) {
+    var html = "<thead><tr><th>in Euro</th>";
+    rows.forEach(function (r) { html += "<th>" + yLabel(r) + "</th>"; });
+    html += "</tr></thead><tbody>";
+    groups.forEach(function (g, gi) {
+      if (gi > 0) html += '<tr class="spacer"><td colspan="' + (rows.length + 1) + '"></td></tr>';
+      html += '<tr class="grp"><td>' + g.title + "</td>";
+      rows.forEach(function () { html += "<td></td>"; });
+      html += "</tr>";
+      g.rows.forEach(function (row) {
+        html += '<tr' + (row.sum ? ' class="sum"' : "") + "><td>" + row.l + "</td>";
+        rows.forEach(function (r) {
+          var v = row.f(r);
+          html += '<td class="' + (v < -0.5 ? "neg" : "") + '">' + fEur(v) + "</td>";
+        });
+        html += "</tr>";
+      });
+    });
+    return html + "</tbody>";
+  }
+
+  var STMT_GROUPS = [
+    { title: "Gewinn- und Verlustrechnung", rows: [
+      { l: "Nutzungsentgelt", f: function (r) { return r.ne; } },
+      { l: "Zinserträge aus Geldanlage", f: function (r) { return r.anlageErtrag || 0; } },
+      { l: "Abschreibungen (AfA)", f: function (r) { return -r.afa; } },
+      { l: "Anteilige laufende Kosten", f: function (r) { return -r.opex; } },
+      { l: "Zinsaufwand Darlehen", f: function (r) { return -r.zins; } },
+      { l: "Zinsaufwand Kontokorrent", f: function (r) { return -(r.kkZins || 0); } },
+      { l: "Ergebnis Anteilsverkauf", f: function (r) { return r.vGewinn; } },
+      { l: "Ergebnis vor Steuern", sum: true, f: function (r) { return r.ebt; } },
+      { l: "Steuern (anteilig)", f: function (r) { return -r.tax; } },
+      { l: "Jahresüberschuss", sum: true, f: function (r) { return r.jue; } }
+    ] },
+    { title: "Bilanz (Stichtag 31.12.)", rows: [
+      { l: "Immobilienanteil (Buchwert)", f: function (r) { return r.buchwert; } },
+      { l: "Guthaben und Wertpapiere", f: function (r) { return r.cash; } },
+      { l: "Summe Aktiva", sum: true, f: function (r) { return r.buchwert + r.cash; } },
+      { l: "Eigenkapital", f: function (r) { return r.ek; } },
+      { l: "Bankdarlehen", f: function (r) { return r.rest; } },
+      { l: "Summe Passiva", sum: true, f: function (r) { return r.ek + r.rest; } }
+    ] },
+    { title: "Kapitalflussrechnung", rows: [
+      { l: "Operativer Cashflow", f: function (r) { return r.ne + (r.anlageErtrag || 0) - r.zins - (r.kkZins || 0) - r.opex - r.tax; } },
+      { l: "Investitionscashflow", f: function (r) { return r.proceeds - r.invest; } },
+      { l: "Finanzierungscashflow", f: function (r) { return r.einlage + r.loanNew - r.tilg - r.payoff; } },
+      { l: "Veränderung Zahlungsmittel", sum: true, f: function (r) { return r.cashChange; } },
+      { l: "Bestand Zahlungsmittel", f: function (r) { return r.cash; } }
+    ] }
+  ];
+
+  function renderDetail(P) {
+    var host = document.getElementById("viewDetail");
+    var x = P.objs[detailIdx];
+    if (!x) { detailIdx = null; return; }
+    var o = x.o;
+    var opexShare = OBJ.length ? G.opex / OBJ.length : 0;
+    var D = objectDetail(x, opexShare, P.taxRate / 100);
+
+    var h = "";
+    h += '<div class="card">';
+    h += '<button type="button" class="crumb" id="backBtn">‹ Zurück zum Portfolio</button>';
+    h += "<h2>" + (o.name || "Objekt " + (detailIdx + 1)) + "</h2>";
+    h += '<p class="sub" style="margin-bottom:0">Erwerb im Jahr ' + o.start + ", Verkauf im Jahr " + x.exitY +
+      " · " + fPct(o.share, 0) + " Anteil an " + fEur(o.v0) + " · Nutzungsentgelt " + fPct(o.ne, 2) + " p.a.</p>";
+    h += "</div>";
+
+    // ---- Teil 1: Vertrag ----
+    h += '<div class="section-head"><h3>Vertrag</h3><span class="sh-note">Was mit dem Eigentümer vereinbart ist</span></div>';
+
+    h += '<div class="card"><div class="stat-row">';
+    h += '<div><div class="stat-label">Auszahlung</div><div class="stat-num">' + fEur(x.P) +
+      '</div><div class="stat-sub">an den Eigentümer</div></div>';
+    h += '<div><div class="stat-label">Monatliche Rate</div><div class="stat-num">' + fEur(x.P * (o.ne / 100) / 12) +
+      '</div><div class="stat-sub">' + (o.esc === 0 ? "fest bis zum Verkauf" : "steigt um " + fPct(o.esc, 2) + " p.a.") + "</div></div>";
+    h += '<div><div class="stat-label">Laufzeit</div><div class="stat-num">' + o.hold +
+      '</div><div class="stat-sub">Jahre bis zum Verkauf</div></div>';
+    h += '<div><div class="stat-label"><span class="dot s1"></span>Kosten Eigentümer</div><div class="stat-num">' + fPct(x.ownerCost) +
+      '</div><div class="stat-sub">effektiv pro Jahr</div></div>';
+    h += "</div></div>";
+
+    // Eigentümersicht
+    h += '<div class="card"><h2>Was der Eigentümer insgesamt zahlt</h2>';
+    h += '<p class="sub">Alle Zahlungen aus Sicht des Verkäufers.</p><table class="cmp"><tbody>';
+    var mo = x.P * (o.ne / 100) / 12;
+    var moLast = x.P * (o.ne / 100) * Math.pow(1 + o.esc / 100, o.hold - 1) / 12;
+    var neSum = x.years.reduce(function (a, r) { return a + r.ne; }, 0);
+    h += "<tr><td>Auszahlung heute</td><td>" + fEur(x.P) + "</td></tr>";
+    h += "<tr><td>Monatliche Rate</td><td>" + (o.esc === 0 ? fEur(mo) + " (fest)" : fEur(mo) + " → " + fEur(moLast)) + "</td></tr>";
+    h += "<tr><td>Σ Nutzungsentgelte bis Verkauf</td><td>−" + fEur(neSum) + "</td></tr>";
+    h += "<tr><td>Anteil der GmbH beim Verkauf</td><td>−" + fEur(x.B + x.DE) + "</td></tr>";
+    h += "<tr><td>Eigentümer erhält beim Verkauf</td><td>" + fEur(x.ownerGets) + "</td></tr>";
+    h += '<tr class="big"><td>Effektive Jahreskosten</td><td>' + fPct(x.ownerCost) + "</td></tr>";
+    h += "</tbody></table></div>";
+
+    // Erlösverteilung
+    h += '<div class="card"><h2>Wohin fließt der Verkaufserlös?</h2>';
+    h += '<p class="sub">Verkaufspreis im Jahr ' + x.exitY + ": " + fEur(x.VT) + "</p>";
+    h += '<div class="bar-legend"><span><span class="sq" style="background:var(--grid)"></span>Eigentümer</span>' +
+      '<span><span class="sq" style="background:var(--s1)"></span>GmbH</span>' +
+      (x.DE > 0 ? '<span><span class="sq" style="background:var(--ink-3)"></span>Durchführungsentgelt</span>' : "") +
+      (x.vkTotal > 0 ? '<span><span class="sq" style="background:var(--s2)"></span>Verkaufskosten</span>' : "") + "</div>";
+    // Das Durchführungsentgelt steckt bereits in proceeds — der GmbH-Balken zeigt daher
+    // nur den Anteil ohne Entgelt, sonst würde derselbe Betrag zweimal gezeichnet.
+    var segGmbH = x.B - x.vkBuyer;
+    var segSumme = Math.max(1, x.ownerGets + segGmbH + x.DE + x.vkTotal);
+    function w(v) { return Math.max(0, v / segSumme * 100).toFixed(2) + "%"; }
+    h += '<div class="bar"><div class="seg-owner" style="width:' + w(x.ownerGets) + '"></div>' +
+      '<div class="seg-buy" style="width:' + w(segGmbH) + '"></div>' +
+      (x.DE > 0 ? '<div class="seg-fee" style="width:' + w(x.DE) + '"></div>' : "") +
+      (x.vkTotal > 0 ? '<div class="seg-cost" style="width:' + w(x.vkTotal) + '"></div>' : "") + "</div>";
+    h += '<div class="bar-caption">Eigentümer ' + fEur(x.ownerGets) + " · GmbH " + fEur(x.proceeds) +
+      (x.DE > 0 ? " (davon Entgelt " + fEur(x.DE) + ")" : "") +
+      (x.vkTotal > 0 ? " · Verkaufskosten " + fEur(x.vkTotal) : "") +
+      (x.B > (o.share / 100) * x.VT + 0.5 ? " · Mindesterlös greift" : "") + "</div></div>";
+
+    // ---- Teil 2: Wirtschaftlichkeit ----
+    h += '<div class="section-head"><h3>Wirtschaftlichkeit</h3><span class="sh-note">Was das Projekt für die GmbH bedeutet</span></div>';
+
+    h += '<div class="card"><div class="stat-row">';
+    h += '<div><div class="stat-label"><span class="dot s2"></span>Eigenkapital</div><div class="stat-num">' + fEur(x.equity0) +
+      '</div><div class="stat-sub">' + fEur(x.loan0) + " Darlehen</div></div>";
+    h += '<div><div class="stat-label"><span class="dot s3"></span>Rendite nach Steuern</div><div class="stat-num">' + fPct(D.irr) +
+      '</div><div class="stat-sub">Projekt allein gerechnet</div></div>';
+    h += '<div><div class="stat-label">Ergebnisbeitrag</div><div class="stat-num">' + fEur(x.beitrag) +
+      '</div><div class="stat-sub">vor Gemeinkosten und Steuern</div></div>';
+    h += '<div><div class="stat-label">Liquidität am Ende</div><div class="stat-num">' + fEur(D.cashFinal) +
+      '</div><div class="stat-sub">aus ' + fEur(x.equity0) + " Einlage</div></div>";
+    h += "</div>";
+    h += '<div class="stat-foot">Anteilige laufende Kosten: ' + fEur(opexShare) + " je Jahr (" + fEur(G.opex) +
+      " geteilt durch " + OBJ.length + (OBJ.length === 1 ? " Objekt" : " Objekte") +
+      "). Zuwachs gegenüber der Einlage: " + fEur(D.gewinn) + ".</div></div>";
+
+    // Jahr für Jahr
+    h += '<div class="card"><h2>Jahr für Jahr</h2>';
+    h += '<p class="sub">Zahlungsströme dieses Projekts, Jahreszahlen wie im Portfolio.</p>';
+    h += '<div class="sched-scroll"><table class="sched"><thead><tr>' +
+      "<th>Jahr</th><th>Nutzungsentgelt</th><th>Zinsertrag</th><th>Zins</th><th>Tilgung</th><th>Anteil. Kosten</th><th>AfA</th><th>Steuer</th><th>Cashflow</th><th>Bankkonto</th><th>Restschuld</th>" +
+      "</tr></thead><tbody>";
+    D.rows.forEach(function (r) {
+      var isExit = r.exit;
+      h += "<tr" + (isExit ? ' class="exit-row"' : "") + "><td>" +
+        (r.erwerb ? "Erwerb " + r.y : r.y + (isExit ? " · Verkauf" : (r.abloese ? " · Ablösung" : ""))) + "</td>";
+      h += "<td>" + (r.erwerb ? "–" : fEur(r.ne)) + "</td>";
+      h += "<td>" + (r.erwerb ? "–" : fEur(r.anlageErtrag || 0)) + "</td>";
+      h += "<td>" + (r.erwerb ? "–" : fEur(r.zins + (r.kkZins || 0))) + "</td>";
+      h += "<td>" + (r.erwerb ? "–" : fEur(r.tilg + (r.abloese ? r.payoff : 0))) + "</td>";
+      h += "<td>" + (r.erwerb ? "–" : fEur(r.opex)) + "</td>";
+      h += "<td>" + (r.erwerb ? "–" : fEur(r.afa)) + "</td>";
+      h += "<td>" + (r.erwerb ? "–" : fEur(r.tax)) + "</td>";
+      h += '<td class="' + (r.cashChange < 0 ? "neg" : "") + '">' + (r.erwerb ? "–" : (r.cashChange >= 0 ? "+" : "−") + fEur(Math.abs(r.cashChange))) + "</td>";
+      h += '<td class="' + (r.cash < 0 ? "neg" : "") + '">' + fEur(r.cash) + "</td>";
+      h += "<td>" + fEur(r.rest) + "</td></tr>";
+    });
+    h += "</tbody><tfoot><tr><td>Summe</td><td>" + fEur(D.neSum) + "</td><td></td><td></td><td>" + fEur(x.loan0) +
+      "</td><td>" + fEur(D.opexSum) + "</td><td>" + fEur(x.cumAfa) + "</td><td>" + fEur(D.taxSum) +
+      "</td><td>" + fEur(D.cashFinal) + "</td><td></td><td></td></tr></tfoot></table></div>";
+    if (x.ablöseY > x.exitY) {
+      h += '<p class="caption">Der Verkauf fällt in die Zinsbindung: Das Darlehen läuft nach dem Verkauf noch bis Jahr ' +
+        x.ablöseY + " weiter, der Erlös liegt so lange zu " + fPct(G.anlage, 2) +
+        " angelegt und verzinst sich mit " + fPct(G.anlage - o.zins, 2) + " gegenüber dem Sollzins.</p>";
+    }
+    h += "</div>";
+
+    // Rechenwerke
+    h += '<div class="card"><h2>Bilanz, GuV und Cashflow</h2>';
+    h += '<p class="sub">Nur dieses Projekt, mit anteiligen Gemeinkosten und eigenständig gerechneter Steuer.</p>';
+    h += '<div class="fin-scroll"><table class="fin">' +
+      finTableHtml(D.rows, STMT_GROUPS, function (r) { return r.erwerb ? "Erwerb" : "Jahr " + r.y; }) +
+      "</table></div>";
+    h += '<p class="caption">Die maßgebliche Steuer entsteht auf Gesellschaftsebene: Im Portfolio werden Gewinne und Verluste aller Projekte verrechnet, hier wird das Projekt isoliert gerechnet. Die Summe der Einzelsteuern kann daher von der Portfoliosteuer abweichen.</p>';
+    h += "</div>";
+
+    host.innerHTML = h;
+    document.getElementById("backBtn").addEventListener("click", closeDetail);
+  }
+
+  // ---------- Analyseseite ----------
+  var analyseIdx = 0;
+
+  function exitChart(A, o) {
+    var W = 820, H = 300, m = { l: 58, r: 58, t: 12, b: 26 };
+    var pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var obereH = ph * 0.32, luecke = 14, untereH = ph - obereH - luecke;
+    var pMax = Math.max.apply(null, A.V.p.slice(1, HMAX + 1)) || 1;
+
+    var kws = A.kurve.map(function (p) { return p.kw; });
+    // Die Nulllinie ist die Entscheidungsgrenze und muss immer im Bild sein
+    var kwMax = Math.max(0, Math.max.apply(null, kws));
+    var kwMin = Math.min(0, Math.min.apply(null, kws));
+    if (kwMax === kwMin) kwMax = kwMin + 1;
+    var spanne = kwMax - kwMin, kwHi = kwMax + spanne * 0.08, kwLo = kwMin - spanne * 0.08;
+
+    function x(h) { return m.l + (h - 1) / (HMAX - 1) * pw; }
+    function yP(v) { return m.t + obereH - v / pMax * obereH; }
+    function yK(v) { return m.t + obereH + luecke + (kwHi - v) / (kwHi - kwLo) * untereH; }
+
+    var s = [];
+    // obere Fläche: Exitwahrscheinlichkeit
+    s.push('<text x="' + m.l + '" y="' + (m.t + 9) + '" font-size="10.5" fill="var(--ink-3)">Wahrscheinlichkeit des Verkaufs im Jahr</text>');
+    for (var h = 1; h <= HMAX; h++) {
+      var bh = A.V.p[h] / pMax * obereH;
+      var bw = Math.max(2, pw / HMAX - 2.5);
+      s.push('<rect x="' + (x(h) - bw / 2).toFixed(1) + '" y="' + (m.t + obereH - bh).toFixed(1) +
+        '" width="' + bw.toFixed(1) + '" height="' + Math.max(0, bh).toFixed(1) +
+        '" rx="1.5" fill="var(--s3)" opacity="' + (h === o.hold ? "1" : "0.5") + '"/>');
+    }
+    s.push('<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + (m.t + obereH) + '" y2="' + (m.t + obereH) + '" stroke="var(--axis)" stroke-width="1"/>');
+
+    // untere Fläche: Kapitalwert über die Haltedauer
+    var y0 = yK(0);
+    s.push('<rect x="' + m.l + '" y="' + y0 + '" width="' + pw + '" height="' + Math.max(0, m.t + obereH + luecke + untereH - y0) + '" fill="var(--s2)" opacity="0.07"/>');
+    s.push('<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y0 + '" y2="' + y0 + '" stroke="var(--axis)" stroke-width="1"/>');
+    // Beschriftung nur setzen, wenn genug Abstand zur Nulllinie bleibt
+    s.push('<text x="' + (m.l - 8) + '" y="' + (yK(0) + 4) + '" text-anchor="end" font-size="10.5" fill="var(--ink-3)">0</text>');
+    [kwHi, kwLo].forEach(function (v) {
+      if (Math.abs(yK(v) - yK(0)) < 14) return;
+      s.push('<text x="' + (m.l - 8) + '" y="' + (yK(v) + 4) + '" text-anchor="end" font-size="10.5" fill="var(--ink-3)">' + fShort(v) + "</text>");
+    });
+    s.push('<text x="' + m.l + '" y="' + (m.t + obereH + luecke + 10) + '" font-size="10.5" fill="var(--ink-3)">Kapitalwert bei ' + fPct(o.zins, 2) + " Mindestverzinsung</text>");
+
+    var p = "";
+    A.kurve.forEach(function (pt) { p += (p === "" ? "M" : "L") + x(pt.h).toFixed(1) + " " + yK(pt.kw).toFixed(1); });
+    s.push('<path d="' + p + '" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round"/>');
+
+    // Marken — Beschriftungen werden gestapelt, damit sie sich bei nahen Jahren nicht überlagern
+    var belegt = [];
+    function marke(h, farbe, text, oben) {
+      if (!h || h < 1 || h > HMAX) return;
+      var px = x(h);
+      s.push('<line x1="' + px + '" x2="' + px + '" y1="' + m.t + '" y2="' + (H - m.b) + '" stroke="' + farbe + '" stroke-width="1" stroke-dasharray="3 3"/>');
+      var basis = oben ? m.t + 22 : H - m.b - 6;
+      var stufe = 0;
+      while (belegt.some(function (b) { return b.y === basis + stufe * 13 && Math.abs(b.x - px) < 78; })) stufe += (oben ? 1 : -1);
+      var py = basis + stufe * 13;
+      belegt.push({ x: px, y: py });
+      var rechtsbuendig = px > CWX - 90;
+      s.push('<text x="' + (px + (rechtsbuendig ? -4 : 4)) + '" y="' + py + '" font-size="10.5"' +
+        (rechtsbuendig ? ' text-anchor="end"' : "") + ' fill="' + farbe + '">' + text + "</text>");
+    }
+    var CWX = W - m.r;
+    marke(A.beKW, "var(--s2)", "Break-even " + A.beKW, true);
+    marke(o.hold, "var(--ink-2)", "gewählt " + o.hold, false);
+    if (A.median) marke(A.median, "var(--s3)", "Median " + A.median, false);
+
+    for (var t = 5; t <= HMAX; t += 5) {
+      s.push('<text x="' + x(t) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">' + t + "</text>");
+    }
+    s.push('<text x="' + (W - m.r) + '" y="' + (H - 6) + '" text-anchor="end" font-size="10.5" fill="var(--ink-3)">Haltedauer in Jahren</text>');
+
+    return '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Exitwahrscheinlichkeit je Jahr und Kapitalwert über die Haltedauer">' + s.join("") + "</svg>";
+  }
+
+  function renderAnalyse(P) {
+    var host = document.getElementById("viewAnalyse");
+    if (!P.objs.length) {
+      host.innerHTML = '<div class="card"><h2>Analyse</h2><p class="sub">Noch keine Objekte — im Portfolio ein Objekt anlegen.</p></div>';
+      return;
+    }
+    if (analyseIdx >= P.objs.length) analyseIdx = 0;
+    var opexShare = OBJ.length ? G.opex / OBJ.length : 0;
+    var o = OBJ[analyseIdx];
+    var A = exitAnalyse(o, opexShare, P.taxRate / 100);
+    var gew = A.gewaehlt;
+
+    var h = "";
+    h += '<div class="card">';
+    h += "<h2>Wann endet der Vertrag — und was heißt das?</h2>";
+    h += '<p class="sub">Die Haltedauer ist keine Entscheidung, sondern eine Verteilung. Sie hängt daran, wie lange der Eigentümer im Haus bleibt.</p>';
+    h += '<div class="obj-pick">';
+    OBJ.forEach(function (ob, i) {
+      h += '<button type="button" data-pick="' + i + '" aria-pressed="' + (i === analyseIdx) + '">' +
+        (ob.name || "Objekt " + (i + 1)) + "</button>";
+    });
+    h += "</div>";
+    h += '<div class="stat-row">';
+    h += '<div><div class="stat-label">Erwartete Haltedauer</div><div class="stat-num">' +
+      A.eH.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
+      '</div><div class="stat-sub">Median ' + (A.median || "–") + " Jahre · gewählt " + o.hold + "</div></div>";
+    h += '<div><div class="stat-label"><span class="dot s2"></span>Break-even</div><div class="stat-num">' +
+      (A.beKW ? A.beKW + " J." : "nie") +
+      '</div><div class="stat-sub">' +
+      (A.beKW ? "ab hier über " + fPct(o.zins, 2) : "Mindestverzinsung nie erreicht") +
+      (A.beNull ? " · Kapitalerhalt ab " + A.beNull + " J." : "") + "</div></div>";
+    h += '<div><div class="stat-label">Verkauf davor</div><div class="stat-num">' + fPct(A.pVorBE, 0) +
+      '</div><div class="stat-sub">' + (A.beKW ? "Wahrscheinlichkeit eines Frühexits" : "kein Zeitpunkt erreicht die Hürde") + "</div></div>";
+    h += '<div><div class="stat-label"><span class="dot s3"></span>Erwartete Rendite</div><div class="stat-num">' + fPct(A.eIrr) +
+      '</div><div class="stat-sub">statt ' + fPct(gew.irr) + " bei " + o.hold + " Jahren</div></div>";
+    h += "</div>";
+
+    var diff = (A.eIrr !== null && gew.irr !== null) ? A.eIrr - gew.irr : null;
+    h += '<div class="warn-note">Der Haushalt ist als <b>' + (o.haus || "Paar") + "</b> mit " + (o.alter || 75) +
+      " Jahren hinterlegt. " +
+      (String(o.haus || "").toLowerCase() === "paar"
+        ? "Bei Paaren endet der Vertrag mit der zuletzt lebenden Person — das verlängert die Haltedauer um mehrere Jahre gegenüber einer Einzelperson. "
+        : "Bei einer Einzelperson endet der Vertrag deutlich früher als bei einem Paar gleichen Alters. ") +
+      (diff !== null
+        ? "Über die gesamte Verteilung gerechnet liegt die Rendite bei " + fPct(A.eIrr) + ", die Eingabe von " + o.hold +
+          " Jahren zeigt " + fPct(gew.irr) + " — eine Abweichung von " + fPct(Math.abs(diff)) + "-Punkten."
+        : "") +
+      "</div>";
+    h += "</div>";
+
+    h += '<div class="card">';
+    h += '<div class="legend"><span><span class="swatch" style="background:var(--s3)"></span>Verkaufswahrscheinlichkeit je Jahr</span>' +
+      '<span><span class="swatch" style="background:var(--s1)"></span>Kapitalwert der Beteiligung</span></div>';
+    h += '<div class="chart-box">' + exitChart(A, o) + "</div>";
+    h += '<p class="caption">Der Kapitalwert misst gegen den Sollzins von ' + fPct(o.zins, 2) +
+      " — oberhalb der Nulllinie verdient das Projekt mehr als die Finanzierung kostet. " +
+      "Als Maßstab dient bewusst der Kapitalwert und nicht der interne Zinsfuß, der bei kurzen Haltedauern nicht eindeutig ist. " +
+      "Die rot hinterlegte Zone links ist die Verlustzone: Grunderwerbsteuer und Notarkosten sind dort noch nicht verdient.</p>";
+    h += "</div>";
+
+    // Tabelle je Objekt
+    h += '<div class="card"><h2>Alle Objekte im Vergleich</h2>';
+    h += '<p class="sub">Wie belastbar die eingegebene Haltedauer je Vertrag ist.</p>';
+    h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
+      "<th>Objekt</th><th>Haushalt</th><th>Alter</th><th>gewählt</th><th>Median</th><th>erwartet</th><th>Break-even</th><th>Frühexit</th><th>Rendite gewählt</th><th>Rendite erwartet</th>" +
+      "</tr></thead><tbody>";
+    OBJ.forEach(function (ob, i) {
+      var Ai = i === analyseIdx ? A : exitAnalyse(ob, opexShare, P.taxRate / 100);
+      var g2 = Ai.gewaehlt;
+      h += "<tr" + (i === analyseIdx ? ' class="exit-row"' : "") + "><td>" + (ob.name || "Objekt " + (i + 1)) + "</td>";
+      h += "<td>" + (ob.haus || "Paar") + "</td><td>" + (ob.alter || 75) + "</td>";
+      h += "<td>" + ob.hold + "</td><td>" + (Ai.median || "–") + "</td>";
+      h += "<td>" + Ai.eH.toLocaleString("de-DE", { maximumFractionDigits: 1 }) + "</td>";
+      h += "<td>" + (Ai.beKW ? Ai.beKW : "nie") + "</td>";
+      h += '<td class="' + (Ai.pVorBE > 25 ? "neg" : "") + '">' + fPct(Ai.pVorBE, 0) + "</td>";
+      h += "<td>" + fPct(g2.irr) + "</td><td>" + fPct(Ai.eIrr) + "</td></tr>";
+    });
+    h += "</tbody></table></div>";
+    h += '<p class="caption">Der Erwartungswert ist der interne Zinsfuß des wahrscheinlichkeitsgewichteten Zahlungsstroms — nicht der gewichtete Mittelwert der Renditen, der rechnerisch falsch wäre.</p>';
+    h += "</div>";
+
+    h += '<div class="card fine"><h2>Woher die Sterbewahrscheinlichkeiten kommen</h2>' +
+      "<p>Zugrunde liegt eine Gompertz-Makeham-Funktion, kalibriert an die ferneren Lebenserwartungen der amtlichen Sterbetafel 2022/24 " +
+      "(Alter 65, 70 und 80 je Geschlecht, Abweichung unter 0,4 Jahren). Bei „Paar“ wird die zuletzt lebende Person maßgeblich, " +
+      "berechnet aus zwei unabhängigen Verläufen für Mann und Frau gleichen Alters.</p>" +
+      "<p>Zwei bewusste Vereinfachungen, die in dieselbe Richtung wirken: Es handelt sich um eine Periodentafel, " +
+      "eine Generationentafel läge höher. Und wer ein schuldenfreies Eigenheim besitzt, hat statistisch eine " +
+      "überdurchschnittliche Lebenserwartung. Die tatsächliche Haltedauer dürfte daher eher über den hier gezeigten Werten liegen — " +
+      "was die Frühexit-Gefahr überzeichnet und die Kapitalbindung unterzeichnet.</p>" +
+      "<p>Die Auszugswahrscheinlichkeit für Pflegeheim oder freiwilligen Auszug ist ein Schätzwert und als Regler einstellbar; " +
+      "sie dominiert die ersten Jahre der Verteilung.</p></div>";
+
+    host.innerHTML = h;
+    host.querySelectorAll("button[data-pick]").forEach(function (b) {
+      b.addEventListener("click", function () { analyseIdx = +b.dataset.pick; refresh(); });
+    });
+  }
+
+  // ---------- Render ----------
+  // refresh() rechnet neu, ohne die Objekttabelle anzufassen — sonst verlöre das
+  // gerade bearbeitete Feld bei jedem Tastendruck den Fokus.
+  function refresh() {
+    Object.keys(fmtOf).forEach(function (id) {
+      var el = document.getElementById("valg_" + id);
+      if (el) el.textContent = fmtOf[id](G[id]);
+    });
+
+    var P = portfolio();
+
+    document.getElementById("taxRateOut").textContent = fPct(P.taxRate, 2);
+    document.getElementById("investOut").textContent = fEur(P.investTotal);
+    document.getElementById("equityOut").textContent = fEur(P.cumEinlage);
+
+    var nachschuss = Math.max(0, -P.minCash);
+    var zuwachs = P.cashFinal - P.cumEinlage;
+    var hz = document.getElementById("hZuwachs");
+    hz.textContent = OBJ.length ? (zuwachs >= 0 ? "+" : "−") + fEur(Math.abs(zuwachs)) : "–";
+    hz.className = "hero-big" + (zuwachs < 0 ? " neg" : "");
+    document.getElementById("hLabel").textContent = OBJ.length
+      ? "Vermögenszuwachs bis Jahr " + P.T
+      : "Vermögenszuwachs der Gesellschaft";
+    document.getElementById("hNote").textContent = OBJ.length
+      ? "Aus " + fEur(P.cumEinlage) + " Einlagen werden " + fEur(P.cashFinal) + " Liquidität. " +
+        (nachschuss > 0
+          ? "Zwischenzeitlich fehlen bis zu " + fEur(nachschuss) + " auf dem Konto."
+          : "Das Konto bleibt durchgehend positiv.")
+      : "Objekte hinzufügen, um das Portfolio zu berechnen.";
+
+    document.getElementById("kObj").textContent = OBJ.length
+      ? OBJ.length + (OBJ.length === 1 ? " Vertrag" : " Verträge")
+      : "keine";
+    document.getElementById("kNeed").textContent = fEur(P.cumEinlage + nachschuss);
+    document.getElementById("kIrr").textContent = fPct(P.irr);
+    document.getElementById("kCash").textContent = fEur(P.cashFinal);
+    document.getElementById("kCost").textContent = fEur(P.taxSum + P.opexSum);
+
+    renderContrib(P);
+
+    if (detailIdx !== null && !P.objs[detailIdx]) detailIdx = null;
+    var imDetail = detailIdx !== null;
+    var imAnalyse = view === "analyse" && !imDetail;
+    document.getElementById("viewPortfolio").hidden = imDetail || imAnalyse;
+    document.getElementById("viewDetail").hidden = !imDetail;
+    document.getElementById("viewAnalyse").hidden = !imAnalyse;
+    document.querySelectorAll("#tabs .tab[data-view]").forEach(function (t) {
+      var aktiv = (t.dataset.view === "analyse") === imAnalyse && !imDetail;
+      if (aktiv) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current");
+    });
+    // Das geöffnete Objekt erscheint als eigener Reiter hinter dem Portfolio
+    var tabObj = document.getElementById("tabObjekt");
+    document.getElementById("tabSep").hidden = !imDetail;
+    tabObj.hidden = !imDetail;
+    if (imDetail) {
+      tabObj.textContent = OBJ[detailIdx].name || "Objekt " + (detailIdx + 1);
+      tabObj.setAttribute("aria-current", "page");
+    }
+
+    var po = document.getElementById("panelObjekt");
+    po.hidden = !imDetail;
+    if (imDetail) {
+      if (po.dataset.idx !== String(detailIdx)) {
+        po.dataset.idx = String(detailIdx);
+        var kopf = document.createElement("div");
+        kopf.className = "panel-kopf";
+        kopf.textContent = "Annahmen dieses Objekts";
+        baueGruppen(po, OBJ_GROUPS, OBJ[detailIdx], "o", function (nurText) {
+          if (nurText) { refreshLeicht(); } else { refresh(); }
+        });
+        po.insertBefore(kopf, po.firstChild);
+      }
+      renderDetail(P);
+    } else {
+      po.dataset.idx = "";
+      if (imAnalyse) renderAnalyse(P);
+      else {
+        buildObjectTable(P);
+        buildChart(P);
+        buildStatements(P);
+      }
+    }
+  }
+
+  // Bei reiner Namensänderung nicht das Panel neu bauen — sonst verliert das Feld den Fokus
+  function refreshLeicht() {
+    var P = portfolio();
+    if (detailIdx !== null && P.objs[detailIdx]) {
+      var nam = OBJ[detailIdx].name || "Objekt " + (detailIdx + 1);
+      var t = document.querySelector("#viewDetail h2");
+      if (t) t.textContent = nam;
+      var tb = document.getElementById("tabObjekt");
+      if (tb) tb.textContent = nam;
+    }
+  }
+
+  document.querySelectorAll("#tabs .tab[data-view]").forEach(function (t) {
+    t.addEventListener("click", function () {
+      view = t.dataset.view;
+      detailIdx = null;
+      refresh();
+      window.scrollTo(0, 0);
+    });
+  });
+
+  baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", function () { refresh(); });
+  refresh();
+})();
+</script>
