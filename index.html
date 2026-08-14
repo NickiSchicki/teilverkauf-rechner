@@ -386,6 +386,9 @@
   table.sched thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); color: var(--ink-2); font-weight: 600; border-bottom: 1px solid var(--axis); }
   table.sched th:first-child, table.sched td:first-child { text-align: left; padding-left: 2px; }
   table.sched tr.exit-row td { background: var(--s1-wash); font-weight: 600; border-bottom: 1px solid var(--axis); }
+  table.sched tr.exit-row td .zsub { display: block; font-weight: 400; font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+  .lz-box { border: 1px solid var(--axis); border-radius: 10px; padding: 10px 12px; margin: 14px 0 16px; background: var(--bg); }
+  .lz-box .derived em { font-style: normal; color: var(--ink-3); font-size: 12px; }
   table.sched tfoot td { font-weight: 700; border-top: 1px solid var(--axis); border-bottom: none; }
   table.sched .neg { color: var(--s2); }
 </style>
@@ -495,6 +498,7 @@
         <p><b>Zinsbindung und Geldanlage:</b> Fällt der Verkauf in die Zinsbindung, lässt sich das Darlehen nicht entschädigungsfrei ablösen. Ist der entsprechende Schalter gesetzt, läuft es bis zum Ende der Zinsbindung weiter, während der Verkaufserlös zum Anlagezins geparkt wird — als Näherung für kurzlaufende Bundeswertpapiere. Aus der Differenz zwischen Sollzins und Anlagezins entsteht ein laufender Verlust auf dem geparkten Betrag; im Gegenzug entfällt eine Vorfälligkeitsentschädigung, die hier nicht gerechnet wird. Ohne den Schalter wird beim Verkauf abgelöst, ebenfalls ohne Entschädigung — die Wahrheit liegt dazwischen. Guthaben werden durchgehend zum Anlagezins verzinst, negative Salden zum Sollzins plus Aufschlag; beides läuft über die GuV und erhöht oder mindert die Steuer. Eine Zinsänderung nach Ablauf der Bindung ist nicht modelliert. Die Rendite ist der interne Zinsfuß der Einlagen gegen die Schlussliquidität; der Schalter „Abgeltungsteuer“ zeigt als Nebenrechnung, was nach einer späteren Entnahme bliebe (26,375 % auf den Betrag oberhalb der Einlagen).</p>
         <p><b>Haltedauer:</b> Sie lässt sich je Objekt frei setzen oder über den Schalter „Haltedauer aus Sterbetafel“ an den Median der Exit-Verteilung koppeln. Ist die Kopplung aktiv, wirkt das Alter des Haushalts bis in Bilanz, Rendite und Liquiditätsverlauf durch; andernfalls beeinflusst es nur die Analyse. Verwendet wird der Median und nicht der Erwartungswert, weil die Rechenwerke eine ganze Zahl brauchen und der Median einen konkreten Vertrag beschreibt, während der Erwartungswert durch die lange rechte Flanke der Verteilung nach oben gezogen wird.</p>
         <p><b>Ankaufsfilter:</b> Die Umkehrung der Renditerechnung — gesucht wird der Wert, bei dem der wahrscheinlichkeitsgewichtete Kapitalwert gerade null wird, gemessen gegen die auf Gesellschaftsebene eingestellte Mindestrendite. Diese Zielgröße kommt <b>ohne unterstellte Haltedauer</b> aus: Weil der Kapitalwert linear in den Zahlungen ist, entspricht der gewichtete Kapitalwert exakt dem Kapitalwert des gewichteten Zahlungsstroms. Gerechnet wird einschließlich der anteiligen laufenden Kosten der Gesellschaft — dieselbe Kostenbasis wie in der übrigen Objektrechnung, damit auf einer Seite nicht zwei verschiedene Renditen für denselben Vertrag stehen.</p>
+        <p><b>Laufzeiten:</b> Drei Zeiträume fallen auseinander. Die <em>Vertragslaufzeit</em> ist an die Kreditbindung gekoppelt — so lange ist die Gesellschaft gebunden. Der <em>Verkauf des Anteils</em> erfolgt entweder zum angenommenen Zeitpunkt oder, bei zugeschalteter Sterbetafel-Kopplung, über die Exit-Verteilung gewichtet. Liegt der Verkauf vor dem Ende der Kreditbindung, läuft das Darlehen weiter und der Erlös wird bis zur Ablösung zum Anlagezins geparkt; die <em>Kapitalbindung</em> ist dann länger als die Zeit bis zum Verkauf. Da diese Nachlaufzeit kein Nutzungsentgelt trägt, der Sollzins aber weiterläuft, drückt sie die Rendite — sie steht deshalb neben der Mindestrendite. Alle Renditeangaben beziehen sich auf die Kapitalbindung, nicht auf die Zeit bis zum Verkauf.</p>
         <p><b>Umkehrrechnung je Stellschraube:</b> Jede Zeile der Stellschraubentabelle beantwortet dieselbe Frage für genau eine Größe, alle übrigen unverändert. Die Suche läuft als Bisektion; die Wirkungsrichtung wird gemessen und nicht unterstellt. Liegt die Lösung außerhalb des zulässigen Bereichs, erscheint „reicht allein nicht aus“ oder „im gesamten Bereich unkritisch“ statt eines an den Rand geklemmten Werts. Die erste Zeile behandelt die Mindestrendite selbst als Stellschraube: Ihr kritischer Wert ist die Rendite, die der Vertrag bei den aktuellen Annahmen tatsächlich abwirft, und stimmt mit der erwarteten Rendite der Analyse überein — beides ist der Zinsfuß, bei dem derselbe gewichtete Kapitalwert null wird.</p>
         <p><b>Effektive Kosten je Eigentümer</b> sind der interne Zinsfuß aus dessen Sicht: Auszahlung heute gegen Nutzungsentgelte und den Anteil, der beim Verkauf an die GmbH geht. Verkaufskosten des Eigentümers zählen nicht dazu, weil sie bei einem Verkauf ohne Teilverkauf ebenso anfielen.</p>
         <p>Alle Werte jährlich nachschüssig, vor Inflation. Ausfall-, Instandhaltungs- und Bewertungsrisiken sind nicht modelliert.</p>
@@ -515,6 +519,13 @@
     return v.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d }) + " %";
   }
   function csvNum(v) { return (Math.round(v * 100) / 100).toFixed(2).replace(".", ","); }
+  // Jahresangaben: ganze Zahlen ohne Nachkomma, gemittelte mit einer Stelle
+  function fJahre(v) {
+    if (v === null || v === undefined || !isFinite(v)) return "–";
+    var ganz = Math.abs(v - Math.round(v)) < 0.05;
+    return v.toLocaleString("de-DE", { minimumFractionDigits: ganz ? 0 : 1, maximumFractionDigits: ganz ? 0 : 1 }) +
+      (ganz && Math.round(v) === 1 ? " Jahr" : " Jahre");
+  }
 
   var KST = 15.825, ABGELT = 26.375;
 
@@ -611,6 +622,40 @@
     return o.holdAuto ? exitGewichte(o).median : o.hold;
   }
 
+  // Über welche Zeit die Rendite gerechnet wird. Ohne Sterbetafel-Kopplung ist der
+  // Verkaufszeitpunkt eine feste Annahme, mit ihr eine Verteilung. Beides führt auf
+  // dieselbe gewichtete Form — im ersten Fall mit einem einzigen Gewicht von 1.
+  // Dadurch wirkt der Schalter auch auf die Rendite und nicht nur auf die Bilanz.
+  function renditeGewichte(o) {
+    if (o.holdAuto) return exitGewichte(o).w;
+    var h = Math.min(HMAX, Math.max(1, Math.round(o.hold)));
+    var w = [];
+    for (var k = 0; k <= HMAX; k++) w.push(k === h ? 1 : 0);
+    return w;
+  }
+
+  // Drei Laufzeiten, die auseinanderfallen können:
+  //   kredit   — die Bindung des Darlehens, an der sich der Vertrag ausrichtet
+  //   verkauf  — wann der Anteil tatsächlich veräußert wird
+  //   bindung  — wie lange das Eigenkapital gebunden bleibt
+  // Endet der Vertrag vor dem Kredit, liegt der Erlös bis zur Ablösung in der
+  // Geldanlage: Das Kapital arbeitet dann zum Anlagezins statt im Objekt.
+  function laufzeiten(o) {
+    var w = renditeGewichte(o), GW = exitGewichte(o);
+    var verkauf = 0, bindung = 0, nachlauf = 0, pNachlauf = 0;
+    for (var k = 1; k <= HMAX; k++) {
+      if (!w[k]) continue;
+      var ende = o.weiterfuehren ? Math.max(k, o.zinsbindung) : k;
+      verkauf += w[k] * k;
+      bindung += w[k] * ende;
+      nachlauf += w[k] * (ende - k);
+      if (ende > k) pNachlauf += w[k];
+    }
+    return { kredit: o.zinsbindung, verkauf: verkauf, bindung: bindung,
+      nachlauf: nachlauf, pNachlauf: pNachlauf * 100,
+      auto: !!o.holdAuto, median: GW.median, eH: GW.eH, gesetzt: o.hold };
+  }
+
   // Renditehürde: was das eingesetzte Eigenkapital mindestens bringen muss.
   // Bewusst unabhängig vom Sollzins — Eigenkapital haftet und ist lange gebunden,
   // der Maßstab ist die Alternativanlage, nicht die Bankkondition.
@@ -644,8 +689,8 @@
       { id: "ne", label: "Nutzungsentgelt", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "auf den Auszahlungsbetrag, fest" },
       { id: "esc", label: "Jährliche Anpassung", min: 0, max: 4, step: 0.25, fmt: function (v) { return v === 0 ? "keine" : fPct(v, 2) + " p.a."; }, note: "0 % = feste Rate bis zum Verkauf" },
       { id: "start", label: "Erwerbsjahr", min: 0, max: 20, step: 1, fmt: function (v) { return v === 0 ? "heute" : "in " + v + " Jahren"; } },
-      { id: "holdAuto", label: "Haltedauer aus Sterbetafel", bool: true, note: "Median der Exit-Verteilung statt eigener Annahme" },
-      { id: "hold", label: "Haltedauer", min: 1, max: 40, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "wirkt nur ohne Sterbetafel-Kopplung" },
+      { id: "holdAuto", label: "Haltedauer aus Sterbetafel", bool: true, note: "rechnet über die Exit-Verteilung statt über eine feste Annahme" },
+      { id: "hold", label: "Haltedauer", min: 1, max: 40, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "angenommener Verkaufszeitpunkt, wirkt nur ohne Sterbetafel-Kopplung" },
       { id: "de", label: "Durchführungsentgelt", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "vom Gesamterlös beim Verkauf" },
       { id: "min", label: "Mindesterlös", min: 0, max: 140, step: 1, fmt: function (v) { return v === 0 ? "keiner" : fPct(v, 0); }, note: "garantierter Rückfluss in % der Auszahlung" },
       { id: "vkKosten", label: "Verkaufskosten beim Exit", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "Makler etc., anteilig getragen" }
@@ -656,8 +701,8 @@
       { id: "ltv", label: "Beleihung", min: 0, max: 95, step: 5, fmt: function (v) { return fPct(v, 0); }, note: "Darlehen in % des Anteilskaufpreises" },
       { id: "zins", label: "Sollzins", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; } },
       { id: "tilg", label: "Anfangstilgung", min: 0, max: 5, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "0 % = endfälliges Darlehen" },
-      { id: "zinsbindung", label: "Zinsbindung", min: 5, max: 30, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "vorher keine Ablösung ohne Entschädigung" },
-      { id: "weiterfuehren", label: "Bei Verkauf weiterführen", bool: true, note: "Darlehen läuft bis Ende der Zinsbindung, Erlös wird angelegt" }
+      { id: "zinsbindung", label: "Zinsbindung", min: 5, max: 30, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "Vertragslaufzeit — vorher keine Ablösung ohne Entschädigung" },
+      { id: "weiterfuehren", label: "Bei Verkauf weiterführen", bool: true, note: "Darlehen läuft bis Ende der Vertragslaufzeit, der Erlös wird bis dahin angelegt" }
     ] },
     { title: "Steuerliche Angaben", items: [
       { id: "afaSatz", label: "AfA-Satz", min: 1, max: 4, step: 0.5, fmt: function (v) { return fPct(v, 1) + " p.a."; }, note: "2 % Standard · 2,5 % vor 1925 · 3 % Neubau" },
@@ -1091,7 +1136,7 @@
   // Die Hürde selbst ist ebenfalls eine Stellschraube: Ihr kritischer Wert ist die
   // Rendite, die der Vertrag bei den aktuellen Annahmen tatsächlich abwirft.
   function kritischeRendite(o, opexShare, taxRate) {
-    var w = exitGewichte(o).w;
+    var w = renditeGewichte(o);
     function kwBei(r) { return eKapitalwert(kwKurve(o, opexShare, taxRate, r / 100), w, r / 100); }
     var lo = -20, hi = 40;
     if (kwBei(lo) < 0) return { status: "unerreichbar", jetzt: kwBei(G.mindestRendite) };
@@ -1107,7 +1152,7 @@
 
   function kritischerWert(o, sch, opexShare, taxRate) {
     var disk = zielZins(o) / 100;
-    var w = exitGewichte(o).w;
+    var w = renditeGewichte(o);
     function kwBei(v) {
       var oo = Object.assign({}, o); oo[sch.k] = v;
       return eKapitalwert(kwKurve(oo, opexShare, taxRate, disk), w, disk);
@@ -1133,7 +1178,7 @@
 
   function mindestEntgelt(o, opexShare, taxRate) {
     var disk = zielZins(o) / 100;
-    var w = exitGewichte(o).w;
+    var w = renditeGewichte(o);
     function kwBei(ne) {
       return eKapitalwert(kwKurve(Object.assign({}, o, { ne: ne }), opexShare, taxRate, disk), w, disk);
     }
@@ -1158,7 +1203,9 @@
 
   function exitAnalyse(o, opexShare, taxRate) {
     var GW = exitGewichte(o);
-    var w = GW.w;
+    var w = GW.w;              // reine Sterbetafel — Diagramm und Risikoanteile
+    var wR = renditeGewichte(o); // maßgeblich für die Rendite, folgt dem Schalter
+    var LZ = laufzeiten(o);
     var disk = zielZins(o) / 100; // dieselbe Hürde wie im Ankaufsfilter
     var kurve = [];
     for (var h = 1; h <= HMAX; h++) {
@@ -1192,15 +1239,15 @@
     }
     var summe = 1;
 
-    // Erwartungswert der Rendite als interner Zinsfuß des erwarteten Zahlungsstroms
+    // Rendite als interner Zinsfuß des gewichteten Zahlungsstroms. Gewichtet wird mit
+    // wR, damit ohne Sterbetafel-Kopplung genau der eingestellte Zeitpunkt gilt.
     var maxEnde = HMAX;
     kurve.forEach(function (p) { maxEnde = Math.max(maxEnde, p.ende); });
     var eFlows = [-kurve[0].equity0];
     for (var k3 = 1; k3 <= maxEnde; k3++) eFlows.push(0);
     for (var k4 = 1; k4 <= HMAX; k4++) {
-      var w2 = w[k4];
       // Rückfluss zum tatsächlichen Ablösejahr, nicht zum Verkaufsjahr
-      eFlows[kurve[k4 - 1].ende] += w2 * kurve[k4 - 1].endwert;
+      eFlows[kurve[k4 - 1].ende] += wR[k4] * kurve[k4 - 1].endwert;
     }
     var eIrrRaw = irr(eFlows);
 
@@ -1209,7 +1256,7 @@
     var hEff = Math.min(HMAX, Math.max(1, holdEffektiv(o)));
     return {
       kurve: kurve, beKW: beKW, beNull: beNull,
-      median: median, eH: eH, eEnd: eEnd, pVorBE: pVorBE * 100,
+      median: median, eH: eH, eEnd: eEnd, pVorBE: pVorBE * 100, lz: LZ,
       eIrr: eIrrRaw === null ? null : eIrrRaw * 100, w: w, hEff: hEff,
       gewaehlt: kurve[hEff - 1]
     };
@@ -1667,8 +1714,10 @@
     h += '<div class="card"><div class="stat-row">';
     h += '<div><div class="stat-label"><span class="dot s2"></span>Eigenkapital</div><div class="stat-num">' + fEur(x.equity0) +
       '</div><div class="stat-sub">' + fEur(x.loan0) + " Darlehen</div></div>";
+    var LZd = laufzeiten(o);
     h += '<div><div class="stat-label"><span class="dot s3"></span>Rendite nach Steuern</div><div class="stat-num">' + fPct(D.irr) +
-      '</div><div class="stat-sub">Projekt allein gerechnet</div></div>';
+      '</div><div class="stat-sub">' + (LZd.auto ? "Median-Szenario, " : "über ") +
+      fJahre(x.darlehensJahre) + " gebunden</div></div>";
     h += '<div><div class="stat-label">Ergebnisbeitrag</div><div class="stat-num">' + fEur(x.beitrag) +
       '</div><div class="stat-sub">vor Gemeinkosten und Steuern</div></div>';
     h += '<div><div class="stat-label">Liquidität am Ende</div><div class="stat-num">' + fEur(D.cashFinal) +
@@ -1868,15 +1917,35 @@
       h += "</div>";
 
       // Umkehrrechnung je Stellschraube
+      var LZ = A.lz;
       h += '<div class="card"><h2>Welche Stellschraube bringt die Mindestrendite?</h2>';
       h += '<p class="sub">Ziel sind ' + fPct(G.mindestRendite, 2) +
         ' auf das Eigenkapital, gerechnet einschließlich der anteiligen Gemeinkosten. Jede Zeile verändert genau eine Größe, alle übrigen bleiben unverändert; der kritische Wert ist der Punkt, an dem der gewichtete Kapitalwert gerade null wird.</p>';
+
+      // Über welche Zeit gerechnet wird — eine Rendite ohne Laufzeit sagt nichts aus
+      h += '<div class="lz-box">';
+      h += '<div class="derived tight"><span>Vertragslaufzeit <em>= Kreditbindung</em></span><b>' +
+        fJahre(LZ.kredit) + "</b></div>";
+      h += '<div class="derived tight"><span>Verkauf des Anteils' +
+        (LZ.auto ? ' <em>= Sterbetafel</em>' : ' <em>= feste Annahme</em>') + "</span><b>" +
+        fJahre(LZ.verkauf) + "</b></div>";
+      h += '<div class="derived need"><span>Kapitalbindung</span><b>' + fJahre(LZ.bindung) + "</b></div>";
+      if (LZ.nachlauf > 0.05) {
+        h += '<div class="ctl-note" style="margin-top:8px">Der Anteil wird vor dem Ende der Kreditbindung verkauft. Das Darlehen läuft weiter, der Erlös liegt ' +
+          fJahre(LZ.nachlauf) + " in der Geldanlage zu " + fPct(G.anlage, 2) + ", während er " + fPct(o.zins, 2) +
+          " Zinsen kostet — diese Zeit senkt die Rendite, ohne dass ein Nutzungsentgelt gegenübersteht." +
+          (LZ.pNachlauf < 99.5 ? " Das betrifft " + fPct(LZ.pNachlauf, 0) + " der Fälle." : "") + "</div>";
+      } else if (LZ.verkauf > LZ.kredit + 0.05) {
+        h += '<div class="ctl-note" style="margin-top:8px">Der Vertrag läuft über die Kreditbindung hinaus. Für die Zeit danach ist keine Anschlusskondition unterstellt — der Sollzins gilt unverändert weiter.</div>';
+      }
+      h += "</div>";
       h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
         "<th>Stellschraube</th><th>eingestellt</th><th>kritischer Wert</th><th>Abstand</th><th>Status</th><th></th></tr></thead><tbody>";
 
       // Die Hürde selbst zuerst — sie zeigt, was der Vertrag tatsächlich abwirft
       var R = F.rendite;
-      h += '<tr class="exit-row"><td>Mindestrendite</td><td>' + fPct(G.mindestRendite, 2) + " p.a.</td>";
+      h += '<tr class="exit-row"><td>Mindestrendite<span class="zsub">über ' + fJahre(LZ.bindung) +
+        " Kapitalbindung</span></td><td>" + fPct(G.mindestRendite, 2) + " p.a.</td>";
       if (R.status === "gefunden") {
         h += "<td>" + fPct(R.wert, 2) + " p.a.</td>";
         h += "<td>" + (R.reicht ? "+" : "−") + fPct(Math.abs(G.mindestRendite - R.wert), 2) + "</td>";
@@ -1910,7 +1979,8 @@
     h += '<div class="card"><div class="stat-row">';
     h += '<div><div class="stat-label">Erwartete Haltedauer</div><div class="stat-num">' +
       A.eH.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
-      '</div><div class="stat-sub">Median ' + (A.median || "–") + " Jahre · eingestellt " + o.hold + "</div></div>";
+      '</div><div class="stat-sub">Median ' + (A.median || "–") + " Jahre · " +
+      (A.lz.auto ? "gerechnet wird die Verteilung" : "gerechnet wird die Annahme von " + fJahre(o.hold)) + "</div></div>";
     h += '<div><div class="stat-label"><span class="dot s2"></span>Break-even</div><div class="stat-num">' +
       (A.beKW ? A.beKW + " J." : "nie") +
       '</div><div class="stat-sub">' +
@@ -1918,8 +1988,11 @@
       (A.beNull ? " · Kapitalerhalt ab " + A.beNull + " J." : "") + "</div></div>";
     h += '<div><div class="stat-label">Verkauf davor</div><div class="stat-num">' + fPct(A.pVorBE, 0) +
       '</div><div class="stat-sub">' + (A.beKW ? "Wahrscheinlichkeit eines Frühexits" : "kein Zeitpunkt erreicht die Hürde") + "</div></div>";
-    h += '<div><div class="stat-label"><span class="dot s3"></span>Erwartete Rendite</div><div class="stat-num">' + fPct(A.eIrr) +
-      '</div><div class="stat-sub">statt ' + fPct(gew.irr) + " bei " + o.hold + " Jahren</div></div>";
+    h += '<div><div class="stat-label"><span class="dot s3"></span>' +
+      (A.lz.auto ? "Erwartete Rendite" : "Rendite der Annahme") + '</div><div class="stat-num">' + fPct(A.eIrr) +
+      '</div><div class="stat-sub">' + (A.lz.auto
+        ? "über die Verteilung · " + fJahre(A.lz.bindung) + " gebunden"
+        : fJahre(A.lz.verkauf) + " bis zum Verkauf · " + fJahre(A.lz.bindung) + " gebunden") + "</div></div>";
     h += "</div>";
 
     var diff = (A.eIrr !== null && gew.irr !== null) ? A.eIrr - gew.irr : null;
@@ -2053,9 +2126,9 @@
     h += "</div>";
 
     h += '<div class="card"><h2>Objekte im Vergleich</h2>';
-    h += '<p class="sub">Wie belastbar die eingestellte Haltedauer je Vertrag ist. Ein Klick öffnet das Projekt.</p>';
+    h += '<p class="sub">Wie die Laufzeiten je Vertrag auseinanderfallen und was das für die Rendite bedeutet. Ein Klick öffnet das Projekt.</p>';
     h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
-      "<th>Objekt</th><th>Haushalt</th><th>Alter</th><th>Dauer</th><th>Median</th><th>Entgelt</th><th>nötig</th><th>Kapitalwert negativ</th><th>Rendite erwartet</th>" +
+      "<th>Objekt</th><th>Haushalt</th><th>Alter</th><th>Verkauf</th><th>Kredit</th><th>Bindung</th><th>Entgelt</th><th>nötig</th><th>Kapitalwert negativ</th><th>Rendite</th>" +
       "</tr></thead><tbody>";
     R.reihen.forEach(function (r, i) {
       var g2 = r.A.gewaehlt;
@@ -2066,14 +2139,21 @@
         : (F.status === "nicht bindend" ? "unter " + fPct(NE_MIN, 0) : "nicht erreichbar");
       var knapp = F.status === "nicht erreichbar" || (F.status === "gefunden" && F.ne > r.o.ne);
       h += "<td>" + (r.o.haus || "Paar") + "</td><td>" + (r.o.alter || 75) + "</td>";
-      h += "<td>" + r.o.hold + (r.o.holdAuto ? " ◆" : "") + "</td><td>" + (r.A.median || "–") + "</td>";
+      // Verkauf, Kreditbindung und die daraus folgende Kapitalbindung getrennt —
+      // die Rendite bezieht sich auf die Bindung, nicht auf die Zeit bis zum Verkauf.
+      var L2 = r.A.lz;
+      h += "<td>" + fJahre(L2.verkauf).replace(" Jahre", "").replace(" Jahr", "") +
+        (L2.auto ? " ◆" : "") + "</td>";
+      h += "<td>" + L2.kredit + "</td>";
+      h += '<td class="' + (L2.nachlauf > 0.05 ? "neg" : "") + '">' +
+        fJahre(L2.bindung).replace(" Jahre", "").replace(" Jahr", "") + "</td>";
       h += "<td>" + fPct(r.o.ne, 2) + "</td>";
       h += '<td class="' + (knapp ? "neg" : "") + '">' + noetig + "</td>";
       h += '<td class="' + (r.A.pVorBE > 25 ? "neg" : "") + '">' + fPct(r.A.pVorBE, 0) + "</td>";
       h += "<td>" + fPct(r.A.eIrr) + "</td></tr>";
     });
     h += "</tbody></table></div>";
-    h += '<p class="caption">Die Spalte „nötig“ nennt das Nutzungsentgelt, bei dem der gewichtete Kapitalwert gerade null wird. Weil der Kapitalwert linear in den Zahlungen ist, braucht diese Größe keine unterstellte Haltedauer. Die erwartete Rendite ist der interne Zinsfuß des gewichteten Zahlungsstroms; Renditen einzelner Objekte lassen sich nicht mitteln, Kapitalwerte dagegen addieren. Die Verteilung eines einzelnen Objekts steht auf dessen Projektseite.</p>';
+    h += '<p class="caption">Die Spalte „nötig“ nennt das Nutzungsentgelt, bei dem der gewichtete Kapitalwert gerade null wird. Weil der Kapitalwert linear in den Zahlungen ist, braucht diese Größe keine unterstellte Haltedauer. Alle Jahresangaben sind Jahre: „Verkauf“ ist der Zeitpunkt der Veräußerung — mit ◆ aus der Sterbetafel gewichtet, sonst die eingestellte Annahme —, „Kredit“ die Vertrags- und Kreditbindung, „Bindung“ die daraus folgende Kapitalbindung. Ist sie länger als die Zeit bis zum Verkauf, liegt der Erlös bis zur Ablösung in der Geldanlage; darauf bezieht sich die Rendite. Renditen einzelner Objekte lassen sich nicht mitteln, Kapitalwerte dagegen addieren. Die Verteilung eines einzelnen Objekts steht auf dessen Projektseite.</p>';
     h += "</div>";
 
     h += '<div class="card fine"><h2>Woher die Sterbewahrscheinlichkeiten kommen</h2>' +
