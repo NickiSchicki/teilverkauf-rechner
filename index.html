@@ -519,6 +519,12 @@
     return v.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d }) + " %";
   }
   function csvNum(v) { return (Math.round(v * 100) / 100).toFixed(2).replace(".", ","); }
+  // Ohne Zwischenausschüttungen realisiert sich die gesamte Rendite beim Verkauf:
+  // Das Eigenkapital geht einmal hinein und kommt einmal zurück. Die Gesamtrendite
+  // über die Kapitalbindung ist deshalb die anschaulichere Größe; der Jahreszins ist
+  // nur ihre Verteilung auf die Zeit.
+  function gesamtRendite(pa, jahre) { return (Math.pow(1 + pa / 100, jahre) - 1) * 100; }
+
   // Jahresangaben: ganze Zahlen ohne Nachkomma, gemittelte mit einer Stelle
   function fJahre(v) {
     if (v === null || v === undefined || !isFinite(v)) return "–";
@@ -1141,12 +1147,14 @@
     var lo = -20, hi = 40;
     if (kwBei(lo) < 0) return { status: "unerreichbar", jetzt: kwBei(G.mindestRendite) };
     if (kwBei(hi) >= 0) return { status: "unkritisch", jetzt: kwBei(G.mindestRendite) };
-    for (var i = 0; i < 26 && hi - lo > 0.005; i++) {
+    for (var i = 0; i < 32 && hi - lo > 0.0002; i++) {
       var mid = (lo + hi) / 2;
       if (kwBei(mid) >= 0) lo = mid; else hi = mid;
     }
+    // wert ist der angezeigte Jahreszins, exakt der ungerundete — aus ihm wird die
+    // Gesamtrendite gerechnet, sonst potenziert sich der Rundungsrest über die Jahre.
     var wert = Math.round(lo * 100) / 100;
-    return { status: "gefunden", wert: wert, jetzt: kwBei(G.mindestRendite),
+    return { status: "gefunden", wert: wert, exakt: lo, jetzt: kwBei(G.mindestRendite),
       reicht: G.mindestRendite <= wert + 0.02 };
   }
 
@@ -1944,11 +1952,17 @@
 
       // Die Hürde selbst zuerst — sie zeigt, was der Vertrag tatsächlich abwirft
       var R = F.rendite;
-      h += '<tr class="exit-row"><td>Mindestrendite<span class="zsub">über ' + fJahre(LZ.bindung) +
-        " Kapitalbindung</span></td><td>" + fPct(G.mindestRendite, 2) + " p.a.</td>";
+      // Die Hürde in Gesamtrendite über die Kapitalbindung, der Jahreszins darunter —
+      // ausgeschüttet wird nichts, der gesamte Rückfluss entsteht beim Verkauf.
+      var zielGes = gesamtRendite(G.mindestRendite, LZ.bindung);
+      h += '<tr class="exit-row"><td>Mindestrendite<span class="zsub">gesamt über ' + fJahre(LZ.bindung) +
+        ' Kapitalbindung</span></td><td>' + fPct(zielGes, 1) +
+        '<span class="zsub">' + fPct(G.mindestRendite, 2) + " p.a.</span></td>";
       if (R.status === "gefunden") {
-        h += "<td>" + fPct(R.wert, 2) + " p.a.</td>";
-        h += "<td>" + (R.reicht ? "+" : "−") + fPct(Math.abs(G.mindestRendite - R.wert), 2) + "</td>";
+        var istGes = gesamtRendite(R.exakt, LZ.bindung);
+        h += "<td>" + fPct(istGes, 1) + '<span class="zsub">' + fPct(R.wert, 2) + " p.a.</span></td>";
+        h += "<td>" + (R.reicht ? "+" : "−") + fPct(Math.abs(zielGes - istGes), 1) +
+          '<span class="zsub">' + (R.reicht ? "+" : "−") + fPct(Math.abs(G.mindestRendite - R.wert), 2) + "</span></td>";
         h += '<td class="' + (R.reicht ? "" : "neg") + '">' + (R.reicht ? "erreicht" : "verfehlt") + "</td>";
         h += '<td><button type="button" class="act" data-setzR="1" title="Anspruch auf das Erreichbare senken">setzen</button></td>';
       } else {
@@ -1973,7 +1987,7 @@
         h += "</tr>";
       });
       h += "</tbody></table></div>";
-      h += '<p class="caption">Die erste Zeile ist die Hürde selbst: Ihr kritischer Wert ist die Rendite, die dieser Vertrag bei den aktuellen Annahmen tatsächlich abwirft. Sie gilt für die ganze Gesellschaft — wird sie gesenkt, ändert sich der Maßstab für alle Objekte. Die übrigen Zeilen betreffen nur dieses Objekt. „Reicht allein nicht aus“ bedeutet: Selbst am günstigsten Ende dieser Größe bleibt der Kapitalwert negativ, dann müssen mehrere Stellschrauben zusammen bewegt werden.</p>';
+      h += '<p class="caption">Die erste Zeile ist die Hürde selbst: Ihr kritischer Wert ist die Rendite, die dieser Vertrag bei den aktuellen Annahmen tatsächlich abwirft. Sie steht als Gesamtrendite über die Kapitalbindung, weil nichts ausgeschüttet wird — das Eigenkapital geht einmal hinein und kommt beim Verkauf einmal zurück; der Jahreszins darunter ist nur die Verteilung dieses einen Rückflusses auf die Zeit. Bei zugeschalteter Sterbetafel ist die Gesamtangabe auf die mittlere Kapitalbindung umgerechnet, weil dort jeder Pfad eine eigene Laufzeit hat. Sie gilt für die ganze Gesellschaft — wird sie gesenkt, ändert sich der Maßstab für alle Objekte. Die übrigen Zeilen betreffen nur dieses Objekt. „Reicht allein nicht aus“ bedeutet: Selbst am günstigsten Ende dieser Größe bleibt der Kapitalwert negativ, dann müssen mehrere Stellschrauben zusammen bewegt werden.</p>';
       h += "</div>";
     }
     h += '<div class="card"><div class="stat-row">';
