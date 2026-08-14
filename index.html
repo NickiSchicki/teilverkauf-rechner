@@ -150,6 +150,7 @@
   .derived.tight { border-top: none; margin-top: 0; padding-top: 4px; }
   .derived.need { border-top: 1px solid var(--axis); margin-top: 8px; padding-top: 8px; }
   .derived.need span, .derived.need b { color: var(--ink); font-weight: 700; }
+  .derived.need b.warnzahl { color: var(--s2); }
 
   main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
@@ -563,7 +564,7 @@
     alter: 75, haus: "Paar", pflege: 2.5,
     growth: 2, verfall: 0.75, abschlag: 0,
     esc: 0, de: 0, min: 0, vkKosten: 3.5,
-    grest: 6.5, notar: 2.0, makler: 7.14,
+    grest: 6.5, notar: 2.0, makler: 7.14, akquise: 5000,
     holdAuto: false,
     ltv: 60, zins: 3.9, tilg: 2.0, zinsbindung: 15, weiterfuehren: true,
     afaSatz: 2, gebAnteil: 70
@@ -711,6 +712,7 @@
     { title: "Ankauf & Finanzierung", dot: "s2", items: [
       { id: "grest", label: "Grunderwerbsteuer", min: 3.5, max: 6.5, step: 0.5, fmt: function (v) { return fPct(v, 1); }, note: "je Bundesland verschieden" },
       { id: "notar", label: "Notar & Grundbuch", min: 0, max: 3, step: 0.25, fmt: function (v) { return fPct(v, 2); } },
+      { id: "akquise", label: "Akquisitionskosten", min: 0, max: 40000, step: 500, fmt: function (v) { return v === 0 ? "keine" : fEur(v); }, note: "Werbung und Vertrieb je Abschluss, sofort abzugsfähiger Aufwand" },
       { id: "makler", label: "Maklercourtage", min: 0, max: 8, step: 0.595, fmt: function (v) { return v === 0 ? "keine" : fPct(v, 2); }, note: "volle Provision, von der Gesellschaft allein getragen — 7,14 % sind 6 % zzgl. Umsatzsteuer" },
       { id: "ltv", label: "Beleihung", min: 0, max: 95, step: 5, fmt: function (v) { return fPct(v, 0); }, note: "Darlehen in % des Anteilskaufpreises" },
       { id: "zins", label: "Sollzins", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; } },
@@ -882,7 +884,11 @@
     var nebenSatz = o.grest / 100 + o.notar / 100 + (o.makler || 0) / 100;
     var invest0 = P * (1 + nebenSatz);
     var loan0 = P * o.ltv / 100;
-    var equity0 = invest0 - loan0;
+    // Akquisitionskosten sind Vertriebsaufwand, nicht dem Erwerb einzeln zurechenbar:
+    // Sie werden nicht aktiviert, sondern im Erwerbsjahr aufwandswirksam. Bezahlt
+    // werden müssen sie trotzdem, deshalb erhöhen sie den Eigenkapitalbedarf.
+    var akquise = Math.max(0, o.akquise || 0);
+    var equity0 = invest0 - loan0 + akquise;
     var annuity = loan0 * (o.zins + o.tilg) / 100;
     var afaBase = invest0 * o.gebAnteil / 100;
     var afaYear = afaBase * o.afaSatz / 100;
@@ -925,7 +931,7 @@
     years.forEach(function (r) { if (r.y === exitY) restBeiExit = r.rest; });
 
     return {
-      o: o, P: P, vollpreis: vollpreis, invest0: invest0, loan0: loan0, equity0: equity0, annuity: annuity,
+      o: o, P: P, vollpreis: vollpreis, invest0: invest0, loan0: loan0, equity0: equity0, akquise: akquise, annuity: annuity,
       years: years, exitY: exitY, ablöseY: ablöseY, darlehensJahre: darlehensJahre,
       restBeiExit: restBeiExit, VT: VT, B: B, DE: DE,
       vkTotal: vkTotal, vkBuyer: vkBuyer, proceeds: proceeds,
@@ -956,7 +962,7 @@
     // dürfen davor liegen, dann ist ihr Erwerb Bestand und start0 wird negativ.
     var Y = [];
     for (var y = start0; y <= T; y++) {
-      Y.push({ y: y, ne: 0, zins: 0, tilg: 0, pay: 0, afa: 0, opex: 0, vGewinn: 0, proceeds: 0, payoff: 0, invest: 0, loanNew: 0, einlage: 0, buchwert: 0, rest: 0, aktiv: 0 });
+      Y.push({ y: y, ne: 0, zins: 0, tilg: 0, pay: 0, afa: 0, opex: 0, akquise: 0, vGewinn: 0, proceeds: 0, payoff: 0, invest: 0, loanNew: 0, einlage: 0, buchwert: 0, rest: 0, aktiv: 0 });
     }
     function at(y) { return Y[y - start0]; }
 
@@ -964,6 +970,7 @@
       at(x.o.start).invest += x.invest0;
       at(x.o.start).loanNew += x.loan0;
       at(x.o.start).einlage += x.equity0;
+      at(x.o.start).akquise += x.akquise;
       x.years.forEach(function (r) {
         var t = at(r.y);
         t.ne += r.ne; t.zins += r.zins; t.tilg += r.tilg; t.pay += r.pay; t.afa += r.afa;
@@ -998,7 +1005,7 @@
       var anlageErtrag = Math.max(0, cash) * G.anlage / 100;
       var kkZins = Math.max(0, -cash) * G.kkZins / 100;
 
-      var ebt = t.ne + anlageErtrag - t.afa - t.zins - kkZins - opex + t.vGewinn;
+      var ebt = t.ne + anlageErtrag - t.afa - t.zins - kkZins - opex - t.akquise + t.vGewinn;
       var tax = 0;
       {
         if (ebt > 0) {
@@ -1014,14 +1021,14 @@
       cumProfit += jue;
       cumEinlage += t.einlage;
 
-      var cashChange = t.einlage + t.loanNew - t.invest + t.ne - t.pay - opex - tax
+      var cashChange = t.einlage + t.loanNew - t.invest - t.akquise + t.ne - t.pay - opex - tax
         + t.proceeds - t.payoff + anlageErtrag - kkZins;
       cash += cashChange;
 
       flows.push(-t.einlage);
 
       rows.push({
-        y: i, ne: t.ne, afa: t.afa, zins: t.zins, opex: opex, vGewinn: t.vGewinn,
+        y: i, ne: t.ne, afa: t.afa, zins: t.zins, opex: opex, akquise: t.akquise, vGewinn: t.vGewinn,
         anlageErtrag: anlageErtrag, kkZins: kkZins,
         ebt: ebt, tax: tax, jue: jue,
         buchwert: t.buchwert, cash: cash, ek: cumEinlage + cumProfit, rest: t.rest,
@@ -1057,9 +1064,15 @@
   // Projekt allein gerechnet — die maßgebliche Steuer steht in der Portfolioansicht.
   function objectDetail(x, opexShare, taxRate, schnell) {
     var lossCarry = 0, cash = 0, cumProfit = 0, taxSum = 0, neSum = 0, opexSum = 0, dsSum = 0;
+    // Der Akquiseaufwand fällt im Erwerbsjahr an und erzeugt dort einen Verlust,
+    // der vorgetragen wird. Einlage und Aufwand heben sich in der Kasse auf.
+    var akq = x.akquise || 0;
+    lossCarry = akq;
+    cumProfit = -akq;
     var rows = [{
-      y: x.o.start, ne: 0, afa: 0, zins: 0, opex: 0, vGewinn: 0, ebt: 0, tax: 0, jue: 0,
-      buchwert: x.invest0, cash: 0, ek: x.equity0, rest: x.loan0,
+      y: x.o.start, ne: 0, afa: 0, zins: 0, opex: 0, akquise: akq, vGewinn: 0,
+      ebt: -akq, tax: 0, jue: -akq,
+      buchwert: x.invest0, cash: 0, ek: x.equity0 - akq, rest: x.loan0,
       einlage: x.equity0, loanNew: x.loan0, invest: x.invest0,
       proceeds: 0, payoff: 0, tilg: 0, pay: 0, cashChange: 0, erwerb: true
     }];
@@ -1187,6 +1200,13 @@
     var wert = Math.round(lo * 100) / 100;
     return { status: "gefunden", wert: wert, exakt: lo, jetzt: kwBei(G.mindestRendite),
       reicht: G.mindestRendite <= wert + 0.02 };
+  }
+
+  // Dasselbe Projekt ohne Fremdkapital. Ohne Darlehen gibt es auch keine Zinsbindung —
+  // sonst läge der Erlös nach dem Verkauf ohne Grund in der Geldanlage und der
+  // Vergleich fiele zugunsten der Finanzierung aus.
+  function ohneHebel(o, opexShare, taxRate) {
+    return kritischeRendite(Object.assign({}, o, { ltv: 0, weiterfuehren: false }), opexShare, taxRate);
   }
 
   function kritischerWert(o, sch, opexShare, taxRate) {
@@ -1518,6 +1538,7 @@
         { l: "Zinserträge aus Geldanlage", f: function (r) { return r.anlageErtrag; } },
         { l: "Abschreibungen (AfA)", f: function (r) { return -r.afa; } },
         { l: "Sonstige betriebliche Aufwendungen", f: function (r) { return -r.opex; } },
+        { l: "Akquisitionskosten", f: function (r) { return -(r.akquise || 0); } },
         { l: "Zinsaufwand Darlehen", f: function (r) { return -r.zins; } },
         { l: "Zinsaufwand Kontokorrent", f: function (r) { return -r.kkZins; } },
         { l: "Ergebnis Anteilsverkäufe", f: function (r) { return r.vGewinn; } },
@@ -1534,7 +1555,7 @@
         { l: "Summe Passiva", sum: true, f: function (r) { return r.ek + r.rest; } }
       ] },
       { title: "Kapitalflussrechnung", rows: [
-        { l: "Operativer Cashflow", f: function (r) { return r.ne + r.anlageErtrag - r.zins - r.kkZins - r.opex - r.tax; } },
+        { l: "Operativer Cashflow", f: function (r) { return r.ne + r.anlageErtrag - r.zins - r.kkZins - r.opex - (r.akquise || 0) - r.tax; } },
         { l: "Investitionscashflow", f: function (r) { return r.proceeds - r.invest; } },
         { l: "Finanzierungscashflow", f: function (r) { return r.einlage + r.loanNew - r.tilg - r.payoff; } },
         { l: "davon Einlagen", f: function (r) { return r.einlage; } },
@@ -1656,6 +1677,7 @@
       { l: "Zinserträge aus Geldanlage", f: function (r) { return r.anlageErtrag || 0; } },
       { l: "Abschreibungen (AfA)", f: function (r) { return -r.afa; } },
       { l: "Anteilige laufende Kosten", f: function (r) { return -r.opex; } },
+      { l: "Akquisitionskosten", f: function (r) { return -(r.akquise || 0); } },
       { l: "Zinsaufwand Darlehen", f: function (r) { return -r.zins; } },
       { l: "Zinsaufwand Kontokorrent", f: function (r) { return -(r.kkZins || 0); } },
       { l: "Ergebnis Anteilsverkauf", f: function (r) { return r.vGewinn; } },
@@ -1672,7 +1694,7 @@
       { l: "Summe Passiva", sum: true, f: function (r) { return r.ek + r.rest; } }
     ] },
     { title: "Kapitalflussrechnung", rows: [
-      { l: "Operativer Cashflow", f: function (r) { return r.ne + (r.anlageErtrag || 0) - r.zins - (r.kkZins || 0) - r.opex - r.tax; } },
+      { l: "Operativer Cashflow", f: function (r) { return r.ne + (r.anlageErtrag || 0) - r.zins - (r.kkZins || 0) - r.opex - (r.akquise || 0) - r.tax; } },
       { l: "Investitionscashflow", f: function (r) { return r.proceeds - r.invest; } },
       { l: "Finanzierungscashflow", f: function (r) { return r.einlage + r.loanNew - r.tilg - r.payoff; } },
       { l: "Veränderung Zahlungsmittel", sum: true, f: function (r) { return r.cashChange; } },
@@ -1770,7 +1792,12 @@
     h += '<div class="stat-foot">Anschaffung ' + fEur(x.invest0) + " = " + fEur(x.P) + " Auszahlung + " +
       fEur(neben) + " Nebenkosten (" + fPct(o.grest, 1) + " Grunderwerbsteuer, " + fPct(o.notar, 2) +
       " Notar" + ((o.makler || 0) > 0 ? ", " + fPct(o.makler, 2) + " Makler" : "") + "), davon " +
-      fEur(x.loan0) + " über Darlehen. Anteilige laufende Kosten: " + fEur(opexShare) + " je Jahr (" + fEur(G.opex) +
+      fEur(x.loan0) + " über Darlehen" +
+      (x.akquise > 0
+        ? "; zuzüglich " + fEur(x.akquise) + " Akquisitionskosten, die nicht aktiviert werden, ergibt das " +
+          fEur(x.equity0) + " Eigenkapitalbedarf. "
+        : ". ") +
+      "Anteilige laufende Kosten: " + fEur(opexShare) + " je Jahr (" + fEur(G.opex) +
       " geteilt durch " + OBJ.length + (OBJ.length === 1 ? " Objekt" : " Objekte") +
       "). Zuwachs gegenüber der Einlage: " + fEur(D.gewinn) + ".</div></div>";
 
@@ -1823,6 +1850,7 @@
     var F = mindestEntgelt(o, oShare, P.taxRate / 100);
     F.stell = STELLSCHRAUBEN.map(function (sch) { return kritischerWert(o, sch, oShare, P.taxRate / 100); });
     F.rendite = kritischeRendite(o, oShare, P.taxRate / 100);
+    F.ohneHebel = ohneHebel(o, oShare, P.taxRate / 100);
     h += objektAnalyseHtml(o, A, F);
 
     host.innerHTML = h;
@@ -2005,6 +2033,33 @@
             " liegt — das ist die Rendite, die dieser Vertrag abwirft."
           : "") + "</div>";
       h += "</div>";
+
+      // ---- Hebelwirkung: trägt sich der Vertrag aus sich heraus? ----
+      var OH = F.ohneHebel;
+      if (Rk.status === "gefunden" && OH && OH.status === "gefunden") {
+        var hebel = Rk.wert - OH.wert;
+        var wirkt = hebel > 0.02, neutral = Math.abs(hebel) <= 0.02;
+        h += '<div class="card"><h2>Wirkt die Finanzierung für oder gegen das Projekt?</h2>';
+        h += '<p class="sub">Dasselbe Objekt einmal ohne Darlehen gerechnet. Die Differenz ist der Beitrag der Finanzierung — sie kann auch negativ sein.</p>';
+        h += '<div class="lz-box">';
+        h += '<div class="derived tight"><span>Rendite ohne Darlehen</span><b>' + fPct(OH.wert, 2) + " p.a.</b></div>";
+        h += '<div class="derived tight"><span>Rendite bei ' + fPct(o.ltv, 0) + " Beleihung</span><b>" +
+          fPct(Rk.wert, 2) + " p.a.</b></div>";
+        h += '<div class="derived need"><span>Beitrag der Finanzierung</span><b class="' +
+          (wirkt || neutral ? "" : "warnzahl") + '">' + (hebel >= 0 ? "+" : "−") +
+          fPct(Math.abs(hebel), 2) + "-Punkte</b></div>";
+        h += '<div class="ctl-note" style="margin-top:8px">' +
+          (o.ltv === 0
+            ? "Ohne Beleihung gibt es keinen Hebel. Ein Darlehen lohnt sich, solange das Objekt mehr erwirtschaftet, als es nach Steuern kostet."
+            : neutral
+              ? "Die Finanzierung ist bei diesen Annahmen ergebnisneutral — der Sollzins entspricht nach Steuern gerade dem, was das Objekt erwirtschaftet."
+              : wirkt
+                ? "Das Objekt erwirtschaftet mehr, als das Darlehen nach Steuern kostet. Mehr Fremdkapital verbessert die Eigenkapitalrendite, erhöht aber auch die Abhängigkeit vom Anschlusszins."
+                : "Das Darlehen kostet nach Steuern mehr, als das Objekt erwirtschaftet — der Hebel arbeitet gegen das Projekt. Weniger Fremdkapital verbessert das Ergebnis, löst aber das eigentliche Problem nicht: Der Vertrag trägt schon ohne Finanzierung nur " +
+                  fPct(OH.wert, 2) + ".") +
+          "</div>";
+        h += "</div></div>";
+      }
 
       // Umkehrrechnung je Stellschraube
       h += '<div class="card"><h2>Welche Stellschraube bringt die Mindestrendite?</h2>';
