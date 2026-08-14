@@ -21,6 +21,8 @@ Das Modell bildet beide Seiten ab:
 | **Objekt** | Ein einzelner Vertrag mit allen Annahmen, getrennt nach Vertragsbedingungen und Wirtschaftlichkeit |
 | **Analyse** | Verteilung des Verkaufszeitpunkts, Break-even und die Frage, wie belastbar eine angenommene Haltedauer ist |
 
+Die Zeitachse läuft in Kalenderjahren. Das **Basisjahr** ist auf Gesellschaftsebene einstellbar und benennt die Achse, ohne die Objekte zu verschieben — ein 2020 erworbenes Objekt bleibt bei 2020. Erwerbsjahre dürfen vor dem Basisjahr liegen; solche Objekte sind Bestand, und die konsolidierte Rechnung beginnt dann beim frühesten Erwerb.
+
 Jedes Objekt trägt seine Annahmen selbst — Immobilienwert, Anteil, Nutzungsentgelt, Finanzierung, Grunderwerbsteuer, Abschreibung sowie Alter und Zusammensetzung des Haushalts. Auf Gesellschaftsebene verbleiben nur laufende Kosten, Gewerbesteuer-Hebesatz, Anlage- und Kontokorrentzins sowie die Schalter für die erweiterte Kürzung und die Abgeltungsteuer.
 
 ## Rechengrundlagen

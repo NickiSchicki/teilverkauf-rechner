@@ -520,9 +520,9 @@
   }
   function csvNum(v) { return (Math.round(v * 100) / 100).toFixed(2).replace(".", ","); }
 
-  // Alle Zeitangaben laufen intern relativ zum Start; angezeigt werden Kalenderjahre.
-  var BASISJAHR = 2026;
-  function fJahr(j) { return String(BASISJAHR + Math.round(j)); }
+  // Alle Zeitangaben laufen intern relativ zum Basisjahr; angezeigt werden Kalenderjahre.
+  // Negative Werte sind zulässig — sie bezeichnen Objekte, die schon im Bestand sind.
+  function fJahr(j) { return String(G.basisjahr + Math.round(j)); }
   // Ohne Zwischenausschüttungen realisiert sich die gesamte Rendite beim Verkauf:
   // Das Eigenkapital geht einmal hinein und kommt einmal zurück. Die Gesamtrendite
   // über die Kapitalbindung ist deshalb die anschaulichere Größe; der Jahreszins ist
@@ -552,7 +552,7 @@
 
   // Gesellschaftsebene: gilt für die GmbH als Ganzes
   var G = {
-    opex: 3000, hebesatz: 400, erwKuerzung: true, ausschuetten: false,
+    basisjahr: 2026, opex: 3000, hebesatz: 400, erwKuerzung: true, ausschuetten: false,
     anlage: 3.0, kkZins: 6.0, mindestRendite: 5.5
   };
 
@@ -674,6 +674,7 @@
   // Gesellschaftsebene — gilt für alle Objekte
   var GES_GROUPS = [
     { title: "Gesellschaft", dot: "s3", items: [
+      { id: "basisjahr", label: "Basisjahr", min: 2015, max: 2040, step: 1, fmt: function (v) { return String(v); }, note: "Bezugsjahr der Zeitachse; Objekte dürfen davor liegen" },
       { id: "opex", label: "Laufende Kosten", min: 0, max: 20000, step: 250, fmt: function (v) { return fEur(v) + " / Jahr"; }, note: "je Geschäftsjahr, unabhängig von der Objektzahl" },
       { id: "hebesatz", label: "Gewerbesteuer-Hebesatz", min: 200, max: 600, step: 10, fmt: function (v) { return fPct(v, 0); }, note: "nur ohne erweiterte Kürzung relevant" },
       { id: "anlage", label: "Anlagezins", min: 0, max: 6, step: 0.1, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "Bundeswertpapiere für geparkte Mittel" },
@@ -698,7 +699,9 @@
     { title: "Vertrag", dot: "s1", items: [
       { id: "ne", label: "Nutzungsentgelt", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "auf den Auszahlungsbetrag, fest" },
       { id: "esc", label: "Jährliche Anpassung", min: 0, max: 4, step: 0.25, fmt: function (v) { return v === 0 ? "keine" : fPct(v, 2) + " p.a."; }, note: "0 % = feste Rate bis zum Verkauf" },
-      { id: "start", label: "Erwerbsjahr", min: 0, max: 20, step: 1, fmt: function (v) { return fJahr(v) + (v === 0 ? " (heute)" : " (in " + v + " Jahren)"); } },
+      { id: "start", label: "Erwerbsjahr", min: -25, max: 20, step: 1, fmt: function (v) {
+        return fJahr(v) + (v === 0 ? " (Basisjahr)" : (v < 0 ? " (Bestand, vor " + -v + (v === -1 ? " Jahr)" : " Jahren)") : " (in " + v + (v === 1 ? " Jahr)" : " Jahren)")));
+      } },
       { id: "holdAuto", label: "Haltedauer aus Sterbetafel", bool: true, note: "rechnet über die Exit-Verteilung statt über eine feste Annahme" },
       { id: "hold", label: "Haltedauer", min: 1, max: 40, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "angenommener Verkaufszeitpunkt, wirkt nur ohne Sterbetafel-Kopplung" },
       { id: "de", label: "Durchführungsentgelt", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "vom Gesamterlös beim Verkauf" },
@@ -724,6 +727,21 @@
   var fmtOf = {};
 
   // Baut eine Reglergruppe. quelle ist das Objekt, dessen Werte bearbeitet werden.
+  // Wird das Basisjahr verstellt, behalten die Objekte ihr Kalenderjahr: ein Objekt,
+  // das 2020 erworben wurde, bleibt 2020. Der Regler benennt die Zeitachse um, er
+  // verschiebt sie nicht — deshalb werden die Erwerbsjahre gegenläufig nachgeführt.
+  var basisAlt = G.basisjahr;
+  function gesGeaendert() {
+    if (G.basisjahr !== basisAlt) {
+      var d = G.basisjahr - basisAlt;
+      OBJ.forEach(function (o) { o.start = Math.max(-25, Math.min(20, o.start - d)); });
+      var pO = document.getElementById("panelObjekt");
+      if (pO) pO.dataset.idx = "";
+    }
+    basisAlt = G.basisjahr;
+    refresh();
+  }
+
   function baueGruppen(host, gruppen, quelle, praefix, nachAenderung) {
     host.innerHTML = "";
     gruppen.forEach(function (g) {
@@ -934,40 +952,43 @@
     var gewst = G.erwKuerzung ? 0 : 3.5 * G.hebesatz / 100;
     var taxRate = (KST + gewst) / 100;
 
+    // Die Zeitachse beginnt beim frühesten Erwerb, nicht beim Basisjahr — Objekte
+    // dürfen davor liegen, dann ist ihr Erwerb Bestand und start0 wird negativ.
     var Y = [];
-    for (var y = 0; y <= T; y++) {
+    for (var y = start0; y <= T; y++) {
       Y.push({ y: y, ne: 0, zins: 0, tilg: 0, pay: 0, afa: 0, opex: 0, vGewinn: 0, proceeds: 0, payoff: 0, invest: 0, loanNew: 0, einlage: 0, buchwert: 0, rest: 0, aktiv: 0 });
     }
+    function at(y) { return Y[y - start0]; }
 
     objs.forEach(function (x) {
-      Y[x.o.start].invest += x.invest0;
-      Y[x.o.start].loanNew += x.loan0;
-      Y[x.o.start].einlage += x.equity0;
+      at(x.o.start).invest += x.invest0;
+      at(x.o.start).loanNew += x.loan0;
+      at(x.o.start).einlage += x.equity0;
       x.years.forEach(function (r) {
-        var t = Y[r.y];
+        var t = at(r.y);
         t.ne += r.ne; t.zins += r.zins; t.tilg += r.tilg; t.pay += r.pay; t.afa += r.afa;
       });
-      Y[x.exitY].vGewinn += x.gewinn;
-      Y[x.exitY].proceeds += x.proceeds;
-      Y[x.ablöseY].payoff += x.restAtExit;
+      at(x.exitY).vGewinn += x.gewinn;
+      at(x.exitY).proceeds += x.proceeds;
+      at(x.ablöseY).payoff += x.restAtExit;
     });
 
     // Bestände am Jahresende: Buchwerte nur solange gehalten, Restschuld bis zur Ablösung
     objs.forEach(function (x) {
-      Y[x.o.start].buchwert += x.invest0;
-      Y[x.o.start].rest += x.loan0;
-      Y[x.o.start].aktiv += 1;
+      at(x.o.start).buchwert += x.invest0;
+      at(x.o.start).rest += x.loan0;
+      at(x.o.start).aktiv += 1;
       x.years.forEach(function (r) {
-        if (r.y < x.exitY) { Y[r.y].buchwert += r.buchwert; Y[r.y].aktiv += 1; }
-        if (r.y < x.ablöseY) Y[r.y].rest += r.rest;
+        if (r.y < x.exitY) { at(r.y).buchwert += r.buchwert; at(r.y).aktiv += 1; }
+        if (r.y < x.ablöseY) at(r.y).rest += r.rest;
       });
     });
 
     var lossCarry = 0, cash = 0, cumProfit = 0, cumEinlage = 0, taxSum = 0, opexSum = 0;
     var flows = [];
     var rows = [];
-    for (var i = 0; i <= T; i++) {
-      var t = Y[i];
+    for (var i = start0; i <= T; i++) {
+      var t = at(i);
       // Die GmbH trägt laufende Kosten von der ersten Anschaffung bis zum letzten Verkauf
       var opex = (objs.length && i >= start0) ? G.opex : 0;
       t.opex = opex;
@@ -1013,7 +1034,7 @@
     var cashFinal = cash;
     var austax = G.ausschuetten ? Math.max(0, cashFinal - cumEinlage) * ABGELT / 100 : 0;
     var payout = cashFinal - austax;
-    if (flows.length) flows[T] += payout;
+    if (flows.length) flows[flows.length - 1] += payout;
     // ohne Objekte oder ohne Einlage gibt es keinen sinnvollen Zinsfuß
     var r = (objs.length && cumEinlage > 0) ? irr(flows) : null;
 
@@ -1379,7 +1400,7 @@
   function buildChart(P) {
     chartRows = P.rows;
     var svgEl = document.getElementById("chart");
-    if (!chartRows.length || P.T === 0) {
+    if (!chartRows.length || P.T === P.start0) {
       svgEl.innerHTML = '<text x="' + (CW / 2) + '" y="' + (CH / 2) + '" text-anchor="middle" font-size="13" fill="var(--ink-3)">Noch keine Daten</text>';
       document.getElementById("chartCaption").textContent = "";
       return;
@@ -1400,8 +1421,8 @@
     if (yMax === yMin) yMax = yMin + step;
 
     var plotW = CW - M.l - M.r, plotH = CH - M.t - M.b;
-    var T = P.T;
-    function x(y) { return M.l + (T === 0 ? 0 : y / T * plotW); }
+    var T = P.T, T0 = P.start0, spanne = T - T0;
+    function x(y) { return M.l + (spanne === 0 ? 0 : (y - T0) / spanne * plotW); }
     function yy(v) { return M.t + plotH - (v - yMin) / (yMax - yMin) * plotH; }
 
     var svg = [];
@@ -1416,8 +1437,8 @@
       svg.push('<line x1="' + M.l + '" x2="' + (CW - M.r) + '" y1="' + py + '" y2="' + py + '" stroke="' + (istNull ? "var(--axis)" : "var(--grid)") + '" stroke-width="1"' + (istTief ? ' stroke-dasharray="2 3"' : "") + "/>");
       svg.push('<text x="' + (M.l - 8) + '" y="' + (py + 4) + '" text-anchor="end" font-size="11" fill="' + (istTief ? "var(--s2)" : "var(--ink-3)") + '" style="font-variant-numeric:tabular-nums">' + fShort(tv) + "</text>");
     });
-    var tickEvery = T <= 12 ? 1 : (T <= 25 ? 5 : 10);
-    for (var ty = 0; ty <= T; ty += tickEvery) {
+    var tickEvery = spanne <= 12 ? 1 : (spanne <= 25 ? 5 : 10);
+    for (var ty = T0; ty <= T; ty += tickEvery) {
       svg.push('<text x="' + x(ty) + '" y="' + (CH - 8) + '" text-anchor="middle" font-size="11" fill="var(--ink-3)">' + fJahr(ty) + "</text>");
     }
 
@@ -1439,7 +1460,7 @@
     svg.push('<line id="cross" x1="0" x2="0" y1="' + M.t + '" y2="' + (CH - M.b) + '" stroke="var(--ink-3)" stroke-width="1" visibility="hidden"/>');
     svg.push('<rect x="' + M.l + '" y="' + M.t + '" width="' + plotW + '" height="' + plotH + '" fill="transparent" id="hover"/>');
     svgEl.innerHTML = svg.join("");
-    chartGeom = { x: x, y: yy, T: T, einlagen: einlagen };
+    chartGeom = { x: x, y: yy, T: T, T0: T0, spanne: spanne, einlagen: einlagen };
     bindHover();
 
     document.getElementById("chartCaption").textContent =
@@ -1460,9 +1481,10 @@
     function move(cx, cy) {
       var rect = svgEl.getBoundingClientRect();
       var sx = (cx - rect.left) / rect.width * CW;
-      var y = Math.round((sx - M.l) / (CW - M.l - M.r) * chartGeom.T);
-      y = Math.max(0, Math.min(chartGeom.T, y));
-      var r = chartRows[y];
+      var y = chartGeom.T0 + Math.round((sx - M.l) / (CW - M.l - M.r) * chartGeom.spanne);
+      y = Math.max(chartGeom.T0, Math.min(chartGeom.T, y));
+      var idx = y - chartGeom.T0;
+      var r = chartRows[idx];
       cross.setAttribute("x1", chartGeom.x(y));
       cross.setAttribute("x2", chartGeom.x(y));
       cross.setAttribute("visibility", "visible");
@@ -1470,7 +1492,7 @@
         "<b>" + fJahr(y) + (r.aktiv ? " · " + r.aktiv + (r.aktiv === 1 ? " Objekt" : " Objekte") : "") + "</b>" +
         '<div class="t-row"><span class="swatch" style="background:var(--s1)"></span>Bankguthaben: <b>' + fEur(r.cash) + "</b></div>" +
         '<div class="t-row"><span class="swatch" style="background:var(--s3)"></span>Eigenkapital: <b>' + fEur(r.ek) + "</b></div>" +
-        '<div class="t-row"><span class="swatch" style="background:var(--s2)"></span>Einlagen: <b>' + fEur(chartGeom.einlagen[y]) + "</b></div>" +
+        '<div class="t-row"><span class="swatch" style="background:var(--s2)"></span>Einlagen: <b>' + fEur(chartGeom.einlagen[idx]) + "</b></div>" +
         '<div class="t-row" style="color:var(--ink-3)">Jahresüberschuss ' + fEur(r.jue) + "</div>";
       tip.style.display = "block";
       var bx = box.getBoundingClientRect();
@@ -1549,7 +1571,7 @@
 
     document.getElementById("finSub").textContent =
       "Konsolidiert über " + OBJ.length + (OBJ.length === 1 ? " Objekt" : " Objekte") +
-      ", " + fJahr(0) + " bis " + fJahr(T) + " · Steuersatz " + fPct(P.taxRate, 2);
+      ", " + fJahr(P.start0) + " bis " + fJahr(T) + " · Steuersatz " + fPct(P.taxRate, 2);
     document.getElementById("finCaption").textContent =
       "Steuern werden auf Gesellschaftsebene über alle Objekte gerechnet; Verluste einzelner Jahre werden vorgetragen. " +
       "Nach dem letzten Verkauf besteht die Bilanz nur noch aus Bankguthaben und Eigenkapital — dann zeigt sie, was aus " +
@@ -1810,7 +1832,7 @@
       if (F.rendite.status !== "gefunden") return;
       G.mindestRendite = Math.max(0, Math.floor(F.rendite.wert * 4) / 4); // Schrittweite 0,25
       document.getElementById("panelGes").dataset.rebuild = "1";
-      baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", function () { refresh(); });
+      baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", gesGeaendert);
       refresh();
     });
     host.querySelectorAll("button[data-setz]").forEach(function (b) {
@@ -2101,41 +2123,43 @@
       reihen.push({ o: o, x: x, A: A });
       maxJ = Math.max(maxJ, o.start + HMAX);
     });
+    // Die Achse beginnt beim frühesten Erwerb, der vor dem Basisjahr liegen darf.
+    var minJ = P.start0;
     var rueck = [], wahr = [];
-    for (var j = 0; j <= maxJ; j++) { rueck.push(0); wahr.push(0); }
+    for (var j = minJ; j <= maxJ; j++) { rueck.push(0); wahr.push(0); }
     reihen.forEach(function (r) {
       for (var k = 1; k <= HMAX; k++) {
         var w = r.A.w[k];
         var jVerkauf = r.o.start + k;
         var jGeld = r.o.start + r.A.kurve[k - 1].ende;
-        if (jVerkauf <= maxJ) wahr[jVerkauf] += w;
-        if (jGeld <= maxJ) rueck[jGeld] += w * r.A.kurve[k - 1].endwert;
+        if (jVerkauf <= maxJ) wahr[jVerkauf - minJ] += w;
+        if (jGeld <= maxJ) rueck[jGeld - minJ] += w * r.A.kurve[k - 1].endwert;
       }
     });
-    return { reihen: reihen, rueck: rueck, wahr: wahr, maxJ: maxJ };
+    return { reihen: reihen, rueck: rueck, wahr: wahr, maxJ: maxJ, minJ: minJ };
   }
 
   function rueckflussChart(R) {
     var W = 820, H = 250, m = { l: 62, r: 16, t: 14, b: 26 };
     var pw = W - m.l - m.r, ph = H - m.t - m.b;
-    var T = Math.max(1, R.maxJ);
+    var T0 = R.minJ, T = R.maxJ, spanne = Math.max(1, T - T0);
     var maxV = Math.max.apply(null, R.rueck) || 1;
-    function x(j) { return m.l + j / T * pw; }
+    function x(j) { return m.l + (j - T0) / spanne * pw; }
     function y(v) { return m.t + ph - v / maxV * ph; }
     var s = [];
     [0, maxV / 2, maxV].forEach(function (v) {
       s.push('<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="' + (v === 0 ? "var(--axis)" : "var(--grid)") + '" stroke-width="1"/>');
       s.push('<text x="' + (m.l - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end" font-size="10.5" fill="var(--ink-3)">' + fShort(v) + "</text>");
     });
-    var bw = Math.max(2, pw / (T + 1) - 2);
-    R.rueck.forEach(function (v, j) {
+    var bw = Math.max(2, pw / (spanne + 1) - 2);
+    R.rueck.forEach(function (v, idx) {
       if (v <= 0) return;
-      var bh = v / maxV * ph;
+      var j = T0 + idx, bh = v / maxV * ph;
       s.push('<rect x="' + (x(j) - bw / 2).toFixed(1) + '" y="' + y(v).toFixed(1) + '" width="' + bw.toFixed(1) +
         '" height="' + bh.toFixed(1) + '" rx="1.5" fill="var(--s1)" opacity="0.75"><title>' + fJahr(j) + ": " + fEur(v) + "</title></rect>");
     });
-    var tick = T <= 12 ? 2 : (T <= 30 ? 5 : 10);
-    for (var t = 0; t <= T; t += tick) {
+    var tick = spanne <= 12 ? 2 : (spanne <= 30 ? 5 : 10);
+    for (var t = T0; t <= T; t += tick) {
       s.push('<text x="' + x(t) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">' + fJahr(t) + "</text>");
     }
     return '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Erwartete Rückflüsse je Jahr über alle Objekte">' + s.join("") + "</svg>";
@@ -2191,8 +2215,8 @@
     h += '<div class="card"><h2>Erwartete Rückflüsse je Jahr</h2>';
     h += '<p class="sub">Wahrscheinlichkeitsgewichtet über alle Objekte. Der Rückfluss steht dort, wo das Geld tatsächlich frei wird — bei laufender Zinsbindung also erst nach deren Ende.</p>';
     h += '<div class="chart-box">' + rueckflussChart(R) + "</div>";
-    var spitze = 0, spitzeJ = 0;
-    R.rueck.forEach(function (v, j) { if (v > spitze) { spitze = v; spitzeJ = j; } });
+    var spitze = 0, spitzeJ = R.minJ;
+    R.rueck.forEach(function (v, idx) { if (v > spitze) { spitze = v; spitzeJ = R.minJ + idx; } });
     h += '<p class="caption">Größter erwarteter Rückfluss ' + fJahr(spitzeJ) + " mit " + fEur(spitze) +
       ". Je stärker sich Rückflüsse auf wenige Jahre bündeln, desto mehr hängt das Ergebnis am Marktumfeld genau dieser Jahre.</p>";
     h += "</div>";
@@ -2349,7 +2373,7 @@
     });
   });
 
-  baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", function () { refresh(); });
+  baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", gesGeaendert);
   refresh();
 })();
 </script>
