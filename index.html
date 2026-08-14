@@ -492,7 +492,7 @@
         <p><b>Portfolio:</b> Alle Objekte liegen in derselben GmbH. Je Objekt zahlt der Eigentümer ein Nutzungsentgelt auf den Auszahlungsbetrag; beim Gesamtverkauf erhält die GmbH ihren Anteil am dann erzielten Preis, mindestens aber den Mindesterlös. <b>Jedes Objekt trägt seine Annahmen selbst</b> — Immobilienwert, Anteil, Haushalt und Alter, Wertentwicklung und Instandhaltungsverfall, sämtliche Vertragskonditionen, die komplette Finanzierung samt Zins, Tilgung und Zinsbindung sowie Grunderwerbsteuer, AfA-Satz und Gebäudeanteil. Sie werden auf der jeweiligen Objektseite eingestellt. Auf Gesellschaftsebene verbleiben nur die laufenden Kosten, der Gewerbesteuer-Hebesatz, die erweiterte Kürzung, die Abgeltungsteuer sowie Anlage- und Kontokorrentzins. Das Portfolio rechnet die Objekte lediglich zusammen. Neue Objekte starten mit festen Standardwerten.</p>
         <p><b>Steuern:</b> Körperschaftsteuer 15 % plus Solidaritätszuschlag ergibt 15,825 %. Gewerbesteuer entfällt bei erweiterter Kürzung nach § 9 Nr. 1 S. 2 GewStG, sonst kommen 3,5 % Messzahl × Hebesatz hinzu. <b>Die Besteuerung erfolgt konsolidiert:</b> Gewinne und Verluste aller Objekte werden im selben Wirtschaftsjahr verrechnet, verbleibende Verluste vorgetragen. Genau das unterscheidet ein Portfolio von mehreren Einzelrechnungen — ein anlaufendes Objekt mindert die Steuer eines ertragreichen.</p>
         <p><b>Laufende Kosten</b> (Steuerberater, Jahresabschluss, Handelsregister, Versicherungen) fallen einmal je Geschäftsjahr an, unabhängig von der Objektzahl. Sie sind der Grund, warum sich ein einzelner Vertrag kaum trägt und erst mehrere Objekte die Struktur finanzieren.</p>
-        <p><b>Anschaffungsnebenkosten</b> (Grunderwerbsteuer, Notar, Grundbuch) werden aktiviert und erhöhen den Bilanzwert; sie wirken über die AfA und den Buchwert beim Verkauf, nicht als Aufwand. <b>AfA</b> läuft auf den Gebäudeanteil der Anschaffungskosten; Grund und Boden wird nicht abgeschrieben. Beim Verkauf erhöht die kumulierte AfA über den niedrigeren Buchwert den steuerpflichtigen Gewinn — sie wirkt als Stundung, nicht als dauerhafte Ersparnis.</p>
+        <p><b>Anschaffungsnebenkosten</b> (Grunderwerbsteuer, Notar, Grundbuch, Maklercourtage) werden aktiviert und erhöhen den Bilanzwert; sie wirken über die AfA und den Buchwert beim Verkauf, nicht als Aufwand. <b>AfA</b> läuft auf den Gebäudeanteil der Anschaffungskosten; Grund und Boden wird nicht abgeschrieben. Beim Verkauf erhöht die kumulierte AfA über den niedrigeren Buchwert den steuerpflichtigen Gewinn — sie wirkt als Stundung, nicht als dauerhafte Ersparnis.</p>
         <p><b>Verkaufskosten</b> tragen beide Eigentümer nach ihrem Anteil; der Teil der GmbH mindert Erlös und Veräußerungsgewinn.</p>
         <p><b>Kapitalfluss:</b> Bei jedem Ankauf legen die Gesellschafter genau das benötigte Eigenkapital ein, der Rest wird über ein Annuitätendarlehen finanziert (Zins und Anfangstilgung fest, 0 % Tilgung = endfällig). Danach bleiben alle Mittel in der Gesellschaft, es wird nie ausgeschüttet.</p>
         <p><b>Zinsbindung und Geldanlage:</b> Fällt der Verkauf in die Zinsbindung, lässt sich das Darlehen nicht entschädigungsfrei ablösen. Ist der entsprechende Schalter gesetzt, läuft es bis zum Ende der Zinsbindung weiter, während der Verkaufserlös zum Anlagezins geparkt wird — als Näherung für kurzlaufende Bundeswertpapiere. Aus der Differenz zwischen Sollzins und Anlagezins entsteht ein laufender Verlust auf dem geparkten Betrag; im Gegenzug entfällt eine Vorfälligkeitsentschädigung, die hier nicht gerechnet wird. Ohne den Schalter wird beim Verkauf abgelöst, ebenfalls ohne Entschädigung — die Wahrheit liegt dazwischen. Guthaben werden durchgehend zum Anlagezins verzinst, negative Salden zum Sollzins plus Aufschlag; beides läuft über die GuV und erhöht oder mindert die Steuer. Eine Zinsänderung nach Ablauf der Bindung ist nicht modelliert. Die Rendite ist der interne Zinsfuß der Einlagen gegen die Schlussliquidität; der Schalter „Abgeltungsteuer“ zeigt als Nebenrechnung, was nach einer späteren Entnahme bliebe (26,375 % auf den Betrag oberhalb der Einlagen).</p>
@@ -559,7 +559,7 @@
     alter: 75, haus: "Paar", pflege: 2.5,
     growth: 2, verfall: 0.75, abschlag: 0,
     esc: 0, de: 0, min: 0, vkKosten: 3.5,
-    grest: 6.5, notar: 2.0,
+    grest: 6.5, notar: 2.0, makler: 7.14,
     holdAuto: false,
     ltv: 60, zins: 3.9, tilg: 2.0, zinsbindung: 15, weiterfuehren: true,
     afaSatz: 2, gebAnteil: 70
@@ -704,6 +704,7 @@
     { title: "Ankauf & Finanzierung", dot: "s2", items: [
       { id: "grest", label: "Grunderwerbsteuer", min: 3.5, max: 6.5, step: 0.5, fmt: function (v) { return fPct(v, 1); }, note: "je Bundesland verschieden" },
       { id: "notar", label: "Notar & Grundbuch", min: 0, max: 3, step: 0.25, fmt: function (v) { return fPct(v, 2); } },
+      { id: "makler", label: "Maklercourtage", min: 0, max: 8, step: 0.595, fmt: function (v) { return v === 0 ? "keine" : fPct(v, 2); }, note: "volle Provision, von der Gesellschaft allein getragen — 7,14 % sind 6 % zzgl. Umsatzsteuer" },
       { id: "ltv", label: "Beleihung", min: 0, max: 95, step: 5, fmt: function (v) { return fPct(v, 0); }, note: "Darlehen in % des Anteilskaufpreises" },
       { id: "zins", label: "Sollzins", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; } },
       { id: "tilg", label: "Anfangstilgung", min: 0, max: 5, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "0 % = endfälliges Darlehen" },
@@ -853,7 +854,11 @@
     // liegt der Renditehebel des Abschlags.
     var vollpreis = s * o.v0;
     var P = vollpreis * (1 - (o.abschlag || 0) / 100);
-    var invest0 = P * (1 + o.grest / 100 + o.notar / 100);
+    // Die Maklercourtage wird hier in voller Höhe von der Gesellschaft getragen —
+    // bewusst die ungünstigere Annahme, statt sie mit dem Verkäufer zu teilen.
+    // Wie Grunderwerbsteuer und Notar ist sie Anschaffungsnebenkosten und wird aktiviert.
+    var nebenSatz = o.grest / 100 + o.notar / 100 + (o.makler || 0) / 100;
+    var invest0 = P * (1 + nebenSatz);
     var loan0 = P * o.ltv / 100;
     var equity0 = invest0 - loan0;
     var annuity = loan0 * (o.zins + o.tilg) / 100;
@@ -1136,6 +1141,7 @@
     { k: "verfall", label: "Instandhaltungsverfall", min: 0, max: 6, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "weniger" },
     { k: "zins", label: "Sollzins", min: 0, max: 12, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "weniger" },
     { k: "grest", label: "Grunderwerbsteuer", min: 0, max: 10, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" },
+    { k: "makler", label: "Maklercourtage", min: 0, max: 8, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" },
     { k: "vkKosten", label: "Verkaufskosten", min: 0, max: 12, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" }
   ];
 
@@ -1238,9 +1244,11 @@
       if (beNull === null && p.endwert >= p.equity0) beNull = p.h;
     });
 
-    var eH = GW.eH, eEnd = 0, median = GW.median, pVorBE = 0;
+    var eH = GW.eH, eEnd = 0, eEndR = 0, median = GW.median, pVorBE = 0;
     for (var k2 = 1; k2 <= HMAX; k2++) {
       eEnd += w[k2] * kurve[k2 - 1].endwert;
+      // Rückfluss auf der maßgeblichen Gewichtung — Grundlage der Kapitalwertrechnung
+      eEndR += wR[k2] * kurve[k2 - 1].endwert;
       // Anteil der Fälle, in denen der Kapitalwert negativ bleibt — setzt keine
       // Monotonie über die Haltedauer voraus, anders als ein einzelner Break-even-Punkt
       if (kurve[k2 - 1].kw < 0) pVorBE += w[k2];
@@ -1264,7 +1272,7 @@
     var hEff = Math.min(HMAX, Math.max(1, holdEffektiv(o)));
     return {
       kurve: kurve, beKW: beKW, beNull: beNull,
-      median: median, eH: eH, eEnd: eEnd, pVorBE: pVorBE * 100, lz: LZ,
+      median: median, eH: eH, eEnd: eEnd, eEndR: eEndR, pVorBE: pVorBE * 100, lz: LZ, wR: wR,
       eIrr: eIrrRaw === null ? null : eIrrRaw * 100, w: w, hEff: hEff,
       gewaehlt: kurve[hEff - 1]
     };
@@ -1731,7 +1739,13 @@
     h += '<div><div class="stat-label">Liquidität am Ende</div><div class="stat-num">' + fEur(D.cashFinal) +
       '</div><div class="stat-sub">aus ' + fEur(x.equity0) + " Einlage</div></div>";
     h += "</div>";
-    h += '<div class="stat-foot">Anteilige laufende Kosten: ' + fEur(opexShare) + " je Jahr (" + fEur(G.opex) +
+    // Aufschlüsselung der Anschaffung — die Nebenkosten sind vollständig aus
+    // Eigenkapital zu stellen, Banken finanzieren sie nicht mit.
+    var neben = x.invest0 - x.P;
+    h += '<div class="stat-foot">Anschaffung ' + fEur(x.invest0) + " = " + fEur(x.P) + " Auszahlung + " +
+      fEur(neben) + " Nebenkosten (" + fPct(o.grest, 1) + " Grunderwerbsteuer, " + fPct(o.notar, 2) +
+      " Notar" + ((o.makler || 0) > 0 ? ", " + fPct(o.makler, 2) + " Makler" : "") + "), davon " +
+      fEur(x.loan0) + " über Darlehen. Anteilige laufende Kosten: " + fEur(opexShare) + " je Jahr (" + fEur(G.opex) +
       " geteilt durch " + OBJ.length + (OBJ.length === 1 ? " Objekt" : " Objekte") +
       "). Zuwachs gegenüber der Einlage: " + fEur(D.gewinn) + ".</div></div>";
 
@@ -1924,8 +1938,50 @@
       }
       h += "</div>";
 
-      // Umkehrrechnung je Stellschraube
       var LZ = A.lz;
+      var Rk = F.rendite;
+
+      // ---- Kapitalwert: die Rechnung offengelegt ----
+      // Der Zahlungsstrom hat genau zwei Punkte, deshalb lässt sich der Kapitalwert
+      // Zeile für Zeile zeigen statt nur als Ergebnis zu behaupten.
+      var eq0 = A.gewaehlt.equity0;
+      var rZins = G.mindestRendite / 100;
+      var fest = !LZ.auto;
+      var rueckfluss = fest ? A.gewaehlt.endwert : A.eEndR;
+      var jahrE = fest ? A.gewaehlt.ende : LZ.bindung;
+      var npv = Rk.jetzt;                       // dieselbe Größe wie im Ankaufsfilter
+      var barwertR = npv + eq0;                 // Kapitalwert = Barwert − Einsatz
+      var faktor = eq0 !== 0 ? barwertR / rueckfluss : 0;
+
+      h += '<div class="card"><h2>Kapitalwert (NPV)</h2>';
+      h += '<p class="sub">Alle Zahlungen auf den Erwerbszeitpunkt abgezinst, Maßstab ist die Mindestrendite von ' +
+        fPct(G.mindestRendite, 2) + '. Ein positiver Kapitalwert heißt: Das Projekt bringt mehr als den Anspruch — ein negativer, dass der Anspruch nicht gedeckt ist.</p>';
+      h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
+        "<th>Zahlung</th><th>Zeitpunkt</th><th>Betrag</th><th>Abzinsung</th><th>Barwert</th>" +
+        "</tr></thead><tbody>";
+      h += "<tr><td>Eigenkapital beim Erwerb</td><td>Jahr 0</td><td>" + fEur(-eq0) +
+        "</td><td>1,0000</td><td>" + fEur(-eq0) + "</td></tr>";
+      h += "<tr><td>Rückfluss nach Ablösung des Darlehens" +
+        (fest ? "" : '<span class="zsub">gewichtet über alle Verkaufszeitpunkte</span>') +
+        "</td><td>" + (fest ? "Jahr " + jahrE : "Ø " + fJahre(jahrE)) + "</td><td>" +
+        (fest ? "" : "Ø ") + fEur(rueckfluss) + "</td><td>" +
+        faktor.toLocaleString("de-DE", { minimumFractionDigits: 4, maximumFractionDigits: 4 }) +
+        "</td><td>" + fEur(barwertR) + "</td></tr>";
+      h += '<tr class="exit-row"><td>Kapitalwert</td><td></td><td></td><td></td><td class="' +
+        (npv < 0 ? "neg" : "") + '">' + fEur(npv) + "</td></tr>";
+      h += "</tbody></table></div>";
+      h += '<div class="ctl-note" style="margin-top:10px">' +
+        (fest
+          ? "Abgezinst wird mit 1 / " + (1 + rZins).toLocaleString("de-DE", { minimumFractionDigits: 4, maximumFractionDigits: 4 }) +
+            " hoch " + jahrE + " — " + fEur(rueckfluss) + " in " + fJahre(jahrE).replace(" Jahre", " Jahren") + " sind heute " + fEur(barwertR) + " wert."
+          : "Jeder mögliche Verkaufszeitpunkt wird einzeln abgezinst und mit seiner Wahrscheinlichkeit gewichtet; die Abzinsung in der Tabelle ist das Ergebnis dieser Gewichtung, nicht ein einzelner Faktor.") +
+        (Rk.status === "gefunden"
+          ? " Der Kapitalwert wird genau dann null, wenn der Anspruch bei " + fPct(Rk.wert, 2) +
+            " liegt — das ist die Rendite, die dieser Vertrag abwirft."
+          : "") + "</div>";
+      h += "</div>";
+
+      // Umkehrrechnung je Stellschraube
       h += '<div class="card"><h2>Welche Stellschraube bringt die Mindestrendite?</h2>';
       h += '<p class="sub">Ziel sind ' + fPct(G.mindestRendite, 2) +
         ' auf das Eigenkapital, gerechnet einschließlich der anteiligen Gemeinkosten. Jede Zeile verändert genau eine Größe, alle übrigen bleiben unverändert; der kritische Wert ist der Punkt, an dem der gewichtete Kapitalwert gerade null wird.</p>';
@@ -1951,7 +2007,7 @@
         "<th>Stellschraube</th><th>eingestellt</th><th>kritischer Wert</th><th>Abstand</th><th>Status</th><th></th></tr></thead><tbody>";
 
       // Die Hürde selbst zuerst — sie zeigt, was der Vertrag tatsächlich abwirft
-      var R = F.rendite;
+      var R = Rk;
       // Die Hürde in Gesamtrendite über die Kapitalbindung, der Jahreszins darunter —
       // ausgeschüttet wird nichts, der gesamte Rückfluss entsteht beim Verkauf.
       var zielGes = gesamtRendite(G.mindestRendite, LZ.bindung);
@@ -2102,7 +2158,7 @@
       gewDauer += g * r.A.eH;
       if (r.A.eIrr !== null) { gewRendite += g * r.A.eIrr; rMitIrr += g; }
       if (!r.A.beKW) ohneBE++;
-      kwSumme += eKapitalwert(r.A.kurve, r.A.w, zielZins(r.o) / 100);
+      kwSumme += eKapitalwert(r.A.kurve, r.A.wR, zielZins(r.o) / 100);
       if (!r.o.holdAuto) abweichung += Math.abs(r.o.hold - r.A.eH) * g;
     });
 

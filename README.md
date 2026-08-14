@@ -27,7 +27,9 @@ Jedes Objekt trägt seine Annahmen selbst — Immobilienwert, Anteil, Nutzungsen
 
 - **Finanzierung** als Annuitätendarlehen mit Zinsbindung. Fällt der Verkauf in die Zinsbindung, läuft das Darlehen wahlweise weiter, während der Erlös verzinst angelegt wird.
 - **Steuern** mit Körperschaftsteuer und Solidaritätszuschlag (15,825 %), optionaler Gewerbesteuer und konsolidierter Verlustverrechnung über alle Objekte.
+- **Erwerbsnebenkosten** aus Grunderwerbsteuer, Notar und Grundbuch sowie einer Maklercourtage, die in voller Höhe von der Gesellschaft getragen wird — bewusst die ungünstigere Annahme statt einer Teilung mit dem Verkäufer. Sie sind vollständig aus Eigenkapital zu stellen, da das Darlehen am Kaufpreis bemessen wird.
 - **Abschreibung** auf den Gebäudeanteil der Anschaffungskosten; Anschaffungsnebenkosten werden aktiviert und wirken über den Buchwert.
+- **Kapitalwert** je Objekt Zeile für Zeile offengelegt: Einsatz, Rückfluss, Abzinsungsfaktor und Barwert. Der Zahlungsstrom hat genau zwei Punkte, weil nichts ausgeschüttet wird.
 - **Verkaufszeitpunkt** entweder als feste Annahme oder — zuschaltbar — als Verteilung, berechnet aus einer an die amtliche Sterbetafel 2022/24 kalibrierten Gompertz-Makeham-Funktion zuzüglich einer einstellbaren Auszugswahrscheinlichkeit. Bei Paaren ist die zuletzt lebende Person maßgeblich.
 - **Laufzeiten** getrennt ausgewiesen: die Vertragslaufzeit entspricht der Kreditbindung, der Verkauf des Anteils kann davor oder danach liegen. Fällt er davor, läuft das Darlehen weiter und der Erlös wird bis zur Ablösung zum Anlagezins geparkt — die Kapitalbindung ist dann länger als die Zeit bis zum Verkauf. Alle Renditeangaben beziehen sich auf die Kapitalbindung.
 - **Break-even** über den Kapitalwert gegen eine frei einstellbare Mindestrendite, nicht über den internen Zinsfuß, der bei kurzen Haltedauern nicht eindeutig ist.
