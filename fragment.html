@@ -3244,13 +3244,47 @@
 
     // Sichern: Der Stand wird als Datei angeboten. Das Herunterladen ist der
     // einzige Weg, ihn auf ein anderes Gerät zu bringen — es gibt keinen Server.
-    document.getElementById("expBtn").addEventListener("click", function () {
-      var blob = new Blob([standAlsText()], { type: "application/json" });
+    // Die Seite läuft an zwei Orten: als Datei bzw. auf GitHub Pages, wo der
+    // gewohnte Download-Link greift, und in einer eingebetteten Ansicht, die
+    // selbst gestartete Downloads unterbindet und einen eigenen Weg anbietet.
+    // Erst den eingebetteten Weg versuchen, sonst den Link.
+    function dateiAnbieten(name, text) {
+      var c = window.claude;
+      if (c && typeof c.use === "function") {
+        return c.use("downloads").then(function (dl) {
+          if (!dl) return linkWeg(name, text);
+          return dl.save({ filename: name, data: text }).then(function () {
+            meldung("Datei gesichert.");
+          }, function (f) {
+            // Abgelehnt ist eine Entscheidung, kein Fehler — nur echte
+            // Hindernisse melden.
+            if (f && f.code === "declined") return;
+            meldung("Sichern nicht möglich" + (f && f.message ? ": " + f.message : "") +
+                    " — der Stand bleibt im Browser erhalten.");
+          });
+        }, function () { return linkWeg(name, text); });
+      }
+      return linkWeg(name, text);
+    }
+
+    function linkWeg(name, text) {
+      var blob = new Blob([text], { type: "application/json" });
       var a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "teilverkauf-" + fJahr(0) + ".json";
+      a.download = name;
       document.body.appendChild(a); a.click();
       setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    }
+
+    function meldung(t) {
+      var e = document.getElementById("standInfo");
+      if (!e) return;
+      e.textContent = t;
+      setTimeout(zeigeStandZeit, 4000);
+    }
+
+    document.getElementById("expBtn").addEventListener("click", function () {
+      dateiAnbieten("teilverkauf-" + fJahr(0) + ".json", standAlsText());
     });
 
     var impDatei = document.getElementById("impDatei");
