@@ -9,7 +9,9 @@
   function gesGeaendert() {
     if (G.basisjahr !== basisAlt) {
       var d = G.basisjahr - basisAlt;
-      OBJ.forEach(function (ob) { ob.a.start = Math.max(-25, Math.min(20, ob.a.start - d)); });
+      // Die Grenzen decken jede Kombination aus Basisjahr und Erwerbsjahr ab; ein
+      // Klemmen würde hier ein echtes historisches Erwerbsjahr verschieben.
+      OBJ.forEach(function (ob) { ob.a.start = Math.max(-40, Math.min(40, ob.a.start - d)); });
       var pO = document.getElementById("panelObjekt");
       if (pO) pO.dataset.idx = "";
     }

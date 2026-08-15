@@ -214,8 +214,9 @@
 
       // Über welche Zeit gerechnet wird — eine Rendite ohne Laufzeit sagt nichts aus
       h += '<div class="lz-box">';
-      h += '<div class="derived tight"><span>Vertragslaufzeit <em>= Kreditbindung</em></span><b>' +
-        fJahre(LZ.kredit) + "</b></div>";
+      h += '<div class="derived tight"><span>Vertragslaufzeit ' +
+        (LZ.kredit === null ? "<em>ohne Darlehen</em>" : "<em>= Kreditbindung</em>") + "</span><b>" +
+        (LZ.kredit === null ? "—" : fJahre(LZ.kredit)) + "</b></div>";
       h += '<div class="derived tight"><span>Verkauf des Anteils' +
         (LZ.auto ? ' <em>= Sterbetafel</em>' : ' <em>= feste Annahme</em>') + "</span><b>" +
         fJahre(LZ.verkauf) + "</b></div>";
@@ -225,7 +226,7 @@
           fJahre(LZ.nachlauf) + " in der Geldanlage zu " + fPct(G.anlage, 2) + ", während er " + fPct(o.zins, 2) +
           " Zinsen kostet — diese Zeit senkt die Rendite, ohne dass ein Nutzungsentgelt gegenübersteht." +
           (LZ.pNachlauf < 99.5 ? " Das betrifft " + fPct(LZ.pNachlauf, 0) + " der Fälle." : "") + "</div>";
-      } else if (LZ.verkauf > LZ.kredit + 0.05) {
+      } else if (LZ.kredit !== null && LZ.verkauf > LZ.kredit + 0.05) {
         h += '<div class="ctl-note" style="margin-top:8px">Der Vertrag läuft über die Kreditbindung hinaus. Für die Zeit danach ist keine Anschlusskondition unterstellt — der Sollzins gilt unverändert weiter.</div>';
       }
       h += "</div>";
@@ -445,7 +446,7 @@
       var L2 = r.A.lz;
       h += "<td>" + fJahre(L2.verkauf).replace(" Jahre", "").replace(" Jahr", "") +
         (L2.auto ? " ◆" : "") + "</td>";
-      h += "<td>" + L2.kredit + "</td>";
+      h += "<td>" + (L2.kredit === null ? "—" : L2.kredit) + "</td>";
       h += '<td class="' + (L2.nachlauf > 0.05 ? "neg" : "") + '">' +
         fJahre(L2.bindung).replace(" Jahre", "").replace(" Jahr", "") + "</td>";
       h += "<td>" + fPct(r.o.ne, 2) + "</td>";

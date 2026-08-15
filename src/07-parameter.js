@@ -27,7 +27,7 @@
     { title: "Vertrag", dot: "s1", items: [
       { id: "ne", label: "Nutzungsentgelt", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "auf den Auszahlungsbetrag, fest" },
       { id: "esc", label: "Jährliche Anpassung", min: 0, max: 4, step: 0.25, fmt: function (v) { return v === 0 ? "keine" : fPct(v, 2) + " p.a."; }, note: "0 % = feste Rate bis zum Verkauf" },
-      { id: "start", label: "Erwerbsjahr", min: -25, max: 20, step: 1, fmt: function (v) {
+      { id: "start", label: "Erwerbsjahr", min: -40, max: 40, step: 1, fmt: function (v) {
         return fJahr(v) + (v === 0 ? " (Basisjahr)" : (v < 0 ? " (Bestand, vor " + -v + (v === -1 ? " Jahr)" : " Jahren)") : " (in " + v + (v === 1 ? " Jahr)" : " Jahren)")));
       } },
       { id: "holdAuto", label: "Haltedauer aus Sterbetafel", bool: true, note: "rechnet über die Exit-Verteilung statt über eine feste Annahme" },
@@ -55,6 +55,17 @@
 
 
   // Umkehrrechnung: Welcher Wert bringt ceteris paribus den Renditeanspruch?
+  // Die Suchgrenzen einer Stellschraube sind die ihres Reglers: Ein Vorschlag, den
+  // man anschließend nicht einstellen kann, ist wertlos — „setzen" würde still auf
+  // den Reglerrand klemmen und das Ziel bliebe verfehlt.
+  function reglerGrenzen(id) {
+    var g = null;
+    OBJ_GROUPS.forEach(function (gr) {
+      gr.items.forEach(function (it) { if (it.id === id && it.min !== undefined) g = { min: it.min, max: it.max }; });
+    });
+    return g;
+  }
+
   var STELLSCHRAUBEN = [
     { k: "ne", label: "Nutzungsentgelt", min: 0.5, max: 15, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
     { k: "min", label: "Mindesterlös", min: 0, max: 250, fmt: fAufschlag,
@@ -67,3 +78,11 @@
     { k: "makler", label: "Maklercourtage", min: 0, max: 8, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" },
     { k: "vkKosten", label: "Verkaufskosten", min: 0, max: 12, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" }
   ];
+
+  // Grenzen aus den Reglern übernehmen, damit Vorschlag und Einstellbarkeit
+  // nicht auseinanderfallen.
+  STELLSCHRAUBEN.forEach(function (sch) {
+    var g = reglerGrenzen(sch.k);
+    if (g) { sch.min = g.min; sch.max = g.max; }
+  });
+

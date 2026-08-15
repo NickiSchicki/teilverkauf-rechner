@@ -11,6 +11,9 @@
     // Der Kontext, den ein Objekt braucht, um sich allein zu rechnen
     this.ctx = { opexShare: this.opexShare, taxRate: this.taxRate,
                  anlage: ges.anlage, kkZins: ges.kkZins };
+    // Das Gemeinkostenfenster ergibt sich erst aus den Verläufen; es wird in
+    // rechnen() nachgetragen und gilt dann für jede Objektrechnung.
+    this._fenster = null;
     this._cache = {};
   }
 
@@ -35,6 +38,8 @@
       T = Math.max.apply(null, vs.map(function (v) { return v.ablöseY; }));
       start0 = Math.min.apply(null, vs.map(function (v) { return v.o.start; }));
     }
+    this.ctx.opexVon = start0;
+    this.ctx.opexBis = T;
 
     // Die Zeitachse beginnt beim frühesten Erwerb, nicht beim Basisjahr — Objekte
     // dürfen davor liegen, dann ist ihr Erwerb Bestand und start0 wird negativ.

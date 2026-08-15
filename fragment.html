@@ -662,7 +662,10 @@
       for (var i = 0; i < cfs.length; i++) a += cfs[i] / Math.pow(1 + r, i);
       return a;
     }
-    var lo = -0.95, hi = 10;
+    // Der Suchbereich muss auch extreme, aber gültige Renditen einschließen —
+    // sonst zeigt die Anzeige einen Strich, obwohl ein Zinsfuß existiert.
+    var lo = -0.999, hi = 10;
+    while (hi < 1e7 && npv(lo) * npv(hi) > 0) hi *= 10;
     if (npv(lo) * npv(hi) > 0) return null;
     for (var i = 0; i < 90 && hi - lo > 1e-11; i++) {
       var mid = (lo + hi) / 2;
@@ -944,6 +947,10 @@
 
   Objekt.prototype.darlehensJahre = function (hold) {
     var h = hold === undefined ? this.a.hold : hold;
+    // Ohne Darlehen gibt es nichts abzulösen: Die Zinsbindung darf den Rückfluss
+    // dann nicht verzögern, sonst rechnet schon der Vergleich mit und ohne
+    // Finanzierung gegen sich selbst.
+    if (!(this.a.ltv > 0)) return h;
     return this.a.weiterfuehren ? Math.max(h, this.a.zinsbindung) : h;
   };
 
@@ -973,7 +980,7 @@
       nachlauf += w[k] * (ende - k);
       if (ende > k) pNachlauf += w[k];
     }
-    return { kredit: o.zinsbindung, verkauf: verkauf, bindung: bindung,
+    return { kredit: o.ltv > 0 ? o.zinsbindung : null, verkauf: verkauf, bindung: bindung,
       nachlauf: nachlauf, pNachlauf: pNachlauf * 100,
       auto: !!o.holdAuto, median: GW.median, eH: GW.eH, gesetzt: o.hold };
   };
@@ -1047,41 +1054,61 @@
   // ctx: { opexShare, taxRate, anlage, kkZins } — alles, was von außen kommt.
   Objekt.prototype.rechenwerk = function (ctx, hold) {
     var v = this.verlauf(hold);
-    var vortrag = v.akquise, cash = 0, cumProfit = -v.akquise;
+    var vortrag = 0, cash = 0, cumProfit = 0, cumEinlage = 0;
     var taxSum = 0, neSum = 0, opexSum = 0, dsSum = 0;
 
-    // Erwerbsjahr: Anschaffung, Darlehen und Einlage. Der Akquiseaufwand fällt hier
-    // an und erzeugt einen Verlust, der vorgetragen wird.
-    var rows = [zeile({
-      y: v.o.start, akquise: v.akquise, invest: v.invest0, loanNew: v.loan0,
-      einlage: v.equity0, buchwert: v.invest0, cash: 0, ek: v.equity0 - v.akquise,
-      rest: v.loan0, erwerb: true
-    }, 0, ctx.taxRate)];
+    // Die Gemeinkosten der GmbH laufen, solange die Gesellschaft besteht — nicht
+    // nur, solange dieses eine Objekt gehalten wird. Das Fenster kommt deshalb vom
+    // Portfolio; ohne Angabe fällt es auf die eigene Laufzeit zurück.
+    var von = Math.min(ctx.opexVon === undefined ? v.o.start : ctx.opexVon, v.o.start);
+    var bis = Math.max(ctx.opexBis === undefined ? v.ablöseY : ctx.opexBis, v.ablöseY);
 
-    v.years.forEach(function (r) {
-      var isExit = r.y === v.exitY, isAbloese = r.y === v.ablöseY;
-      neSum += r.ne; opexSum += ctx.opexShare; dsSum += r.pay;
+    // Jahre des Objekts nach Kalenderjahr greifbar machen
+    var jahr = {};
+    v.years.forEach(function (r) { jahr[r.y] = r; });
+
+    var rows = [];
+    for (var y = von; y <= bis; y++) {
+      var erwerb = y === v.o.start;
+      var r = jahr[y];
       var roh = {
-        y: r.y, ne: r.ne, afa: r.afa, zins: r.zins, opex: ctx.opexShare,
+        y: y,
+        opex: ctx.opexShare,
         anlageErtrag: Math.max(0, cash) * ctx.anlage / 100,
-        kkZins: Math.max(0, -cash) * ctx.kkZins / 100,
-        vGewinn: isExit ? v.gewinn : 0,
-        proceeds: isExit ? v.proceeds : 0,
-        payoff: isAbloese ? v.restAtExit : 0,
-        tilg: r.tilg, pay: r.pay,
-        buchwert: r.y >= v.exitY ? 0 : r.buchwert,
-        rest: r.y >= v.ablöseY ? 0 : r.rest,
-        exit: isExit, abloese: isAbloese
+        kkZins: Math.max(0, -cash) * ctx.kkZins / 100
       };
+      if (erwerb) {
+        // Anschaffung, Darlehensaufnahme, Einlage und der Akquiseaufwand
+        roh.akquise = v.akquise; roh.invest = v.invest0; roh.loanNew = v.loan0;
+        roh.einlage = v.equity0; roh.erwerb = true;
+      }
+      if (r) {
+        var isExit = r.y === v.exitY, isAbloese = r.y === v.ablöseY;
+        neSum += r.ne; dsSum += r.pay;
+        roh.ne = r.ne; roh.afa = r.afa; roh.zins = r.zins;
+        roh.vGewinn = isExit ? v.gewinn : 0;
+        roh.proceeds = isExit ? v.proceeds : 0;
+        roh.payoff = isAbloese ? v.restAtExit : 0;
+        roh.tilg = r.tilg; roh.pay = r.pay;
+        roh.exit = isExit; roh.abloese = isAbloese;
+      }
+      opexSum += ctx.opexShare;
+
       var z = zeile(roh, vortrag, ctx.taxRate);
       vortrag = z._vortrag;
       taxSum += z.tax;
       cumProfit += z.jue;
+      cumEinlage += z.einlage;
       cash += z.cashChange;
       z.cash = cash;
-      z.ek = v.equity0 + cumProfit;
+      // Vor dem Erwerb ist noch nichts eingelegt: Das Eigenkapital wächst erst mit
+      // der Einlage, sonst stimmt die Bilanz in den Vorlaufjahren nicht.
+      z.ek = cumEinlage + cumProfit;
+      // Bestände: Buchwert nur solange gehalten, Restschuld bis zur Ablösung
+      z.buchwert = erwerb ? v.invest0 : (r && y < v.exitY ? r.buchwert : 0);
+      z.rest = erwerb ? v.loan0 : (r && y < v.ablöseY ? r.rest : 0);
       rows.push(z);
-    });
+    }
 
     return {
       v: v, rows: rows, cashFinal: cash, taxSum: taxSum, neSum: neSum,
@@ -1139,6 +1166,9 @@
     // Der Kontext, den ein Objekt braucht, um sich allein zu rechnen
     this.ctx = { opexShare: this.opexShare, taxRate: this.taxRate,
                  anlage: ges.anlage, kkZins: ges.kkZins };
+    // Das Gemeinkostenfenster ergibt sich erst aus den Verläufen; es wird in
+    // rechnen() nachgetragen und gilt dann für jede Objektrechnung.
+    this._fenster = null;
     this._cache = {};
   }
 
@@ -1163,6 +1193,8 @@
       T = Math.max.apply(null, vs.map(function (v) { return v.ablöseY; }));
       start0 = Math.min.apply(null, vs.map(function (v) { return v.o.start; }));
     }
+    this.ctx.opexVon = start0;
+    this.ctx.opexBis = T;
 
     // Die Zeitachse beginnt beim frühesten Erwerb, nicht beim Basisjahr — Objekte
     // dürfen davor liegen, dann ist ihr Erwerb Bestand und start0 wird negativ.
@@ -1252,9 +1284,13 @@
 
   // Kapitalwertkurve über alle Haltedauern — ohne Zinsfuß, deshalb schnell genug
   // für Bisektionen. Grundlage sowohl der Analyse als auch des Ankaufsfilters.
-  Kennzahlen.prototype.kurve = function (ob) {
+  Kennzahlen.prototype.kurve = function (ob, nurGewichtete) {
     var o = ob || this.ob, ctx = this.ctx, k = [];
+    // Ohne Sterbetafel-Kopplung trägt genau eine Haltedauer Gewicht. Die übrigen
+    // 39 Punkte gehen mit null in jede Summe ein — sie zu rechnen kostet nur Zeit.
+    var w = nurGewichtete ? o.renditeGewichte() : null;
     for (var h = 1; h <= HMAX; h++) {
+      if (w && !w[h]) { k.push(null); continue; }
       var s = o.ekStrom(ctx, h);
       k.push({ h: h, ende: s.ende, endwert: s.cashFinal, equity0: s.equity0, flows: s.flows });
     }
@@ -1266,20 +1302,23 @@
   // die Zielgröße braucht daher keine unterstellte Haltedauer.
   function gewKapitalwert(kurve, w, disk) {
     var a = 0;
-    for (var k = 1; k <= HMAX; k++) a += w[k] * kapitalwert(kurve[k - 1].flows, disk);
+    for (var k = 1; k <= HMAX; k++) {
+      if (!w[k] || !kurve[k - 1]) continue;
+      a += w[k] * kapitalwert(kurve[k - 1].flows, disk);
+    }
     return a;
   }
 
   Kennzahlen.prototype.kw = function (disk, ob) {
     var o = ob || this.ob;
-    return gewKapitalwert(this.kurve(o), o.renditeGewichte(), disk);
+    return gewKapitalwert(this.kurve(o, true), o.renditeGewichte(), disk);
   };
 
   // Der Zinsfuß, bei dem der gewichtete Kapitalwert null wird: die Rendite, die
   // dieser Vertrag tatsächlich abwirft. Alle Renditeangaben leiten sich hieraus ab.
   Kennzahlen.prototype.rendite = function (ob) {
     var self = this, o = ob || this.ob;
-    var kurve = this.kurve(o), w = o.renditeGewichte();
+    var kurve = this.kurve(o, true), w = o.renditeGewichte();
     function bei(r) { return gewKapitalwert(kurve, w, r / 100); }
     var jetzt = bei(G.mindestRendite);
     var lo = -60, hi = 40;
@@ -1296,11 +1335,10 @@
       reicht: G.mindestRendite <= wrt + 0.02 };
   };
 
-  // Dasselbe Projekt ohne Fremdkapital. Ohne Darlehen gibt es auch keine Zinsbindung —
-  // sonst läge der Erlös nach dem Verkauf ohne Grund in der Geldanlage und der
-  // Vergleich fiele zugunsten der Finanzierung aus.
+  // Dasselbe Projekt ohne Fremdkapital. Die Zinsbindung entfällt dabei von selbst,
+  // weil ohne Darlehen nichts abzulösen ist — siehe Objekt.darlehensJahre.
   Kennzahlen.prototype.ohneHebel = function () {
-    return this.rendite(this.ob.mit({ ltv: 0, weiterfuehren: false }));
+    return this.rendite(this.ob.mit({ ltv: 0 }));
   };
 
   // Umkehrrechnung: Welcher Wert einer Stellschraube bringt — bei sonst unveränderten
@@ -1362,8 +1400,18 @@
     // Verkaufspreis, deshalb wird er als Wachstumsrate eingesetzt und danach
     // wieder in einen Faktor zurückgerechnet — inklusive Instandhaltungsverfall,
     // denn der mindert denselben Preis.
+    // Bei gewichteter Rechnung wird über die Verkaufszeitpunkte gemittelt, nicht
+    // über die mittlere Laufzeit hochgerechnet: Wachstum ist exponentiell, deshalb
+    // ist der Faktor zur Durchschnittsdauer nicht der durchschnittliche Faktor.
+    var w = this.ob.renditeGewichte();
     function faktorVon(g) {
-      return Math.pow(1 + g / 100, t) * Math.pow(1 - o.verfall / 100, t);
+      var a = 1 + g / 100, b = 1 - o.verfall / 100, sum = 0, mass = 0;
+      for (var k = 1; k <= HMAX; k++) {
+        if (!w[k]) continue;
+        sum += w[k] * Math.pow(a, k) * Math.pow(b, k);
+        mass += w[k];
+      }
+      return mass > 0 ? sum / mass : Math.pow(a, t) * Math.pow(b, t);
     }
     function kwBei(g) { return self.kw(disk, self.ob.mit({ growth: g })); }
 
@@ -1478,7 +1526,7 @@
     { title: "Vertrag", dot: "s1", items: [
       { id: "ne", label: "Nutzungsentgelt", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "auf den Auszahlungsbetrag, fest" },
       { id: "esc", label: "Jährliche Anpassung", min: 0, max: 4, step: 0.25, fmt: function (v) { return v === 0 ? "keine" : fPct(v, 2) + " p.a."; }, note: "0 % = feste Rate bis zum Verkauf" },
-      { id: "start", label: "Erwerbsjahr", min: -25, max: 20, step: 1, fmt: function (v) {
+      { id: "start", label: "Erwerbsjahr", min: -40, max: 40, step: 1, fmt: function (v) {
         return fJahr(v) + (v === 0 ? " (Basisjahr)" : (v < 0 ? " (Bestand, vor " + -v + (v === -1 ? " Jahr)" : " Jahren)") : " (in " + v + (v === 1 ? " Jahr)" : " Jahren)")));
       } },
       { id: "holdAuto", label: "Haltedauer aus Sterbetafel", bool: true, note: "rechnet über die Exit-Verteilung statt über eine feste Annahme" },
@@ -1506,6 +1554,17 @@
 
 
   // Umkehrrechnung: Welcher Wert bringt ceteris paribus den Renditeanspruch?
+  // Die Suchgrenzen einer Stellschraube sind die ihres Reglers: Ein Vorschlag, den
+  // man anschließend nicht einstellen kann, ist wertlos — „setzen" würde still auf
+  // den Reglerrand klemmen und das Ziel bliebe verfehlt.
+  function reglerGrenzen(id) {
+    var g = null;
+    OBJ_GROUPS.forEach(function (gr) {
+      gr.items.forEach(function (it) { if (it.id === id && it.min !== undefined) g = { min: it.min, max: it.max }; });
+    });
+    return g;
+  }
+
   var STELLSCHRAUBEN = [
     { k: "ne", label: "Nutzungsentgelt", min: 0.5, max: 15, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
     { k: "min", label: "Mindesterlös", min: 0, max: 250, fmt: fAufschlag,
@@ -1518,6 +1577,13 @@
     { k: "makler", label: "Maklercourtage", min: 0, max: 8, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" },
     { k: "vkKosten", label: "Verkaufskosten", min: 0, max: 12, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" }
   ];
+
+  // Grenzen aus den Reglern übernehmen, damit Vorschlag und Einstellbarkeit
+  // nicht auseinanderfallen.
+  STELLSCHRAUBEN.forEach(function (sch) {
+    var g = reglerGrenzen(sch.k);
+    if (g) { sch.min = g.min; sch.max = g.max; }
+  });
 
   // ══════════ 08-zustand.js ══════════
   // ---------- Anwendungszustand ----------
@@ -1553,7 +1619,9 @@
   function gesGeaendert() {
     if (G.basisjahr !== basisAlt) {
       var d = G.basisjahr - basisAlt;
-      OBJ.forEach(function (ob) { ob.a.start = Math.max(-25, Math.min(20, ob.a.start - d)); });
+      // Die Grenzen decken jede Kombination aus Basisjahr und Erwerbsjahr ab; ein
+      // Klemmen würde hier ein echtes historisches Erwerbsjahr verschieben.
+      OBJ.forEach(function (ob) { ob.a.start = Math.max(-40, Math.min(40, ob.a.start - d)); });
       var pO = document.getElementById("panelObjekt");
       if (pO) pO.dataset.idx = "";
     }
@@ -2611,8 +2679,9 @@
 
       // Über welche Zeit gerechnet wird — eine Rendite ohne Laufzeit sagt nichts aus
       h += '<div class="lz-box">';
-      h += '<div class="derived tight"><span>Vertragslaufzeit <em>= Kreditbindung</em></span><b>' +
-        fJahre(LZ.kredit) + "</b></div>";
+      h += '<div class="derived tight"><span>Vertragslaufzeit ' +
+        (LZ.kredit === null ? "<em>ohne Darlehen</em>" : "<em>= Kreditbindung</em>") + "</span><b>" +
+        (LZ.kredit === null ? "—" : fJahre(LZ.kredit)) + "</b></div>";
       h += '<div class="derived tight"><span>Verkauf des Anteils' +
         (LZ.auto ? ' <em>= Sterbetafel</em>' : ' <em>= feste Annahme</em>') + "</span><b>" +
         fJahre(LZ.verkauf) + "</b></div>";
@@ -2622,7 +2691,7 @@
           fJahre(LZ.nachlauf) + " in der Geldanlage zu " + fPct(G.anlage, 2) + ", während er " + fPct(o.zins, 2) +
           " Zinsen kostet — diese Zeit senkt die Rendite, ohne dass ein Nutzungsentgelt gegenübersteht." +
           (LZ.pNachlauf < 99.5 ? " Das betrifft " + fPct(LZ.pNachlauf, 0) + " der Fälle." : "") + "</div>";
-      } else if (LZ.verkauf > LZ.kredit + 0.05) {
+      } else if (LZ.kredit !== null && LZ.verkauf > LZ.kredit + 0.05) {
         h += '<div class="ctl-note" style="margin-top:8px">Der Vertrag läuft über die Kreditbindung hinaus. Für die Zeit danach ist keine Anschlusskondition unterstellt — der Sollzins gilt unverändert weiter.</div>';
       }
       h += "</div>";
@@ -2842,7 +2911,7 @@
       var L2 = r.A.lz;
       h += "<td>" + fJahre(L2.verkauf).replace(" Jahre", "").replace(" Jahr", "") +
         (L2.auto ? " ◆" : "") + "</td>";
-      h += "<td>" + L2.kredit + "</td>";
+      h += "<td>" + (L2.kredit === null ? "—" : L2.kredit) + "</td>";
       h += '<td class="' + (L2.nachlauf > 0.05 ? "neg" : "") + '">' +
         fJahre(L2.bindung).replace(" Jahre", "").replace(" Jahr", "") + "</td>";
       h += "<td>" + fPct(r.o.ne, 2) + "</td>";

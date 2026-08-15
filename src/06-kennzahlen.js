@@ -13,9 +13,13 @@
 
   // Kapitalwertkurve über alle Haltedauern — ohne Zinsfuß, deshalb schnell genug
   // für Bisektionen. Grundlage sowohl der Analyse als auch des Ankaufsfilters.
-  Kennzahlen.prototype.kurve = function (ob) {
+  Kennzahlen.prototype.kurve = function (ob, nurGewichtete) {
     var o = ob || this.ob, ctx = this.ctx, k = [];
+    // Ohne Sterbetafel-Kopplung trägt genau eine Haltedauer Gewicht. Die übrigen
+    // 39 Punkte gehen mit null in jede Summe ein — sie zu rechnen kostet nur Zeit.
+    var w = nurGewichtete ? o.renditeGewichte() : null;
     for (var h = 1; h <= HMAX; h++) {
+      if (w && !w[h]) { k.push(null); continue; }
       var s = o.ekStrom(ctx, h);
       k.push({ h: h, ende: s.ende, endwert: s.cashFinal, equity0: s.equity0, flows: s.flows });
     }
@@ -27,20 +31,23 @@
   // die Zielgröße braucht daher keine unterstellte Haltedauer.
   function gewKapitalwert(kurve, w, disk) {
     var a = 0;
-    for (var k = 1; k <= HMAX; k++) a += w[k] * kapitalwert(kurve[k - 1].flows, disk);
+    for (var k = 1; k <= HMAX; k++) {
+      if (!w[k] || !kurve[k - 1]) continue;
+      a += w[k] * kapitalwert(kurve[k - 1].flows, disk);
+    }
     return a;
   }
 
   Kennzahlen.prototype.kw = function (disk, ob) {
     var o = ob || this.ob;
-    return gewKapitalwert(this.kurve(o), o.renditeGewichte(), disk);
+    return gewKapitalwert(this.kurve(o, true), o.renditeGewichte(), disk);
   };
 
   // Der Zinsfuß, bei dem der gewichtete Kapitalwert null wird: die Rendite, die
   // dieser Vertrag tatsächlich abwirft. Alle Renditeangaben leiten sich hieraus ab.
   Kennzahlen.prototype.rendite = function (ob) {
     var self = this, o = ob || this.ob;
-    var kurve = this.kurve(o), w = o.renditeGewichte();
+    var kurve = this.kurve(o, true), w = o.renditeGewichte();
     function bei(r) { return gewKapitalwert(kurve, w, r / 100); }
     var jetzt = bei(G.mindestRendite);
     var lo = -60, hi = 40;
@@ -57,11 +64,10 @@
       reicht: G.mindestRendite <= wrt + 0.02 };
   };
 
-  // Dasselbe Projekt ohne Fremdkapital. Ohne Darlehen gibt es auch keine Zinsbindung —
-  // sonst läge der Erlös nach dem Verkauf ohne Grund in der Geldanlage und der
-  // Vergleich fiele zugunsten der Finanzierung aus.
+  // Dasselbe Projekt ohne Fremdkapital. Die Zinsbindung entfällt dabei von selbst,
+  // weil ohne Darlehen nichts abzulösen ist — siehe Objekt.darlehensJahre.
   Kennzahlen.prototype.ohneHebel = function () {
-    return this.rendite(this.ob.mit({ ltv: 0, weiterfuehren: false }));
+    return this.rendite(this.ob.mit({ ltv: 0 }));
   };
 
   // Umkehrrechnung: Welcher Wert einer Stellschraube bringt — bei sonst unveränderten
@@ -123,8 +129,18 @@
     // Verkaufspreis, deshalb wird er als Wachstumsrate eingesetzt und danach
     // wieder in einen Faktor zurückgerechnet — inklusive Instandhaltungsverfall,
     // denn der mindert denselben Preis.
+    // Bei gewichteter Rechnung wird über die Verkaufszeitpunkte gemittelt, nicht
+    // über die mittlere Laufzeit hochgerechnet: Wachstum ist exponentiell, deshalb
+    // ist der Faktor zur Durchschnittsdauer nicht der durchschnittliche Faktor.
+    var w = this.ob.renditeGewichte();
     function faktorVon(g) {
-      return Math.pow(1 + g / 100, t) * Math.pow(1 - o.verfall / 100, t);
+      var a = 1 + g / 100, b = 1 - o.verfall / 100, sum = 0, mass = 0;
+      for (var k = 1; k <= HMAX; k++) {
+        if (!w[k]) continue;
+        sum += w[k] * Math.pow(a, k) * Math.pow(b, k);
+        mass += w[k];
+      }
+      return mass > 0 ? sum / mass : Math.pow(a, t) * Math.pow(b, t);
     }
     function kwBei(g) { return self.kw(disk, self.ob.mit({ growth: g })); }
 

@@ -61,7 +61,10 @@
       for (var i = 0; i < cfs.length; i++) a += cfs[i] / Math.pow(1 + r, i);
       return a;
     }
-    var lo = -0.95, hi = 10;
+    // Der Suchbereich muss auch extreme, aber gültige Renditen einschließen —
+    // sonst zeigt die Anzeige einen Strich, obwohl ein Zinsfuß existiert.
+    var lo = -0.999, hi = 10;
+    while (hi < 1e7 && npv(lo) * npv(hi) > 0) hi *= 10;
     if (npv(lo) * npv(hi) > 0) return null;
     for (var i = 0; i < 90 && hi - lo > 1e-11; i++) {
       var mid = (lo + hi) / 2;

@@ -38,6 +38,23 @@ Die Rechnung steht in `01`–`08` und kommt ohne DOM aus; `09`–`15` bauen nur 
 
 ## Prüfen
 
+`src/regression.js` prüft die Eigenschaften, an denen das Modell schon einmal
+zerbrochen ist — jeweils als Eigenschaft, nicht als Zahl:
+
+```bash
+node src/regression.js
+```
+
+- Ohne Darlehen darf die Zinsbindung den Rückfluss nicht verzögern.
+- Bei einem Objekt müssen Detail- und Portfoliorechnung übereinstimmen.
+- Die Gemeinkosten aller Objektrechnungen müssen zusammen die Portfoliokosten ergeben.
+- Ein Basisjahrwechsel darf kein Erwerbsjahr verschieben.
+- Keine Stellschraube darf einen Wert vorschlagen, den ihr Regler nicht hergibt.
+- Der Zinsfuß muss auch weit über 1.000 % gefunden werden.
+- Bilanz, Kapitalflussrechnung und Kassenfortschreibung müssen in fünf
+  Objektkonstellationen aufgehen — im Portfolio und in jeder Einzelrechnung.
+
+
 `src/baseline.js` erzeugt einen Fingerabdruck aus 840 Parameterlagen mit je 38
 Kennzahlen. `src/vergleich.js` stellt zwei solche Abdrücke numerisch gegenüber und
 unterscheidet echte Abweichungen von Rundungsgrenzen. Änderungen an der Rechnung

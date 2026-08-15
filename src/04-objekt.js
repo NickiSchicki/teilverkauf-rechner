@@ -60,6 +60,10 @@
 
   Objekt.prototype.darlehensJahre = function (hold) {
     var h = hold === undefined ? this.a.hold : hold;
+    // Ohne Darlehen gibt es nichts abzulösen: Die Zinsbindung darf den Rückfluss
+    // dann nicht verzögern, sonst rechnet schon der Vergleich mit und ohne
+    // Finanzierung gegen sich selbst.
+    if (!(this.a.ltv > 0)) return h;
     return this.a.weiterfuehren ? Math.max(h, this.a.zinsbindung) : h;
   };
 
@@ -89,7 +93,7 @@
       nachlauf += w[k] * (ende - k);
       if (ende > k) pNachlauf += w[k];
     }
-    return { kredit: o.zinsbindung, verkauf: verkauf, bindung: bindung,
+    return { kredit: o.ltv > 0 ? o.zinsbindung : null, verkauf: verkauf, bindung: bindung,
       nachlauf: nachlauf, pNachlauf: pNachlauf * 100,
       auto: !!o.holdAuto, median: GW.median, eH: GW.eH, gesetzt: o.hold };
   };
@@ -163,41 +167,61 @@
   // ctx: { opexShare, taxRate, anlage, kkZins } — alles, was von außen kommt.
   Objekt.prototype.rechenwerk = function (ctx, hold) {
     var v = this.verlauf(hold);
-    var vortrag = v.akquise, cash = 0, cumProfit = -v.akquise;
+    var vortrag = 0, cash = 0, cumProfit = 0, cumEinlage = 0;
     var taxSum = 0, neSum = 0, opexSum = 0, dsSum = 0;
 
-    // Erwerbsjahr: Anschaffung, Darlehen und Einlage. Der Akquiseaufwand fällt hier
-    // an und erzeugt einen Verlust, der vorgetragen wird.
-    var rows = [zeile({
-      y: v.o.start, akquise: v.akquise, invest: v.invest0, loanNew: v.loan0,
-      einlage: v.equity0, buchwert: v.invest0, cash: 0, ek: v.equity0 - v.akquise,
-      rest: v.loan0, erwerb: true
-    }, 0, ctx.taxRate)];
+    // Die Gemeinkosten der GmbH laufen, solange die Gesellschaft besteht — nicht
+    // nur, solange dieses eine Objekt gehalten wird. Das Fenster kommt deshalb vom
+    // Portfolio; ohne Angabe fällt es auf die eigene Laufzeit zurück.
+    var von = Math.min(ctx.opexVon === undefined ? v.o.start : ctx.opexVon, v.o.start);
+    var bis = Math.max(ctx.opexBis === undefined ? v.ablöseY : ctx.opexBis, v.ablöseY);
 
-    v.years.forEach(function (r) {
-      var isExit = r.y === v.exitY, isAbloese = r.y === v.ablöseY;
-      neSum += r.ne; opexSum += ctx.opexShare; dsSum += r.pay;
+    // Jahre des Objekts nach Kalenderjahr greifbar machen
+    var jahr = {};
+    v.years.forEach(function (r) { jahr[r.y] = r; });
+
+    var rows = [];
+    for (var y = von; y <= bis; y++) {
+      var erwerb = y === v.o.start;
+      var r = jahr[y];
       var roh = {
-        y: r.y, ne: r.ne, afa: r.afa, zins: r.zins, opex: ctx.opexShare,
+        y: y,
+        opex: ctx.opexShare,
         anlageErtrag: Math.max(0, cash) * ctx.anlage / 100,
-        kkZins: Math.max(0, -cash) * ctx.kkZins / 100,
-        vGewinn: isExit ? v.gewinn : 0,
-        proceeds: isExit ? v.proceeds : 0,
-        payoff: isAbloese ? v.restAtExit : 0,
-        tilg: r.tilg, pay: r.pay,
-        buchwert: r.y >= v.exitY ? 0 : r.buchwert,
-        rest: r.y >= v.ablöseY ? 0 : r.rest,
-        exit: isExit, abloese: isAbloese
+        kkZins: Math.max(0, -cash) * ctx.kkZins / 100
       };
+      if (erwerb) {
+        // Anschaffung, Darlehensaufnahme, Einlage und der Akquiseaufwand
+        roh.akquise = v.akquise; roh.invest = v.invest0; roh.loanNew = v.loan0;
+        roh.einlage = v.equity0; roh.erwerb = true;
+      }
+      if (r) {
+        var isExit = r.y === v.exitY, isAbloese = r.y === v.ablöseY;
+        neSum += r.ne; dsSum += r.pay;
+        roh.ne = r.ne; roh.afa = r.afa; roh.zins = r.zins;
+        roh.vGewinn = isExit ? v.gewinn : 0;
+        roh.proceeds = isExit ? v.proceeds : 0;
+        roh.payoff = isAbloese ? v.restAtExit : 0;
+        roh.tilg = r.tilg; roh.pay = r.pay;
+        roh.exit = isExit; roh.abloese = isAbloese;
+      }
+      opexSum += ctx.opexShare;
+
       var z = zeile(roh, vortrag, ctx.taxRate);
       vortrag = z._vortrag;
       taxSum += z.tax;
       cumProfit += z.jue;
+      cumEinlage += z.einlage;
       cash += z.cashChange;
       z.cash = cash;
-      z.ek = v.equity0 + cumProfit;
+      // Vor dem Erwerb ist noch nichts eingelegt: Das Eigenkapital wächst erst mit
+      // der Einlage, sonst stimmt die Bilanz in den Vorlaufjahren nicht.
+      z.ek = cumEinlage + cumProfit;
+      // Bestände: Buchwert nur solange gehalten, Restschuld bis zur Ablösung
+      z.buchwert = erwerb ? v.invest0 : (r && y < v.exitY ? r.buchwert : 0);
+      z.rest = erwerb ? v.loan0 : (r && y < v.ablöseY ? r.rest : 0);
       rows.push(z);
-    });
+    }
 
     return {
       v: v, rows: rows, cashFinal: cash, taxSum: taxSum, neSum: neSum,
