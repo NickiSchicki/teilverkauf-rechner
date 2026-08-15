@@ -1466,7 +1466,7 @@
       { id: "name", label: "Bezeichnung", text: true },
       { id: "v0", label: "Wert bei Erwerb", min: 50000, max: 2000000, step: 10000, fmt: fEur },
       { id: "share", label: "Verkaufter Anteil", min: 5, max: 90, step: 1, fmt: function (v) { return fPct(v, 0); } },
-      { id: "alter", label: "Alter im Haushalt", min: 55, max: 95, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "bei Paaren die jüngere Person" },
+      { id: "alter", label: "Alter im Haushalt", min: 55, max: 95, step: 1, fmt: fJahre, note: "bei Paaren die jüngere Person" },
       { id: "haus", label: "Haushalt", choices: ["m", "w", "Paar"], note: "bei Paaren zählt die zuletzt lebende Person" },
       { id: "pflege", label: "Auszugswahrscheinlichkeit", min: 0, max: 6, step: 0.5, fmt: function (v) { return fPct(v, 1) + " p.a."; }, note: "Pflegeheim oder Auszug, zusätzlich zur Sterblichkeit" },
       { id: "growth", label: "Wertentwicklung", min: -2, max: 5, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "Marktentwicklung dieser Lage" },
@@ -1480,8 +1480,8 @@
         return fJahr(v) + (v === 0 ? " (Basisjahr)" : (v < 0 ? " (Bestand, vor " + -v + (v === -1 ? " Jahr)" : " Jahren)") : " (in " + v + (v === 1 ? " Jahr)" : " Jahren)")));
       } },
       { id: "holdAuto", label: "Haltedauer aus Sterbetafel", bool: true, note: "rechnet über die Exit-Verteilung statt über eine feste Annahme" },
-      { id: "hold", label: "Haltedauer", min: 1, max: 40, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "angenommener Verkaufszeitpunkt, wirkt nur ohne Sterbetafel-Kopplung" },
-      { id: "de", label: "Durchführungsentgelt", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "vom Gesamterlös beim Verkauf" },
+      { id: "hold", label: "Haltedauer", min: 1, max: 40, step: 1, fmt: fJahre, note: "angenommener Verkaufszeitpunkt, wirkt nur ohne Sterbetafel-Kopplung" },
+      { id: "de", label: "Durchführungsentgelt", min: 0, max: 8, step: 0.25, fmt: function (v) { return v === 0 ? "keines" : fPct(v, 2); }, note: "vom Gesamterlös beim Verkauf" },
       { id: "min", label: "Mindesterlös", min: 0, max: 250, step: 5, fmt: fAufschlag, note: "Vertragsklausel: Untergrenze in Prozent der Auszahlung, unabhängig vom Marktpreis. In Klammern der Aufschlag über die Auszahlung hinaus" },
       { id: "vkKosten", label: "Verkaufskosten beim Exit", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "Makler etc., anteilig getragen" }
     ] },
@@ -1493,7 +1493,7 @@
       { id: "ltv", label: "Beleihung", min: 0, max: 95, step: 5, fmt: function (v) { return fPct(v, 0); }, note: "Darlehen in % des Anteilskaufpreises" },
       { id: "zins", label: "Sollzins", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; } },
       { id: "tilg", label: "Anfangstilgung", min: 0, max: 5, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "0 % = endfälliges Darlehen" },
-      { id: "zinsbindung", label: "Zinsbindung", min: 5, max: 30, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "Vertragslaufzeit — vorher keine Ablösung ohne Entschädigung" },
+      { id: "zinsbindung", label: "Zinsbindung", min: 5, max: 30, step: 1, fmt: fJahre, note: "Vertragslaufzeit — vorher keine Ablösung ohne Entschädigung" },
       { id: "weiterfuehren", label: "Bei Verkauf weiterführen", bool: true, note: "Darlehen läuft bis Ende der Vertragslaufzeit, der Erlös wird bis dahin angelegt" }
     ] },
     { title: "Steuerliche Angaben", zu: true, hinweis: "AfA und Gebäudeanteil", items: [
@@ -2291,6 +2291,14 @@
       "). Zuwachs gegenüber der Einlage: " + fEur(D.gewinn) + ".</div></div>";
 
     // Jahr für Jahr
+    h += '<div class="card"><h2>Woher das Vermögen kommt</h2>';
+    h += '<p class="sub">Vom eingesetzten Eigenkapital zur Schlussliquidität dieses Projekts, mit anteiligen Gemeinkosten.</p>';
+    h += '<div class="bar-legend"><span><span class="sq" style="background:var(--s3)"></span>trägt bei</span>' +
+      '<span><span class="sq" style="background:var(--s2)"></span>zieht ab</span>' +
+      '<span><span class="sq" style="background:var(--ink-3)"></span>Bestand</span></div>';
+    h += '<div class="chart-box">' + brueckeChart(bilanzBruecke(D.rows)) + "</div>";
+    h += "</div>";
+
     h += '<details class="card ausklapp"><summary><h2>Jahr für Jahr</h2>' +
       '<span class="ausklapp-hinweis">Zahlungsströme dieses Projekts</span></summary>';
     h += '<div class="sched-scroll"><table class="sched"><thead><tr>' +
@@ -2322,13 +2330,6 @@
     h += "</details>";
 
     // Rechenwerke
-    h += '<div class="card"><h2>Woher das Vermögen kommt</h2>';
-    h += '<p class="sub">Vom eingesetzten Eigenkapital zur Schlussliquidität dieses Projekts, mit anteiligen Gemeinkosten.</p>';
-    h += '<div class="bar-legend"><span><span class="sq" style="background:var(--s3)"></span>trägt bei</span>' +
-      '<span><span class="sq" style="background:var(--s2)"></span>zieht ab</span>' +
-      '<span><span class="sq" style="background:var(--ink-3)"></span>Bestand</span></div>';
-    h += '<div class="chart-box">' + brueckeChart(bilanzBruecke(D.rows)) + "</div>";
-    h += "</div>";
 
     h += '<details class="card ausklapp"><summary><h2>Bilanz, GuV und Cashflow</h2>' +
       '<span class="ausklapp-hinweis">Nur dieses Projekt, mit anteiligen Gemeinkosten</span></summary>';
