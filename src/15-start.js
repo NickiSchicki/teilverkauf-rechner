@@ -13,12 +13,30 @@
 
     var nachschuss = Math.max(0, -P.minCash);
     var zuwachs = P.cashFinal - P.cumEinlage;
+    // Die Rendite führt, nicht die Zuwachssumme: Über fünfzehn Jahre wächst fast
+    // jeder Vertrag absolut, entscheidend ist der Abstand zum eigenen Anspruch.
+    var ziel = G.mindestRendite, ist = P.irr;
     var hz = document.getElementById("hZuwachs");
-    hz.textContent = OBJ.length ? (zuwachs >= 0 ? "+" : "−") + fEur(Math.abs(zuwachs)) : "–";
-    hz.className = "hero-big" + (zuwachs < 0 ? " neg" : "");
+    hz.textContent = OBJ.length ? fPct(ist, 1) : "–";
+    hz.className = "hero-big" + (OBJ.length && ist !== null && ist < ziel - 0.05 ? " neg" : "");
     document.getElementById("hLabel").textContent = OBJ.length
-      ? "Vermögenszuwachs bis " + fJahr(P.T)
-      : "Vermögenszuwachs der Gesellschaft";
+      ? "Rendite auf das Eigenkapital bis " + fJahr(P.T)
+      : "Rendite auf das Eigenkapital";
+
+    // Balken: erreichter Anteil des Anspruchs, Marke sitzt beim Anspruch selbst.
+    var spanne = Math.max(ziel, ist === null ? 0 : ist, 1) * 1.15;
+    var erreicht = OBJ.length && ist !== null ? Math.max(0, Math.min(100, ist / spanne * 100)) : 0;
+    var markeBei = Math.max(0, Math.min(100, ziel / spanne * 100));
+    var bIst = document.getElementById("zielIst"), bMarke = document.getElementById("zielMarke");
+    bIst.style.width = erreicht + "%";
+    bIst.className = "ziel-ist" + (ist !== null && ist < ziel - 0.05 ? " unter" : "");
+    bMarke.style.left = "calc(" + markeBei + "% - 1px)";
+    document.getElementById("zielText").innerHTML = !OBJ.length ? ""
+      : (ist === null ? "Kein Zinsfuß bestimmbar."
+        : ist < ziel - 0.05
+          ? "<b>" + fPct(ziel - ist, 2) + "</b> unter dem Anspruch von " + fPct(ziel, 2)
+          : "<b>" + fPct(ist - ziel, 2) + "</b> über dem Anspruch von " + fPct(ziel, 2));
+
     document.getElementById("hNote").textContent = OBJ.length
       ? "Aus " + fEur(P.cumEinlage) + " Einlagen werden " + fEur(P.cashFinal) + " Liquidität. " +
         (nachschuss > 0
@@ -30,11 +48,16 @@
       ? OBJ.length + (OBJ.length === 1 ? " Vertrag" : " Verträge")
       : "keine";
     document.getElementById("kNeed").textContent = fEur(P.cumEinlage + nachschuss);
-    document.getElementById("kIrr").textContent = fPct(P.irr);
+    document.getElementById("kZuw").textContent = OBJ.length ? (zuwachs >= 0 ? "+" : "−") + fEur(Math.abs(zuwachs)) : "–";
     document.getElementById("kCash").textContent = fEur(P.cashFinal);
     document.getElementById("kCost").textContent = fEur(P.taxSum + P.opexSum);
 
     renderContrib(P);
+
+    // Die Einleitung erklärt den Aufbau des Modells und gehört auf die Einstiegsseite.
+    // Auf Objekt- und Analyseseite kostet sie nur Platz über dem eigentlichen Inhalt.
+    var lede = document.getElementById("lede");
+    if (lede) lede.hidden = detailIdx !== null || view === "analyse";
 
     if (detailIdx !== null && !P.verlaeufe[detailIdx]) detailIdx = null;
     var imDetail = detailIdx !== null;

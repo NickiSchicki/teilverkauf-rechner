@@ -20,12 +20,20 @@
   function baueGruppen(host, gruppen, quelle, praefix, nachAenderung) {
     host.innerHTML = "";
     gruppen.forEach(function (g) {
-      var card = document.createElement("div");
-      card.className = "card";
-      var kopf = document.createElement("div");
+      // Gruppen mit zu: true starten zugeklappt — Größen, die man einmal einstellt
+      // und danach nicht mehr anfasst, sollen die Liste nicht dominieren.
+      var card = document.createElement(g.zu ? "details" : "div");
+      card.className = "card" + (g.zu ? " ausklapp grp-zu" : "");
+      var kopf = document.createElement(g.zu ? "summary" : "div");
       kopf.className = "grp-title";
       if (g.dot) { var d = document.createElement("span"); d.className = "dot " + g.dot; kopf.appendChild(d); }
       kopf.appendChild(document.createTextNode(g.title));
+      if (g.zu && g.hinweis) {
+        var hn = document.createElement("span");
+        hn.className = "ausklapp-hinweis";
+        hn.textContent = g.hinweis;
+        kopf.appendChild(hn);
+      }
       card.appendChild(kopf);
 
       g.items.forEach(function (it) {

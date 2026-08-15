@@ -40,8 +40,27 @@
     h += '<div class="card">';
     h += '<button type="button" class="crumb" id="backBtn">‹ Zurück zum Portfolio</button>';
     h += "<h2>" + (o.name || "Objekt " + (detailIdx + 1)) + "</h2>";
-    h += '<p class="sub" style="margin-bottom:0">Erwerb ' + fJahr(o.start) + ", Verkauf " + fJahr(x.exitY) +
+    h += '<p class="sub">Erwerb ' + fJahr(o.start) + ", Verkauf " + fJahr(x.exitY) +
       " · " + fPct(o.share, 0) + " Anteil an " + fEur(o.v0) + " · Nutzungsentgelt " + fPct(o.ne, 2) + " p.a.</p>";
+
+    // Die Antwort zuerst: Wer diese Seite öffnet, will wissen, ob der Vertrag den
+    // Anspruch deckt. Vorher stand das erst nach fünf Bildschirmen.
+    var Rq = KZ.rendite, zielQ = G.mindestRendite;
+    if (Rq.status === "gefunden") {
+      var trifft = Rq.wert >= zielQ - 0.02;
+      var spanneQ = Math.max(zielQ, Rq.wert, 1) * 1.15;
+      h += '<div class="urteil ' + (trifft ? "gut" : "knapp") + '">';
+      h += '<div class="urteil-zahl">' + fPct(Rq.wert, 2) + "</div>";
+      h += '<div class="urteil-rest">';
+      h += '<div class="ziel-bar"><div class="ziel-ist' + (trifft ? "" : " unter") + '" style="width:' +
+        Math.max(0, Math.min(100, Rq.wert / spanneQ * 100)) + '%"></div>' +
+        '<div class="ziel-marke" style="left:calc(' + Math.max(0, Math.min(100, zielQ / spanneQ * 100)) + '% - 1px)"></div></div>';
+      h += '<div class="ziel-text">' + (trifft
+        ? "<b>" + fPct(Rq.wert - zielQ, 2) + "</b> über dem Anspruch von " + fPct(zielQ, 2)
+        : "<b>" + fPct(zielQ - Rq.wert, 2) + "</b> unter dem Anspruch von " + fPct(zielQ, 2)) +
+        " · über " + fJahre(KZ.lz.bindung) + " Kapitalbindung</div>";
+      h += "</div></div>";
+    }
     h += "</div>";
 
     // ---- Teil 1: Vertrag ----
@@ -128,8 +147,8 @@
       "). Zuwachs gegenüber der Einlage: " + fEur(D.gewinn) + ".</div></div>";
 
     // Jahr für Jahr
-    h += '<div class="card"><h2>Jahr für Jahr</h2>';
-    h += '<p class="sub">Zahlungsströme dieses Projekts, Jahreszahlen wie im Portfolio.</p>';
+    h += '<details class="card ausklapp"><summary><h2>Jahr für Jahr</h2>' +
+      '<span class="ausklapp-hinweis">Zahlungsströme dieses Projekts</span></summary>';
     h += '<div class="sched-scroll"><table class="sched"><thead><tr>' +
       "<th>Jahr</th><th>Nutzungsentgelt</th><th>Zinsertrag</th><th>Zins</th><th>Tilgung</th><th>Anteil. Kosten</th><th>AfA</th><th>Steuer</th><th>Cashflow</th><th>Bankkonto</th><th>Restschuld</th>" +
       "</tr></thead><tbody>";
@@ -156,16 +175,16 @@
         fJahr(x.ablöseY) + " weiter, der Erlös liegt so lange zu " + fPct(G.anlage, 2) +
         " angelegt und verzinst sich mit " + fPct(G.anlage - o.zins, 2) + " gegenüber dem Sollzins.</p>";
     }
-    h += "</div>";
+    h += "</details>";
 
     // Rechenwerke
-    h += '<div class="card"><h2>Bilanz, GuV und Cashflow</h2>';
-    h += '<p class="sub">Nur dieses Projekt, mit anteiligen Gemeinkosten und eigenständig gerechneter Steuer.</p>';
+    h += '<details class="card ausklapp"><summary><h2>Bilanz, GuV und Cashflow</h2>' +
+      '<span class="ausklapp-hinweis">Nur dieses Projekt, mit anteiligen Gemeinkosten</span></summary>';
     h += '<div class="fin-scroll"><table class="fin">' +
       finTableHtml(D.rows, rechenwerkGruppen(false), function (r) { return r.erwerb ? "Erwerb " + fJahr(r.y) : fJahr(r.y); }) +
       "</table></div>";
     h += '<p class="caption">Die maßgebliche Steuer entsteht auf Gesellschaftsebene: Im Portfolio werden Gewinne und Verluste aller Projekte verrechnet, hier wird das Projekt isoliert gerechnet. Die Summe der Einzelsteuern kann daher von der Portfoliosteuer abweichen.</p>';
-    h += "</div>";
+    h += "</details>";
 
     // ---- Teil 3: Analyse ----
     h += '<div class="section-head"><h3>Analyse</h3><span class="sh-note">Wie belastbar die angenommene Haltedauer ist</span></div>';

@@ -231,7 +231,7 @@
         h += "</tr>";
       });
       h += "</tbody></table></div>";
-      h += '<p class="caption">Die erste Zeile ist die Hürde selbst: Ihr kritischer Wert ist die Rendite, die dieser Vertrag bei den aktuellen Annahmen tatsächlich abwirft. Sie steht als Gesamtrendite über die Kapitalbindung, weil nichts ausgeschüttet wird — das Eigenkapital geht einmal hinein und kommt beim Verkauf einmal zurück; der Jahreszins darunter ist nur die Verteilung dieses einen Rückflusses auf die Zeit. Bei zugeschalteter Sterbetafel ist die Gesamtangabe auf die mittlere Kapitalbindung umgerechnet, weil dort jeder Pfad eine eigene Laufzeit hat. Sie gilt für die ganze Gesellschaft — wird sie gesenkt, ändert sich der Maßstab für alle Objekte. Die übrigen Zeilen betreffen nur dieses Objekt. „Reicht allein nicht aus“ bedeutet: Selbst am günstigsten Ende dieser Größe bleibt der Kapitalwert negativ, dann müssen mehrere Stellschrauben zusammen bewegt werden.</p>';
+      h += '<p class="caption">Die erste Zeile ist die Hürde selbst: Ihr kritischer Wert ist die Rendite, die dieser Vertrag tatsächlich abwirft — als Gesamtrendite über die Kapitalbindung, weil nichts ausgeschüttet wird. Sie gilt für die ganze Gesellschaft, die übrigen Zeilen nur für dieses Objekt. „Reicht allein nicht aus“ heißt: Selbst am günstigsten Ende dieser Größe bleibt der Kapitalwert negativ.</p>';
       h += "</div>";
     }
     h += '<div class="card"><div class="stat-row">';
@@ -254,14 +254,12 @@
     h += "</div>";
 
     var diff = (A.eIrr !== null && gew.irr !== null) ? A.eIrr - gew.irr : null;
-    h += '<div class="warn-note">Der Haushalt ist als <b>' + (o.haus || "Paar") + "</b> mit " + (o.alter || 75) +
-      " Jahren hinterlegt. " +
+    h += '<div class="warn-note">Haushalt <b>' + (o.haus || "Paar") + "</b>, " + (o.alter || 75) + " Jahre. " +
       (String(o.haus || "").toLowerCase() === "paar"
-        ? "Bei Paaren endet der Vertrag mit der zuletzt lebenden Person — das verlängert die Haltedauer um mehrere Jahre gegenüber einer Einzelperson. "
-        : "Bei einer Einzelperson endet der Vertrag deutlich früher als bei einem Paar gleichen Alters. ") +
+        ? "Bei Paaren endet der Vertrag mit der zuletzt lebenden Person, das verlängert die Haltedauer deutlich. "
+        : "Bei einer Einzelperson endet der Vertrag früher als bei einem Paar gleichen Alters. ") +
       (diff !== null
-        ? "Über die gesamte Verteilung gerechnet liegt die Rendite bei " + fPct(A.eIrr) + ", die eingestellten " + o.hold +
-          " Jahre ergeben " + fPct(gew.irr) + " — eine Abweichung von " + fPct(Math.abs(diff)) + "-Punkten."
+        ? "Über die Verteilung: " + fPct(A.eIrr) + ", bei " + o.hold + " Jahren: " + fPct(gew.irr) + "."
         : "") +
       "</div></div>";
 
@@ -270,8 +268,7 @@
       '<span><span class="swatch" style="background:var(--s1)"></span>Kapitalwert der Beteiligung</span></div>';
     h += '<div class="chart-box">' + exitChart(A, o) + "</div>";
     h += '<p class="caption">Der Kapitalwert misst gegen die Mindestrendite von ' + fPct(G.mindestRendite, 2) +
-      " — oberhalb der Nulllinie erreicht das Projekt den geforderten Anspruch. " +
-      "Als Maßstab dient bewusst der Kapitalwert und nicht der interne Zinsfuß, der bei kurzen Haltedauern nicht eindeutig ist. " +
+      " — oberhalb der Nulllinie erreicht das Projekt den Anspruch. " +
       "Die rot hinterlegte Zone ist die Verlustzone: Dort sind Grunderwerbsteuer und Notarkosten noch nicht verdient.</p>";
     h += "</div>";
     return h;

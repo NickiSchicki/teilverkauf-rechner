@@ -90,7 +90,13 @@
   }
 
   .layout { display: grid; grid-template-columns: 320px 1fr; gap: 26px; align-items: start; margin-top: 30px; }
-  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; }
+    /* Auf schmalen Bildschirmen zuerst das Ergebnis, dann die Regler — sonst
+       scrollt man über einen ganzen Bildschirm Einstellungen, bevor eine Zahl kommt. */
+    .layout main { order: 1; }
+    .layout aside { order: 2; }
+  }
 
   aside { display: flex; flex-direction: column; gap: 14px; }
   #panelObjekt, #panelGes { display: flex; flex-direction: column; gap: 14px; }
@@ -294,6 +300,15 @@
   }
   .hero-big.neg { color: var(--s2); }
   .hero-note { color: var(--ink-2); font-size: 13.5px; margin-top: 10px; max-width: 46ch; }
+  /* Zielbalken: die Rendite gegen den eigenen Anspruch. Ohne diesen Bezug sagt
+     eine absolute Zuwachssumme nichts darüber, ob sich der Vertrag lohnt. */
+  .ziel { margin-top: 12px; max-width: 340px; }
+  .ziel-bar { position: relative; height: 8px; border-radius: 4px; background: var(--grid); overflow: visible; }
+  .ziel-ist { height: 100%; border-radius: 4px; background: var(--s3); transition: width .18s ease; }
+  .ziel-ist.unter { background: var(--s2); }
+  .ziel-marke { position: absolute; top: -3px; width: 2px; height: 14px; background: var(--ink-2); border-radius: 1px; }
+  .ziel-text { margin-top: 7px; font-size: 12.5px; color: var(--ink-2); }
+  .ziel-text b { color: var(--ink); }
   .hero-side { display: flex; flex-direction: column; gap: 0; min-width: 236px; }
   .hero-side .hs {
     display: flex; justify-content: space-between; gap: 18px;
@@ -395,6 +410,36 @@
   .lz-box .derived em { font-style: normal; color: var(--ink-3); font-size: 12px; }
   table.sched tfoot td { font-weight: 700; border-top: 1px solid var(--axis); border-bottom: none; }
   table.sched .neg { color: var(--s2); }
+
+  /* Ausklappbare Karten: Referenztext und Feinjustierung sollen die Seite nicht
+     dominieren. Zusammengeklappt kosten sie eine Zeile statt mehrerer Bildschirme. */
+  details.ausklapp > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: baseline;
+    gap: 10px; flex-wrap: wrap;
+  }
+  details.ausklapp > summary::-webkit-details-marker { display: none; }
+  details.ausklapp > summary::after {
+    content: "▸"; margin-left: auto; color: var(--ink-3); font-size: 13px;
+    transition: transform .15s ease;
+  }
+  details.ausklapp[open] > summary::after { transform: rotate(90deg); }
+  details.ausklapp > summary h2 { margin: 0; }
+  details.ausklapp > summary:hover h2 { color: var(--accent); }
+  details.ausklapp > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  .ausklapp-hinweis { color: var(--ink-3); font-size: 12.5px; }
+  details.ausklapp[open] > summary { margin-bottom: 14px; }
+  details.grp-zu > summary { margin-bottom: 0; }
+  details.grp-zu[open] > summary { margin-bottom: 12px; }
+  details.grp-zu > summary::after { font-size: 12px; }
+
+  /* Urteilszeile am Kopf der Objektseite: Rendite, Zielbalken, Abstand zum Anspruch. */
+  .urteil { display: flex; align-items: center; gap: 20px; margin-top: 16px;
+    padding-top: 16px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .urteil-zahl { font-size: 34px; font-weight: 700; letter-spacing: -0.5px;
+    font-variant-numeric: tabular-nums; color: var(--s3); }
+  .urteil.knapp .urteil-zahl { color: var(--s2); }
+  .urteil-rest { flex: 1; min-width: 240px; }
+  .urteil .ziel-text { margin-top: 7px; }
 </style>
 </head>
 <body>
@@ -402,7 +447,7 @@
   <header>
     <p class="eyebrow">Modellrechner</p>
     <h1>Teilverkauf-Portfolio in der GmbH</h1>
-    <p class="lede">Mehrere Verträge in einer Gesellschaft: Objekte einzeln anlegen, Ergebnis konsolidiert über alle Jahre. Laufende Kosten und Steuern fallen auf Gesellschaftsebene an, nicht je Vertrag.</p>
+    <p class="lede" id="lede">Mehrere Verträge in einer Gesellschaft: Objekte einzeln anlegen, Ergebnis konsolidiert über alle Jahre. Laufende Kosten und Steuern fallen auf Gesellschaftsebene an, nicht je Vertrag.</p>
     <span class="chip">Vereinfachte Modellrechnung mit Beispielwerten · keine Rechts-, Steuer- oder Finanzberatung</span>
   </header>
 
@@ -425,14 +470,18 @@
       <div id="viewPortfolio">
       <div class="card hero-card">
         <div class="hero-main">
-          <div class="stat-label" id="hLabel">Vermögenszuwachs der Gesellschaft</div>
+          <div class="stat-label" id="hLabel">Rendite auf das Eigenkapital</div>
           <div class="hero-big" id="hZuwachs">–</div>
+          <div class="ziel">
+            <div class="ziel-bar"><div class="ziel-ist" id="zielIst"></div><div class="ziel-marke" id="zielMarke"></div></div>
+            <div class="ziel-text" id="zielText"></div>
+          </div>
           <div class="hero-note" id="hNote"></div>
         </div>
         <div class="hero-side">
           <div class="hs"><span>Objekte</span><b id="kObj">–</b></div>
           <div class="hs"><span>Kapitalbedarf</span><b id="kNeed">–</b></div>
-          <div class="hs"><span>Rendite nach Steuern</span><b id="kIrr">–</b></div>
+          <div class="hs"><span>Vermögenszuwachs</span><b id="kZuw">–</b></div>
           <div class="hs"><span>Liquidität am Ende</span><b id="kCash">–</b></div>
           <div class="hs"><span>Steuern &amp; Gemeinkosten</span><b id="kCost">–</b></div>
         </div>
@@ -492,8 +541,8 @@
 
       <div id="viewDetail" hidden></div>
 
-      <div class="card fine">
-        <h2>Methodik &amp; Annahmen</h2>
+      <details class="card fine ausklapp">
+        <summary><h2>Methodik &amp; Annahmen</h2><span class="ausklapp-hinweis">Rechengrundlagen und Einschränkungen</span></summary>
         <p><b>Portfolio:</b> Alle Objekte liegen in derselben GmbH. Je Objekt zahlt der Eigentümer ein Nutzungsentgelt auf den Auszahlungsbetrag; beim Gesamtverkauf erhält die GmbH ihren Anteil am dann erzielten Preis, mindestens aber den Mindesterlös. <b>Jedes Objekt trägt seine Annahmen selbst</b> — Immobilienwert, Anteil, Haushalt und Alter, Wertentwicklung und Instandhaltungsverfall, sämtliche Vertragskonditionen, die komplette Finanzierung samt Zins, Tilgung und Zinsbindung sowie Grunderwerbsteuer, AfA-Satz und Gebäudeanteil. Sie werden auf der jeweiligen Objektseite eingestellt. Auf Gesellschaftsebene verbleiben nur die laufenden Kosten, der Gewerbesteuer-Hebesatz, die erweiterte Kürzung, die Abgeltungsteuer sowie Anlage- und Kontokorrentzins. Das Portfolio rechnet die Objekte lediglich zusammen. Neue Objekte starten mit festen Standardwerten.</p>
         <p><b>Steuern:</b> Körperschaftsteuer 15 % plus Solidaritätszuschlag ergibt 15,825 %. Gewerbesteuer entfällt bei erweiterter Kürzung nach § 9 Nr. 1 S. 2 GewStG, sonst kommen 3,5 % Messzahl × Hebesatz hinzu. <b>Die Besteuerung erfolgt konsolidiert:</b> Gewinne und Verluste aller Objekte werden im selben Wirtschaftsjahr verrechnet, verbleibende Verluste vorgetragen. Genau das unterscheidet ein Portfolio von mehreren Einzelrechnungen — ein anlaufendes Objekt mindert die Steuer eines ertragreichen.</p>
         <p><b>Laufende Kosten</b> (Steuerberater, Jahresabschluss, Handelsregister, Versicherungen) fallen einmal je Geschäftsjahr an, unabhängig von der Objektzahl. Sie sind der Grund, warum sich ein einzelner Vertrag kaum trägt und erst mehrere Objekte die Struktur finanzieren.</p>
@@ -507,7 +556,7 @@
         <p><b>Umkehrrechnung je Stellschraube:</b> Jede Zeile der Stellschraubentabelle beantwortet dieselbe Frage für genau eine Größe, alle übrigen unverändert. Die Suche läuft als Bisektion; die Wirkungsrichtung wird gemessen und nicht unterstellt. Liegt die Lösung außerhalb des zulässigen Bereichs, erscheint „reicht allein nicht aus“ oder „im gesamten Bereich unkritisch“ statt eines an den Rand geklemmten Werts. Die erste Zeile behandelt die Mindestrendite selbst als Stellschraube: Ihr kritischer Wert ist die Rendite, die der Vertrag bei den aktuellen Annahmen tatsächlich abwirft, und stimmt mit der erwarteten Rendite der Analyse überein — beides ist der Zinsfuß, bei dem derselbe gewichtete Kapitalwert null wird.</p>
         <p><b>Effektive Kosten je Eigentümer</b> sind der interne Zinsfuß aus dessen Sicht: Auszahlung heute gegen Nutzungsentgelte und den Anteil, der beim Verkauf an die GmbH geht. Verkaufskosten des Eigentümers zählen nicht dazu, weil sie bei einem Verkauf ohne Teilverkauf ebenso anfielen.</p>
         <p>Alle Werte jährlich nachschüssig, vor Inflation. Ausfall-, Instandhaltungs- und Bewertungsrisiken sind nicht modelliert.</p>
-      </div>
+      </details>
     </main>
   </div>
 </div>
@@ -1355,7 +1404,7 @@
       { id: "min", label: "Mindesterlös", min: 0, max: 140, step: 1, fmt: function (v) { return v === 0 ? "keiner" : fPct(v, 0); }, note: "garantierter Rückfluss in % der Auszahlung" },
       { id: "vkKosten", label: "Verkaufskosten beim Exit", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "Makler etc., anteilig getragen" }
     ] },
-    { title: "Ankauf & Finanzierung", dot: "s2", items: [
+    { title: "Ankauf & Finanzierung", dot: "s2", zu: true, hinweis: "Nebenkosten, Darlehen", items: [
       { id: "grest", label: "Grunderwerbsteuer", min: 3.5, max: 6.5, step: 0.5, fmt: function (v) { return fPct(v, 1); }, note: "je Bundesland verschieden" },
       { id: "notar", label: "Notar & Grundbuch", min: 0, max: 3, step: 0.25, fmt: function (v) { return fPct(v, 2); } },
       { id: "akquise", label: "Akquisitionskosten", min: 0, max: 40000, step: 500, fmt: function (v) { return v === 0 ? "keine" : fEur(v); }, note: "Werbung und Vertrieb je Abschluss, sofort abzugsfähiger Aufwand" },
@@ -1366,7 +1415,7 @@
       { id: "zinsbindung", label: "Zinsbindung", min: 5, max: 30, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "Vertragslaufzeit — vorher keine Ablösung ohne Entschädigung" },
       { id: "weiterfuehren", label: "Bei Verkauf weiterführen", bool: true, note: "Darlehen läuft bis Ende der Vertragslaufzeit, der Erlös wird bis dahin angelegt" }
     ] },
-    { title: "Steuerliche Angaben", items: [
+    { title: "Steuerliche Angaben", zu: true, hinweis: "AfA und Gebäudeanteil", items: [
       { id: "afaSatz", label: "AfA-Satz", min: 1, max: 4, step: 0.5, fmt: function (v) { return fPct(v, 1) + " p.a."; }, note: "2 % Standard · 2,5 % vor 1925 · 3 % Neubau" },
       { id: "gebAnteil", label: "Gebäudeanteil", min: 40, max: 90, step: 5, fmt: function (v) { return fPct(v, 0); }, note: "AfA-Basis, Rest ist Grund und Boden" }
     ] }
@@ -1432,12 +1481,20 @@
   function baueGruppen(host, gruppen, quelle, praefix, nachAenderung) {
     host.innerHTML = "";
     gruppen.forEach(function (g) {
-      var card = document.createElement("div");
-      card.className = "card";
-      var kopf = document.createElement("div");
+      // Gruppen mit zu: true starten zugeklappt — Größen, die man einmal einstellt
+      // und danach nicht mehr anfasst, sollen die Liste nicht dominieren.
+      var card = document.createElement(g.zu ? "details" : "div");
+      card.className = "card" + (g.zu ? " ausklapp grp-zu" : "");
+      var kopf = document.createElement(g.zu ? "summary" : "div");
       kopf.className = "grp-title";
       if (g.dot) { var d = document.createElement("span"); d.className = "dot " + g.dot; kopf.appendChild(d); }
       kopf.appendChild(document.createTextNode(g.title));
+      if (g.zu && g.hinweis) {
+        var hn = document.createElement("span");
+        hn.className = "ausklapp-hinweis";
+        hn.textContent = g.hinweis;
+        kopf.appendChild(hn);
+      }
       card.appendChild(kopf);
 
       g.items.forEach(function (it) {
@@ -1913,8 +1970,27 @@
     h += '<div class="card">';
     h += '<button type="button" class="crumb" id="backBtn">‹ Zurück zum Portfolio</button>';
     h += "<h2>" + (o.name || "Objekt " + (detailIdx + 1)) + "</h2>";
-    h += '<p class="sub" style="margin-bottom:0">Erwerb ' + fJahr(o.start) + ", Verkauf " + fJahr(x.exitY) +
+    h += '<p class="sub">Erwerb ' + fJahr(o.start) + ", Verkauf " + fJahr(x.exitY) +
       " · " + fPct(o.share, 0) + " Anteil an " + fEur(o.v0) + " · Nutzungsentgelt " + fPct(o.ne, 2) + " p.a.</p>";
+
+    // Die Antwort zuerst: Wer diese Seite öffnet, will wissen, ob der Vertrag den
+    // Anspruch deckt. Vorher stand das erst nach fünf Bildschirmen.
+    var Rq = KZ.rendite, zielQ = G.mindestRendite;
+    if (Rq.status === "gefunden") {
+      var trifft = Rq.wert >= zielQ - 0.02;
+      var spanneQ = Math.max(zielQ, Rq.wert, 1) * 1.15;
+      h += '<div class="urteil ' + (trifft ? "gut" : "knapp") + '">';
+      h += '<div class="urteil-zahl">' + fPct(Rq.wert, 2) + "</div>";
+      h += '<div class="urteil-rest">';
+      h += '<div class="ziel-bar"><div class="ziel-ist' + (trifft ? "" : " unter") + '" style="width:' +
+        Math.max(0, Math.min(100, Rq.wert / spanneQ * 100)) + '%"></div>' +
+        '<div class="ziel-marke" style="left:calc(' + Math.max(0, Math.min(100, zielQ / spanneQ * 100)) + '% - 1px)"></div></div>';
+      h += '<div class="ziel-text">' + (trifft
+        ? "<b>" + fPct(Rq.wert - zielQ, 2) + "</b> über dem Anspruch von " + fPct(zielQ, 2)
+        : "<b>" + fPct(zielQ - Rq.wert, 2) + "</b> unter dem Anspruch von " + fPct(zielQ, 2)) +
+        " · über " + fJahre(KZ.lz.bindung) + " Kapitalbindung</div>";
+      h += "</div></div>";
+    }
     h += "</div>";
 
     // ---- Teil 1: Vertrag ----
@@ -2001,8 +2077,8 @@
       "). Zuwachs gegenüber der Einlage: " + fEur(D.gewinn) + ".</div></div>";
 
     // Jahr für Jahr
-    h += '<div class="card"><h2>Jahr für Jahr</h2>';
-    h += '<p class="sub">Zahlungsströme dieses Projekts, Jahreszahlen wie im Portfolio.</p>';
+    h += '<details class="card ausklapp"><summary><h2>Jahr für Jahr</h2>' +
+      '<span class="ausklapp-hinweis">Zahlungsströme dieses Projekts</span></summary>';
     h += '<div class="sched-scroll"><table class="sched"><thead><tr>' +
       "<th>Jahr</th><th>Nutzungsentgelt</th><th>Zinsertrag</th><th>Zins</th><th>Tilgung</th><th>Anteil. Kosten</th><th>AfA</th><th>Steuer</th><th>Cashflow</th><th>Bankkonto</th><th>Restschuld</th>" +
       "</tr></thead><tbody>";
@@ -2029,16 +2105,16 @@
         fJahr(x.ablöseY) + " weiter, der Erlös liegt so lange zu " + fPct(G.anlage, 2) +
         " angelegt und verzinst sich mit " + fPct(G.anlage - o.zins, 2) + " gegenüber dem Sollzins.</p>";
     }
-    h += "</div>";
+    h += "</details>";
 
     // Rechenwerke
-    h += '<div class="card"><h2>Bilanz, GuV und Cashflow</h2>';
-    h += '<p class="sub">Nur dieses Projekt, mit anteiligen Gemeinkosten und eigenständig gerechneter Steuer.</p>';
+    h += '<details class="card ausklapp"><summary><h2>Bilanz, GuV und Cashflow</h2>' +
+      '<span class="ausklapp-hinweis">Nur dieses Projekt, mit anteiligen Gemeinkosten</span></summary>';
     h += '<div class="fin-scroll"><table class="fin">' +
       finTableHtml(D.rows, rechenwerkGruppen(false), function (r) { return r.erwerb ? "Erwerb " + fJahr(r.y) : fJahr(r.y); }) +
       "</table></div>";
     h += '<p class="caption">Die maßgebliche Steuer entsteht auf Gesellschaftsebene: Im Portfolio werden Gewinne und Verluste aller Projekte verrechnet, hier wird das Projekt isoliert gerechnet. Die Summe der Einzelsteuern kann daher von der Portfoliosteuer abweichen.</p>';
-    h += "</div>";
+    h += "</details>";
 
     // ---- Teil 3: Analyse ----
     h += '<div class="section-head"><h3>Analyse</h3><span class="sh-note">Wie belastbar die angenommene Haltedauer ist</span></div>';
@@ -2323,7 +2399,7 @@
         h += "</tr>";
       });
       h += "</tbody></table></div>";
-      h += '<p class="caption">Die erste Zeile ist die Hürde selbst: Ihr kritischer Wert ist die Rendite, die dieser Vertrag bei den aktuellen Annahmen tatsächlich abwirft. Sie steht als Gesamtrendite über die Kapitalbindung, weil nichts ausgeschüttet wird — das Eigenkapital geht einmal hinein und kommt beim Verkauf einmal zurück; der Jahreszins darunter ist nur die Verteilung dieses einen Rückflusses auf die Zeit. Bei zugeschalteter Sterbetafel ist die Gesamtangabe auf die mittlere Kapitalbindung umgerechnet, weil dort jeder Pfad eine eigene Laufzeit hat. Sie gilt für die ganze Gesellschaft — wird sie gesenkt, ändert sich der Maßstab für alle Objekte. Die übrigen Zeilen betreffen nur dieses Objekt. „Reicht allein nicht aus“ bedeutet: Selbst am günstigsten Ende dieser Größe bleibt der Kapitalwert negativ, dann müssen mehrere Stellschrauben zusammen bewegt werden.</p>';
+      h += '<p class="caption">Die erste Zeile ist die Hürde selbst: Ihr kritischer Wert ist die Rendite, die dieser Vertrag tatsächlich abwirft — als Gesamtrendite über die Kapitalbindung, weil nichts ausgeschüttet wird. Sie gilt für die ganze Gesellschaft, die übrigen Zeilen nur für dieses Objekt. „Reicht allein nicht aus“ heißt: Selbst am günstigsten Ende dieser Größe bleibt der Kapitalwert negativ.</p>';
       h += "</div>";
     }
     h += '<div class="card"><div class="stat-row">';
@@ -2346,14 +2422,12 @@
     h += "</div>";
 
     var diff = (A.eIrr !== null && gew.irr !== null) ? A.eIrr - gew.irr : null;
-    h += '<div class="warn-note">Der Haushalt ist als <b>' + (o.haus || "Paar") + "</b> mit " + (o.alter || 75) +
-      " Jahren hinterlegt. " +
+    h += '<div class="warn-note">Haushalt <b>' + (o.haus || "Paar") + "</b>, " + (o.alter || 75) + " Jahre. " +
       (String(o.haus || "").toLowerCase() === "paar"
-        ? "Bei Paaren endet der Vertrag mit der zuletzt lebenden Person — das verlängert die Haltedauer um mehrere Jahre gegenüber einer Einzelperson. "
-        : "Bei einer Einzelperson endet der Vertrag deutlich früher als bei einem Paar gleichen Alters. ") +
+        ? "Bei Paaren endet der Vertrag mit der zuletzt lebenden Person, das verlängert die Haltedauer deutlich. "
+        : "Bei einer Einzelperson endet der Vertrag früher als bei einem Paar gleichen Alters. ") +
       (diff !== null
-        ? "Über die gesamte Verteilung gerechnet liegt die Rendite bei " + fPct(A.eIrr) + ", die eingestellten " + o.hold +
-          " Jahre ergeben " + fPct(gew.irr) + " — eine Abweichung von " + fPct(Math.abs(diff)) + "-Punkten."
+        ? "Über die Verteilung: " + fPct(A.eIrr) + ", bei " + o.hold + " Jahren: " + fPct(gew.irr) + "."
         : "") +
       "</div></div>";
 
@@ -2362,8 +2436,7 @@
       '<span><span class="swatch" style="background:var(--s1)"></span>Kapitalwert der Beteiligung</span></div>';
     h += '<div class="chart-box">' + exitChart(A, o) + "</div>";
     h += '<p class="caption">Der Kapitalwert misst gegen die Mindestrendite von ' + fPct(G.mindestRendite, 2) +
-      " — oberhalb der Nulllinie erreicht das Projekt den geforderten Anspruch. " +
-      "Als Maßstab dient bewusst der Kapitalwert und nicht der interne Zinsfuß, der bei kurzen Haltedauern nicht eindeutig ist. " +
+      " — oberhalb der Nulllinie erreicht das Projekt den Anspruch. " +
       "Die rot hinterlegte Zone ist die Verlustzone: Dort sind Grunderwerbsteuer und Notarkosten noch nicht verdient.</p>";
     h += "</div>";
     return h;
@@ -2541,12 +2614,30 @@
 
     var nachschuss = Math.max(0, -P.minCash);
     var zuwachs = P.cashFinal - P.cumEinlage;
+    // Die Rendite führt, nicht die Zuwachssumme: Über fünfzehn Jahre wächst fast
+    // jeder Vertrag absolut, entscheidend ist der Abstand zum eigenen Anspruch.
+    var ziel = G.mindestRendite, ist = P.irr;
     var hz = document.getElementById("hZuwachs");
-    hz.textContent = OBJ.length ? (zuwachs >= 0 ? "+" : "−") + fEur(Math.abs(zuwachs)) : "–";
-    hz.className = "hero-big" + (zuwachs < 0 ? " neg" : "");
+    hz.textContent = OBJ.length ? fPct(ist, 1) : "–";
+    hz.className = "hero-big" + (OBJ.length && ist !== null && ist < ziel - 0.05 ? " neg" : "");
     document.getElementById("hLabel").textContent = OBJ.length
-      ? "Vermögenszuwachs bis " + fJahr(P.T)
-      : "Vermögenszuwachs der Gesellschaft";
+      ? "Rendite auf das Eigenkapital bis " + fJahr(P.T)
+      : "Rendite auf das Eigenkapital";
+
+    // Balken: erreichter Anteil des Anspruchs, Marke sitzt beim Anspruch selbst.
+    var spanne = Math.max(ziel, ist === null ? 0 : ist, 1) * 1.15;
+    var erreicht = OBJ.length && ist !== null ? Math.max(0, Math.min(100, ist / spanne * 100)) : 0;
+    var markeBei = Math.max(0, Math.min(100, ziel / spanne * 100));
+    var bIst = document.getElementById("zielIst"), bMarke = document.getElementById("zielMarke");
+    bIst.style.width = erreicht + "%";
+    bIst.className = "ziel-ist" + (ist !== null && ist < ziel - 0.05 ? " unter" : "");
+    bMarke.style.left = "calc(" + markeBei + "% - 1px)";
+    document.getElementById("zielText").innerHTML = !OBJ.length ? ""
+      : (ist === null ? "Kein Zinsfuß bestimmbar."
+        : ist < ziel - 0.05
+          ? "<b>" + fPct(ziel - ist, 2) + "</b> unter dem Anspruch von " + fPct(ziel, 2)
+          : "<b>" + fPct(ist - ziel, 2) + "</b> über dem Anspruch von " + fPct(ziel, 2));
+
     document.getElementById("hNote").textContent = OBJ.length
       ? "Aus " + fEur(P.cumEinlage) + " Einlagen werden " + fEur(P.cashFinal) + " Liquidität. " +
         (nachschuss > 0
@@ -2558,11 +2649,16 @@
       ? OBJ.length + (OBJ.length === 1 ? " Vertrag" : " Verträge")
       : "keine";
     document.getElementById("kNeed").textContent = fEur(P.cumEinlage + nachschuss);
-    document.getElementById("kIrr").textContent = fPct(P.irr);
+    document.getElementById("kZuw").textContent = OBJ.length ? (zuwachs >= 0 ? "+" : "−") + fEur(Math.abs(zuwachs)) : "–";
     document.getElementById("kCash").textContent = fEur(P.cashFinal);
     document.getElementById("kCost").textContent = fEur(P.taxSum + P.opexSum);
 
     renderContrib(P);
+
+    // Die Einleitung erklärt den Aufbau des Modells und gehört auf die Einstiegsseite.
+    // Auf Objekt- und Analyseseite kostet sie nur Platz über dem eigentlichen Inhalt.
+    var lede = document.getElementById("lede");
+    if (lede) lede.hidden = detailIdx !== null || view === "analyse";
 
     if (detailIdx !== null && !P.verlaeufe[detailIdx]) detailIdx = null;
     var imDetail = detailIdx !== null;

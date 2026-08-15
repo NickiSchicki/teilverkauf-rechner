@@ -2,7 +2,7 @@
   <header>
     <p class="eyebrow">Modellrechner</p>
     <h1>Teilverkauf-Portfolio in der GmbH</h1>
-    <p class="lede">Mehrere Verträge in einer Gesellschaft: Objekte einzeln anlegen, Ergebnis konsolidiert über alle Jahre. Laufende Kosten und Steuern fallen auf Gesellschaftsebene an, nicht je Vertrag.</p>
+    <p class="lede" id="lede">Mehrere Verträge in einer Gesellschaft: Objekte einzeln anlegen, Ergebnis konsolidiert über alle Jahre. Laufende Kosten und Steuern fallen auf Gesellschaftsebene an, nicht je Vertrag.</p>
     <span class="chip">Vereinfachte Modellrechnung mit Beispielwerten · keine Rechts-, Steuer- oder Finanzberatung</span>
   </header>
 
@@ -25,14 +25,18 @@
       <div id="viewPortfolio">
       <div class="card hero-card">
         <div class="hero-main">
-          <div class="stat-label" id="hLabel">Vermögenszuwachs der Gesellschaft</div>
+          <div class="stat-label" id="hLabel">Rendite auf das Eigenkapital</div>
           <div class="hero-big" id="hZuwachs">–</div>
+          <div class="ziel">
+            <div class="ziel-bar"><div class="ziel-ist" id="zielIst"></div><div class="ziel-marke" id="zielMarke"></div></div>
+            <div class="ziel-text" id="zielText"></div>
+          </div>
           <div class="hero-note" id="hNote"></div>
         </div>
         <div class="hero-side">
           <div class="hs"><span>Objekte</span><b id="kObj">–</b></div>
           <div class="hs"><span>Kapitalbedarf</span><b id="kNeed">–</b></div>
-          <div class="hs"><span>Rendite nach Steuern</span><b id="kIrr">–</b></div>
+          <div class="hs"><span>Vermögenszuwachs</span><b id="kZuw">–</b></div>
           <div class="hs"><span>Liquidität am Ende</span><b id="kCash">–</b></div>
           <div class="hs"><span>Steuern &amp; Gemeinkosten</span><b id="kCost">–</b></div>
         </div>
@@ -92,8 +96,8 @@
 
       <div id="viewDetail" hidden></div>
 
-      <div class="card fine">
-        <h2>Methodik &amp; Annahmen</h2>
+      <details class="card fine ausklapp">
+        <summary><h2>Methodik &amp; Annahmen</h2><span class="ausklapp-hinweis">Rechengrundlagen und Einschränkungen</span></summary>
         <p><b>Portfolio:</b> Alle Objekte liegen in derselben GmbH. Je Objekt zahlt der Eigentümer ein Nutzungsentgelt auf den Auszahlungsbetrag; beim Gesamtverkauf erhält die GmbH ihren Anteil am dann erzielten Preis, mindestens aber den Mindesterlös. <b>Jedes Objekt trägt seine Annahmen selbst</b> — Immobilienwert, Anteil, Haushalt und Alter, Wertentwicklung und Instandhaltungsverfall, sämtliche Vertragskonditionen, die komplette Finanzierung samt Zins, Tilgung und Zinsbindung sowie Grunderwerbsteuer, AfA-Satz und Gebäudeanteil. Sie werden auf der jeweiligen Objektseite eingestellt. Auf Gesellschaftsebene verbleiben nur die laufenden Kosten, der Gewerbesteuer-Hebesatz, die erweiterte Kürzung, die Abgeltungsteuer sowie Anlage- und Kontokorrentzins. Das Portfolio rechnet die Objekte lediglich zusammen. Neue Objekte starten mit festen Standardwerten.</p>
         <p><b>Steuern:</b> Körperschaftsteuer 15 % plus Solidaritätszuschlag ergibt 15,825 %. Gewerbesteuer entfällt bei erweiterter Kürzung nach § 9 Nr. 1 S. 2 GewStG, sonst kommen 3,5 % Messzahl × Hebesatz hinzu. <b>Die Besteuerung erfolgt konsolidiert:</b> Gewinne und Verluste aller Objekte werden im selben Wirtschaftsjahr verrechnet, verbleibende Verluste vorgetragen. Genau das unterscheidet ein Portfolio von mehreren Einzelrechnungen — ein anlaufendes Objekt mindert die Steuer eines ertragreichen.</p>
         <p><b>Laufende Kosten</b> (Steuerberater, Jahresabschluss, Handelsregister, Versicherungen) fallen einmal je Geschäftsjahr an, unabhängig von der Objektzahl. Sie sind der Grund, warum sich ein einzelner Vertrag kaum trägt und erst mehrere Objekte die Struktur finanzieren.</p>
@@ -107,7 +111,7 @@
         <p><b>Umkehrrechnung je Stellschraube:</b> Jede Zeile der Stellschraubentabelle beantwortet dieselbe Frage für genau eine Größe, alle übrigen unverändert. Die Suche läuft als Bisektion; die Wirkungsrichtung wird gemessen und nicht unterstellt. Liegt die Lösung außerhalb des zulässigen Bereichs, erscheint „reicht allein nicht aus“ oder „im gesamten Bereich unkritisch“ statt eines an den Rand geklemmten Werts. Die erste Zeile behandelt die Mindestrendite selbst als Stellschraube: Ihr kritischer Wert ist die Rendite, die der Vertrag bei den aktuellen Annahmen tatsächlich abwirft, und stimmt mit der erwarteten Rendite der Analyse überein — beides ist der Zinsfuß, bei dem derselbe gewichtete Kapitalwert null wird.</p>
         <p><b>Effektive Kosten je Eigentümer</b> sind der interne Zinsfuß aus dessen Sicht: Auszahlung heute gegen Nutzungsentgelte und den Anteil, der beim Verkauf an die GmbH geht. Verkaufskosten des Eigentümers zählen nicht dazu, weil sie bei einem Verkauf ohne Teilverkauf ebenso anfielen.</p>
         <p>Alle Werte jährlich nachschüssig, vor Inflation. Ausfall-, Instandhaltungs- und Bewertungsrisiken sind nicht modelliert.</p>
-      </div>
+      </details>
     </main>
   </div>
 </div>

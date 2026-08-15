@@ -83,7 +83,13 @@
   }
 
   .layout { display: grid; grid-template-columns: 320px 1fr; gap: 26px; align-items: start; margin-top: 30px; }
-  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; }
+    /* Auf schmalen Bildschirmen zuerst das Ergebnis, dann die Regler — sonst
+       scrollt man über einen ganzen Bildschirm Einstellungen, bevor eine Zahl kommt. */
+    .layout main { order: 1; }
+    .layout aside { order: 2; }
+  }
 
   aside { display: flex; flex-direction: column; gap: 14px; }
   #panelObjekt, #panelGes { display: flex; flex-direction: column; gap: 14px; }
@@ -287,6 +293,15 @@
   }
   .hero-big.neg { color: var(--s2); }
   .hero-note { color: var(--ink-2); font-size: 13.5px; margin-top: 10px; max-width: 46ch; }
+  /* Zielbalken: die Rendite gegen den eigenen Anspruch. Ohne diesen Bezug sagt
+     eine absolute Zuwachssumme nichts darüber, ob sich der Vertrag lohnt. */
+  .ziel { margin-top: 12px; max-width: 340px; }
+  .ziel-bar { position: relative; height: 8px; border-radius: 4px; background: var(--grid); overflow: visible; }
+  .ziel-ist { height: 100%; border-radius: 4px; background: var(--s3); transition: width .18s ease; }
+  .ziel-ist.unter { background: var(--s2); }
+  .ziel-marke { position: absolute; top: -3px; width: 2px; height: 14px; background: var(--ink-2); border-radius: 1px; }
+  .ziel-text { margin-top: 7px; font-size: 12.5px; color: var(--ink-2); }
+  .ziel-text b { color: var(--ink); }
   .hero-side { display: flex; flex-direction: column; gap: 0; min-width: 236px; }
   .hero-side .hs {
     display: flex; justify-content: space-between; gap: 18px;
@@ -388,3 +403,33 @@
   .lz-box .derived em { font-style: normal; color: var(--ink-3); font-size: 12px; }
   table.sched tfoot td { font-weight: 700; border-top: 1px solid var(--axis); border-bottom: none; }
   table.sched .neg { color: var(--s2); }
+
+  /* Ausklappbare Karten: Referenztext und Feinjustierung sollen die Seite nicht
+     dominieren. Zusammengeklappt kosten sie eine Zeile statt mehrerer Bildschirme. */
+  details.ausklapp > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: baseline;
+    gap: 10px; flex-wrap: wrap;
+  }
+  details.ausklapp > summary::-webkit-details-marker { display: none; }
+  details.ausklapp > summary::after {
+    content: "▸"; margin-left: auto; color: var(--ink-3); font-size: 13px;
+    transition: transform .15s ease;
+  }
+  details.ausklapp[open] > summary::after { transform: rotate(90deg); }
+  details.ausklapp > summary h2 { margin: 0; }
+  details.ausklapp > summary:hover h2 { color: var(--accent); }
+  details.ausklapp > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  .ausklapp-hinweis { color: var(--ink-3); font-size: 12.5px; }
+  details.ausklapp[open] > summary { margin-bottom: 14px; }
+  details.grp-zu > summary { margin-bottom: 0; }
+  details.grp-zu[open] > summary { margin-bottom: 12px; }
+  details.grp-zu > summary::after { font-size: 12px; }
+
+  /* Urteilszeile am Kopf der Objektseite: Rendite, Zielbalken, Abstand zum Anspruch. */
+  .urteil { display: flex; align-items: center; gap: 20px; margin-top: 16px;
+    padding-top: 16px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .urteil-zahl { font-size: 34px; font-weight: 700; letter-spacing: -0.5px;
+    font-variant-numeric: tabular-nums; color: var(--s3); }
+  .urteil.knapp .urteil-zahl { color: var(--s2); }
+  .urteil-rest { flex: 1; min-width: 240px; }
+  .urteil .ziel-text { margin-top: 7px; }
