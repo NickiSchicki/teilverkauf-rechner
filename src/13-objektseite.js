@@ -40,7 +40,7 @@
     var h = "";
     h += '<div class="card">';
     h += '<button type="button" class="crumb" id="backBtn">‹ Zurück zum Portfolio</button>';
-    h += "<h2>" + (o.name || "Objekt " + (detailIdx + 1)) + "</h2>";
+    h += "<h2>" + esc(o.name || "Objekt " + (detailIdx + 1)) + "</h2>";
     h += '<p class="sub">Erwerb ' + fJahr(o.start) + ", Verkauf " + fJahr(x.exitY) +
       " · " + fPct(o.share, 0) + " Anteil an " + fEur(o.v0) + " · Nutzungsentgelt " + fPct(o.ne, 2) + " p.a.</p>";
 

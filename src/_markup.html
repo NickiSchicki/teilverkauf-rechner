@@ -4,6 +4,16 @@
     <h1>Teilverkauf-Portfolio in der GmbH</h1>
     <p class="lede" id="lede">Mehrere Verträge in einer Gesellschaft: Objekte einzeln anlegen, Ergebnis konsolidiert über alle Jahre. Laufende Kosten und Steuern fallen auf Gesellschaftsebene an, nicht je Vertrag.</p>
     <span class="chip">Vereinfachte Modellrechnung · keine Rechts-, Steuer- oder Finanzberatung</span>
+
+    <div class="stand">
+      <span class="stand-info" id="standInfo">Noch nichts gespeichert</span>
+      <span class="stand-akt">
+        <button type="button" class="act" id="expBtn" title="Alle Annahmen als Datei sichern">Sichern</button>
+        <button type="button" class="act" id="impBtn" title="Gesicherten Stand laden">Laden</button>
+        <button type="button" class="act" id="delBtn" title="Alle Eingaben verwerfen">Verwerfen</button>
+        <input type="file" id="impDatei" accept="application/json,.json" hidden>
+      </span>
+    </div>
   </header>
 
   <div class="layout">

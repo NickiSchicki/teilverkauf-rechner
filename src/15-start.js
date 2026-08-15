@@ -1,4 +1,21 @@
   // ---------- Neuzeichnen und Verdrahtung ----------
+  // Jede Änderung landet sofort im Browserspeicher — ohne Knopf, weil ein
+  // vergessener Klick denselben Schaden anrichtet wie kein Speichern.
+  var sicherungLaeuft = null;
+  function sichern() {
+    if (sicherungLaeuft) clearTimeout(sicherungLaeuft);
+    sicherungLaeuft = setTimeout(function () { standSchreiben(); zeigeStandZeit(); }, 400);
+  }
+
+  function zeigeStandZeit() {
+    var e = document.getElementById("standInfo");
+    if (!e) return;
+    var d = standLesen();
+    e.textContent = d && d.gespeichert
+      ? "Auf diesem Gerät gespeichert · " + new Date(d.gespeichert).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+      : "Noch nichts gespeichert";
+  }
+
   function refresh() {
     Object.keys(fmtOf).forEach(function (id) {
       var el = document.getElementById("valg_" + id);
@@ -125,6 +142,8 @@
         buildStatements(P);
       }
     }
+
+    sichern();
   }
 
   // Bei reiner Namensänderung nicht das Panel neu bauen — sonst verliert das Feld den Fokus
@@ -142,6 +161,9 @@
 
   // ---------- Start ----------
   function start() {
+    // Vor dem ersten Zeichnen: Was zuletzt eingestellt war, steht wieder da.
+    standAnwenden(standLesen());
+
     document.querySelectorAll("#tabs .tab[data-view]").forEach(function (t) {
       t.addEventListener("click", function () {
         view = t.dataset.view;
@@ -150,6 +172,49 @@
         window.scrollTo(0, 0);
       });
     });
+
+    // Sichern: Der Stand wird als Datei angeboten. Das Herunterladen ist der
+    // einzige Weg, ihn auf ein anderes Gerät zu bringen — es gibt keinen Server.
+    document.getElementById("expBtn").addEventListener("click", function () {
+      var blob = new Blob([standAlsText()], { type: "application/json" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "teilverkauf-" + fJahr(0) + ".json";
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    });
+
+    var impDatei = document.getElementById("impDatei");
+    document.getElementById("impBtn").addEventListener("click", function () { impDatei.click(); });
+    impDatei.addEventListener("change", function () {
+      var f = impDatei.files && impDatei.files[0];
+      if (!f) return;
+      var leser = new FileReader();
+      leser.onload = function () {
+        var fehler = standAusText(String(leser.result));
+        if (fehler) { window.alert(fehler); return; }
+        document.getElementById("panelObjekt").dataset.idx = "";
+        document.getElementById("panelGes").dataset.zustand = "";
+        detailIdx = null;
+        refresh();
+      };
+      leser.readAsText(f);
+      impDatei.value = "";
+    });
+
+    document.getElementById("delBtn").addEventListener("click", function () {
+      if (!window.confirm("Alle Objekte und Einstellungen verwerfen? Das lässt sich nicht rückgängig machen.")) return;
+      standLoeschen();
+      OBJ.length = 0;
+      // Auch die Gesellschaftsebene zurücksetzen — der Hinweis verspricht beides.
+      Object.keys(GES_DEF).forEach(function (k) { G[k] = GES_DEF[k]; });
+      baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", gesGeaendert);
+      detailIdx = null;
+      document.getElementById("panelObjekt").dataset.idx = "";
+      refresh();
+    });
+
+    zeigeStandZeit();
 
     baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", gesGeaendert);
     refresh();

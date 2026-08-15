@@ -33,6 +33,15 @@
     return fPct(v, 0) + (d === 0 ? " (±0)" : " (" + (d > 0 ? "+" : "−") + Math.abs(d) + ")");
   }
 
+  // Alles, was aus einer Eingabe stammt und in Markup landet, muss hier durch.
+  // Ohne das interpretiert die Seite eingegebene Tags — harmlos, solange nichts
+  // gespeichert oder geteilt wird, und ein Sicherheitsproblem, sobald doch.
+  function esc(s) {
+    return String(s === null || s === undefined ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
   function csvNum(v) { return (Math.round(v * 100) / 100).toFixed(2).replace(".", ","); }
 
   // Jahresangaben: ganze Zahlen ohne Nachkomma, gemittelte mit einer Stelle

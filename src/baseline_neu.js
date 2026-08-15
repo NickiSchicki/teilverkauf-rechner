@@ -1,6 +1,9 @@
 // Derselbe Fingerabdruck wie baseline.js, aber gegen die neue Struktur gerechnet.
 var fs = require("fs"), path = require("path");
-var SRC = path.join(__dirname, "src");
+// Die Module liegen entweder neben diesem Skript (Repo: alles in src/) oder
+// in einem Unterordner src/ (Arbeitskopie). Beides muss laufen.
+var SRC = fs.existsSync(path.join(__dirname, "01-format.js"))
+  ? __dirname : path.join(__dirname, "src");
 var kern = ["01-format.js","02-konten.js","03-stammdaten.js","04-objekt.js",
             "05-portfolio.js","06-kennzahlen.js","07-parameter.js","08-zustand.js"]
   .map(function (f) { return fs.readFileSync(path.join(SRC, f), "utf8"); }).join("\n");
@@ -37,7 +40,12 @@ var zeilen = [];
 GES.forEach(function (gp, gi) {
   var gAlt = {};
   Object.keys(gp).forEach(function (k) { gAlt[k] = M.G[k]; M.G[k] = gp[k]; });
-  var pf = new M.Portfolio(M.OBJ, M.G);
+  // Prüf-Fixture: zwei Objekte, unabhängig davon, womit die Anwendung startet
+  var FIX = [
+    new M.Objekt(Object.assign({}, M.OBJ_DEF, { name: "A", v0: 500000, share: 50, alter: 75, haus: "Paar" })),
+    new M.Objekt(Object.assign({}, M.OBJ_DEF, { name: "B", v0: 400000, share: 40, start: 2, hold: 15, alter: 80, haus: "w" }))
+  ];
+  var pf = new M.Portfolio(FIX, M.G);
   var P = pf.rechnen();
   LAGEN.forEach(function (lp, li) {
     var ob = new M.Objekt(Object.assign({}, M.OBJ_DEF, lp));

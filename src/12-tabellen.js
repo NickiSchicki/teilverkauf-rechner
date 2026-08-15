@@ -91,8 +91,8 @@
     P.verlaeufe.forEach(function (x, i) {
       var anteil = summe !== 0 ? x.beitrag / summe * 100 : 0;
       h += '<div class="contrib-row" data-open="' + i + '" role="button" tabindex="0">' +
-        '<div class="contrib-name" title="' + (x.o.name || "").replace(/"/g, "&quot;") + '">' +
-          (x.o.name || "Objekt " + (i + 1)) + "</div>" +
+        '<div class="contrib-name" title="' + esc(x.o.name || "") + '">' +
+          esc(x.o.name || "Objekt " + (i + 1)) + "</div>" +
         '<div class="cb"><div class="' + (x.beitrag < 0 ? "neg" : "") + '" style="width:' +
           (Math.abs(x.beitrag) / max * 100).toFixed(1) + '%"></div></div>' +
         '<div style="text-align:right"><div class="contrib-val">' + fEur(x.beitrag) + "</div>" +

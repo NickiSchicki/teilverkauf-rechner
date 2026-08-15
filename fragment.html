@@ -464,6 +464,12 @@
   svg.spark { display: inline-block; vertical-align: middle; width: 58px; height: 16px;
     margin-left: 10px; overflow: visible; }
   @media (max-width: 700px) { svg.spark { display: none; } }
+
+  /* Speicherzeile: Die Aussage, wo die Daten liegen, gehört neben die Knöpfe —
+     nicht in einen Hilfetext, den niemand öffnet. */
+  .stand { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 14px; }
+  .stand-info { font-size: 12px; color: var(--ink-3); }
+  .stand-akt { display: flex; gap: 8px; flex-wrap: wrap; }
 </style>
 <div class="wrap">
   <header>
@@ -471,6 +477,16 @@
     <h1>Teilverkauf-Portfolio in der GmbH</h1>
     <p class="lede" id="lede">Mehrere Verträge in einer Gesellschaft: Objekte einzeln anlegen, Ergebnis konsolidiert über alle Jahre. Laufende Kosten und Steuern fallen auf Gesellschaftsebene an, nicht je Vertrag.</p>
     <span class="chip">Vereinfachte Modellrechnung · keine Rechts-, Steuer- oder Finanzberatung</span>
+
+    <div class="stand">
+      <span class="stand-info" id="standInfo">Noch nichts gespeichert</span>
+      <span class="stand-akt">
+        <button type="button" class="act" id="expBtn" title="Alle Annahmen als Datei sichern">Sichern</button>
+        <button type="button" class="act" id="impBtn" title="Gesicherten Stand laden">Laden</button>
+        <button type="button" class="act" id="delBtn" title="Alle Eingaben verwerfen">Verwerfen</button>
+        <input type="file" id="impDatei" accept="application/json,.json" hidden>
+      </span>
+    </div>
   </header>
 
   <div class="layout">
@@ -632,6 +648,15 @@
     if (v === 0) return "keiner";
     var d = Math.round(v - 100);
     return fPct(v, 0) + (d === 0 ? " (±0)" : " (" + (d > 0 ? "+" : "−") + Math.abs(d) + ")");
+  }
+
+  // Alles, was aus einer Eingabe stammt und in Markup landet, muss hier durch.
+  // Ohne das interpretiert die Seite eingegebene Tags — harmlos, solange nichts
+  // gespeichert oder geteilt wird, und ein Sicherheitsproblem, sobald doch.
+  function esc(s) {
+    return String(s === null || s === undefined ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
   function csvNum(v) { return (Math.round(v * 100) / 100).toFixed(2).replace(".", ","); }
@@ -800,11 +825,15 @@
     return 1 - Math.exp(-H);
   }
 
-  // Gesellschaftsebene: gilt für die GmbH als Ganzes
-  var G = {
+  // Gesellschaftsebene: gilt für die GmbH als Ganzes.
+  // GES_DEF bleibt der unveränderte Ausgangsstand, G ist die Arbeitskopie,
+  // in die die Regler schreiben — nur so lässt sich „Verwerfen" zurücksetzen.
+  var GES_DEF = {
     basisjahr: 2026, opex: 3000, hebesatz: 400, erwKuerzung: true, ausschuetten: false,
     anlage: 3.0, kkZins: 6.0, mindestRendite: 5.5
   };
+  var G = {};
+  Object.keys(GES_DEF).forEach(function (k) { G[k] = GES_DEF[k]; });
 
   // Objektebene: jedes Objekt trägt seine Annahmen selbst.
   // Neue Objekte starten mit diesen festen Standardwerten.
@@ -1607,6 +1636,101 @@
 
   function kennzahlenFuer(ob) { return new Kennzahlen(ob, PF || portfolioJetzt()); }
 
+  // ══════════ 08b-speicher.js ══════════
+  // ---------- Speichern ----------
+  // Ein Finanzrechner, der beim Neuladen alles vergisst, ist nicht benutzbar.
+  // Gespeichert wird ausschließlich im Browser dieses Geräts — es gibt keinen
+  // Server, an den etwas ginge.
+
+  var SPEICHER = "teilverkauf.stand.v1";
+
+  function standLesen() {
+    try {
+      var roh = window.localStorage.getItem(SPEICHER);
+      if (!roh) return null;
+      var d = JSON.parse(roh);
+      if (!d || !Array.isArray(d.objekte)) return null;
+      return d;
+    } catch (e) { return null; }   // beschädigter oder gesperrter Speicher
+  }
+
+  // Nur bekannte Felder übernehmen und auf ihre Reglergrenzen begrenzen: Ein
+  // veralteter oder von Hand veränderter Stand darf die Rechnung nicht kippen.
+  function objektAusStand(roh) {
+    var o = {};
+    Object.keys(OBJ_DEF).forEach(function (k) {
+      var v = roh && roh[k];
+      var vor = OBJ_DEF[k];
+      if (typeof vor === "number") {
+        v = typeof v === "number" && isFinite(v) ? v : vor;
+        var g = reglerGrenzen(k);
+        if (g) v = Math.max(g.min, Math.min(g.max, v));
+      } else if (typeof vor === "boolean") {
+        v = typeof v === "boolean" ? v : vor;
+      } else {
+        v = typeof v === "string" ? v.slice(0, 80) : vor;
+      }
+      o[k] = v;
+    });
+    return new Objekt(o);
+  }
+
+  function standAnwenden(d) {
+    if (!d) return false;
+    if (d.gesellschaft) {
+      Object.keys(G).forEach(function (k) {
+        var v = d.gesellschaft[k];
+        if (typeof G[k] === "number" && typeof v === "number" && isFinite(v)) G[k] = v;
+        else if (typeof G[k] === "boolean" && typeof v === "boolean") G[k] = v;
+      });
+    }
+    OBJ.length = 0;
+    d.objekte.slice(0, 50).forEach(function (r) { OBJ.push(objektAusStand(r)); });
+    return true;
+  }
+
+  // Ein leerer Ausgangszustand ist nichts, was sich zu merken lohnt — sonst meldet
+  // die Kopfzeile „gespeichert", obwohl nach dem Verwerfen nichts mehr da ist.
+  function nichtsZuMerken() {
+    if (OBJ.length) return false;
+    return Object.keys(GES_DEF).every(function (k) { return G[k] === GES_DEF[k]; });
+  }
+
+  function standSchreiben() {
+    if (nichtsZuMerken()) { standLoeschen(); return true; }
+    try {
+      window.localStorage.setItem(SPEICHER, JSON.stringify({
+        version: 1,
+        gespeichert: new Date().toISOString(),
+        gesellschaft: G,
+        objekte: OBJ.map(function (ob) { return ob.a; })
+      }));
+      return true;
+    } catch (e) { return false; }   // privater Modus oder Speicher voll
+  }
+
+  function standLoeschen() {
+    try { window.localStorage.removeItem(SPEICHER); } catch (e) { /* egal */ }
+  }
+
+  // ---------- Austausch ----------
+  function standAlsText() {
+    return JSON.stringify({
+      version: 1,
+      gespeichert: new Date().toISOString(),
+      gesellschaft: G,
+      objekte: OBJ.map(function (ob) { return ob.a; })
+    }, null, 2);
+  }
+
+  function standAusText(text) {
+    var d;
+    try { d = JSON.parse(text); } catch (e) { return "Das ist kein gültiger Stand (JSON konnte nicht gelesen werden)."; }
+    if (!d || !Array.isArray(d.objekte)) return "In der Datei stehen keine Objekte.";
+    standAnwenden(d);
+    return null;
+  }
+
   // ══════════ 09-regler.js ══════════
   // ---------- Reglerpanels ----------
   var fmtOf = {};
@@ -1764,7 +1888,7 @@
   // ══════════ 10-objtabelle.js ══════════
   // ---------- Objekttabelle: reine Übersicht ----------
   var SPALTEN = [
-    { h: "Objekt", sub: "Bezeichnung", col: "w-name", links: true, get: function (o, x, i) { return o.name || "Objekt " + (i + 1); } },
+    { h: "Objekt", sub: "Bezeichnung", col: "w-name", links: true, get: function (o, x, i) { return esc(o.name || "Objekt " + (i + 1)); } },
     { h: "Wert", sub: "bei Erwerb", col: "w-num", get: function (o) { return fEur(o.v0); } },
     { h: "Anteil", sub: "%", col: "w-narrow", get: function (o) { return fPct(o.share, 0); } },
     { h: "Entgelt", sub: "% p.a.", col: "w-mid", get: function (o) { return fPct(o.ne, 2); } },
@@ -2195,8 +2319,8 @@
     P.verlaeufe.forEach(function (x, i) {
       var anteil = summe !== 0 ? x.beitrag / summe * 100 : 0;
       h += '<div class="contrib-row" data-open="' + i + '" role="button" tabindex="0">' +
-        '<div class="contrib-name" title="' + (x.o.name || "").replace(/"/g, "&quot;") + '">' +
-          (x.o.name || "Objekt " + (i + 1)) + "</div>" +
+        '<div class="contrib-name" title="' + esc(x.o.name || "") + '">' +
+          esc(x.o.name || "Objekt " + (i + 1)) + "</div>" +
         '<div class="cb"><div class="' + (x.beitrag < 0 ? "neg" : "") + '" style="width:' +
           (Math.abs(x.beitrag) / max * 100).toFixed(1) + '%"></div></div>' +
         '<div style="text-align:right"><div class="contrib-val">' + fEur(x.beitrag) + "</div>" +
@@ -2264,7 +2388,7 @@
     var h = "";
     h += '<div class="card">';
     h += '<button type="button" class="crumb" id="backBtn">‹ Zurück zum Portfolio</button>';
-    h += "<h2>" + (o.name || "Objekt " + (detailIdx + 1)) + "</h2>";
+    h += "<h2>" + esc(o.name || "Objekt " + (detailIdx + 1)) + "</h2>";
     h += '<p class="sub">Erwerb ' + fJahr(o.start) + ", Verkauf " + fJahr(x.exitY) +
       " · " + fPct(o.share, 0) + " Anteil an " + fEur(o.v0) + " · Nutzungsentgelt " + fPct(o.ne, 2) + " p.a.</p>";
 
@@ -2900,7 +3024,7 @@
     R.reihen.forEach(function (r, i) {
       var g2 = r.A.gewaehlt;
       h += '<tr class="zeile" data-open="' + i + '" style="cursor:pointer" title="Projekt öffnen"><td style="color:var(--accent);font-weight:600">' +
-        (r.o.name || "Objekt " + (i + 1)) + "</td>";
+        esc(r.o.name || "Objekt " + (i + 1)) + "</td>";
       var F = kennzahlenFuer(r.ob).mindestEntgelt();
       var noetig = F.status === "gefunden" ? fPct(F.ne, 2)
         : (F.status === "nicht bindend" ? "unter " + fPct(NE_MIN, 0) : "nicht erreichbar");
@@ -2944,6 +3068,23 @@
 
   // ══════════ 15-start.js ══════════
   // ---------- Neuzeichnen und Verdrahtung ----------
+  // Jede Änderung landet sofort im Browserspeicher — ohne Knopf, weil ein
+  // vergessener Klick denselben Schaden anrichtet wie kein Speichern.
+  var sicherungLaeuft = null;
+  function sichern() {
+    if (sicherungLaeuft) clearTimeout(sicherungLaeuft);
+    sicherungLaeuft = setTimeout(function () { standSchreiben(); zeigeStandZeit(); }, 400);
+  }
+
+  function zeigeStandZeit() {
+    var e = document.getElementById("standInfo");
+    if (!e) return;
+    var d = standLesen();
+    e.textContent = d && d.gespeichert
+      ? "Auf diesem Gerät gespeichert · " + new Date(d.gespeichert).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+      : "Noch nichts gespeichert";
+  }
+
   function refresh() {
     Object.keys(fmtOf).forEach(function (id) {
       var el = document.getElementById("valg_" + id);
@@ -3070,6 +3211,8 @@
         buildStatements(P);
       }
     }
+
+    sichern();
   }
 
   // Bei reiner Namensänderung nicht das Panel neu bauen — sonst verliert das Feld den Fokus
@@ -3087,6 +3230,9 @@
 
   // ---------- Start ----------
   function start() {
+    // Vor dem ersten Zeichnen: Was zuletzt eingestellt war, steht wieder da.
+    standAnwenden(standLesen());
+
     document.querySelectorAll("#tabs .tab[data-view]").forEach(function (t) {
       t.addEventListener("click", function () {
         view = t.dataset.view;
@@ -3095,6 +3241,49 @@
         window.scrollTo(0, 0);
       });
     });
+
+    // Sichern: Der Stand wird als Datei angeboten. Das Herunterladen ist der
+    // einzige Weg, ihn auf ein anderes Gerät zu bringen — es gibt keinen Server.
+    document.getElementById("expBtn").addEventListener("click", function () {
+      var blob = new Blob([standAlsText()], { type: "application/json" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "teilverkauf-" + fJahr(0) + ".json";
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    });
+
+    var impDatei = document.getElementById("impDatei");
+    document.getElementById("impBtn").addEventListener("click", function () { impDatei.click(); });
+    impDatei.addEventListener("change", function () {
+      var f = impDatei.files && impDatei.files[0];
+      if (!f) return;
+      var leser = new FileReader();
+      leser.onload = function () {
+        var fehler = standAusText(String(leser.result));
+        if (fehler) { window.alert(fehler); return; }
+        document.getElementById("panelObjekt").dataset.idx = "";
+        document.getElementById("panelGes").dataset.zustand = "";
+        detailIdx = null;
+        refresh();
+      };
+      leser.readAsText(f);
+      impDatei.value = "";
+    });
+
+    document.getElementById("delBtn").addEventListener("click", function () {
+      if (!window.confirm("Alle Objekte und Einstellungen verwerfen? Das lässt sich nicht rückgängig machen.")) return;
+      standLoeschen();
+      OBJ.length = 0;
+      // Auch die Gesellschaftsebene zurücksetzen — der Hinweis verspricht beides.
+      Object.keys(GES_DEF).forEach(function (k) { G[k] = GES_DEF[k]; });
+      baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", gesGeaendert);
+      detailIdx = null;
+      document.getElementById("panelObjekt").dataset.idx = "";
+      refresh();
+    });
+
+    zeigeStandZeit();
 
     baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", gesGeaendert);
     refresh();

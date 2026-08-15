@@ -1,13 +1,22 @@
 // Regressionstests für die im Review gemeldeten Rechenfehler.
 // Jeder Test benennt den Befund und prüft die Eigenschaft, nicht die Zahl.
 var fs = require("fs"), path = require("path");
-var SRC = path.join(__dirname, "src");
+// Die Module liegen entweder neben diesem Skript (Repo: alles in src/) oder
+// in einem Unterordner src/ (Arbeitskopie). Beides muss laufen.
+var SRC = fs.existsSync(path.join(__dirname, "01-format.js"))
+  ? __dirname : path.join(__dirname, "src");
 var kern = ["01-format.js","02-konten.js","03-stammdaten.js","04-objekt.js",
-            "05-portfolio.js","06-kennzahlen.js","07-parameter.js","08-zustand.js"]
+            "05-portfolio.js","06-kennzahlen.js","07-parameter.js","08-zustand.js","08b-speicher.js"]
   .map(function (f) { return fs.readFileSync(path.join(SRC, f), "utf8"); }).join("\n");
 var M = eval("(function(){\"use strict\";\n" + kern +
   "\nreturn {G:G,OBJ_DEF:OBJ_DEF,Objekt:Objekt,Portfolio:Portfolio,Kennzahlen:Kennzahlen," +
-  "STELLSCHRAUBEN:STELLSCHRAUBEN,OBJ_GROUPS:OBJ_GROUPS,irr:irr};})()");
+  "STELLSCHRAUBEN:STELLSCHRAUBEN,OBJ_GROUPS:OBJ_GROUPS,irr:irr,esc:esc,objektAusStand:objektAusStand,standAusText:standAusText,standAlsText:standAlsText};})()");
+
+// Node kennt keinen Browserspeicher — für die Prüfung genügt eine Attrappe.
+global.window = { localStorage: (function () { var d = {}; return {
+  getItem: function (k) { return k in d ? d[k] : null; },
+  setItem: function (k, v) { d[k] = String(v); },
+  removeItem: function (k) { delete d[k]; } }; })() };
 
 var fehler = 0, gesamt = 0;
 function pruef(name, bedingung, info) {
@@ -159,6 +168,42 @@ console.log("\n=== Werterhalt: gewichtet statt über die Durchschnittsdauer ==="
       Math.abs(we.noetig - naiv) > 0.5,
       "gewichtet " + we.noetig.toFixed(1) + " % / naiv " + naiv.toFixed(1) + " %");
   }
+})();
+
+console.log("\n=== Sicherheit: Eingaben landen nicht als Markup auf der Seite ===");
+(function () {
+  var boese = '<img src=x onerror=alert(1)>';
+  var raus = M.esc(boese);
+  pruef("spitze Klammern werden ersetzt", raus.indexOf("<") === -1 && raus.indexOf(">") === -1, raus);
+  pruef("Anführungszeichen werden ersetzt", M.esc('a"b\'c').indexOf('"') === -1, M.esc('a"b\'c'));
+  pruef("kaufmännisches Und zuerst", M.esc("&lt;") === "&amp;lt;", M.esc("&lt;"));
+})();
+
+console.log("\n=== Speicherstand: fremde Werte dürfen die Rechnung nicht kippen ===");
+(function () {
+  var ob = M.objektAusStand({ share: 9999, v0: -500, hold: "kaputt", name: { boese: true },
+                              ne: null, holdAuto: "ja" });
+  var g = null;
+  M.OBJ_GROUPS.forEach(function (gr) { gr.items.forEach(function (it) { if (it.id === "share") g = it; }); });
+  pruef("Zahl über der Reglergrenze wird begrenzt", ob.a.share === g.max, "share = " + ob.a.share);
+  pruef("Zahl unter der Reglergrenze wird begrenzt", ob.a.v0 === 50000, "v0 = " + ob.a.v0);
+  pruef("Text statt Zahl fällt auf den Standard zurück", ob.a.hold === M.OBJ_DEF.hold, "hold = " + ob.a.hold);
+  pruef("Objekt statt Text fällt auf den Standard zurück", ob.a.name === M.OBJ_DEF.name, "name = " + JSON.stringify(ob.a.name));
+  pruef("null fällt auf den Standard zurück", ob.a.ne === M.OBJ_DEF.ne, "ne = " + ob.a.ne);
+  pruef("Text statt Schalter fällt auf den Standard zurück", ob.a.holdAuto === M.OBJ_DEF.holdAuto, "holdAuto = " + ob.a.holdAuto);
+  // Das so entstandene Objekt muss rechenbar sein
+  var p = pf([ob]);
+  var r = new M.Kennzahlen(ob, p).rendite();
+  // „unerreichbar" ist ein gültiges Ergebnis — geprüft wird, dass die Rechnung
+  // durchläuft und keine unbrauchbare Zahl liefert.
+  pruef("aus einem manipulierten Stand entsteht ein rechenbares Objekt",
+    ["gefunden", "unerreichbar", "unkritisch"].indexOf(r.status) >= 0 &&
+    (r.wert === undefined || isFinite(r.wert)), r.status + " / " + r.wert);
+  var P1 = p.rechnen();
+  pruef("und ein Portfolio, dessen Bilanz aufgeht",
+    P1.rows.every(function (z) { return Math.abs((z.buchwert + z.cash) - (z.ek + z.rest)) < 1; }));
+  pruef("unlesbarer Stand wird abgewiesen", typeof M.standAusText("{kaputt") === "string");
+  pruef("Stand ohne Objekte wird abgewiesen", typeof M.standAusText('{"version":1}') === "string");
 })();
 
 console.log("\n=== Ergebnis: " + (gesamt - fehler) + "/" + gesamt + " bestanden ===\n");

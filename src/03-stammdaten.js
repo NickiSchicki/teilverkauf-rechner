@@ -11,11 +11,15 @@
     return 1 - Math.exp(-H);
   }
 
-  // Gesellschaftsebene: gilt für die GmbH als Ganzes
-  var G = {
+  // Gesellschaftsebene: gilt für die GmbH als Ganzes.
+  // GES_DEF bleibt der unveränderte Ausgangsstand, G ist die Arbeitskopie,
+  // in die die Regler schreiben — nur so lässt sich „Verwerfen" zurücksetzen.
+  var GES_DEF = {
     basisjahr: 2026, opex: 3000, hebesatz: 400, erwKuerzung: true, ausschuetten: false,
     anlage: 3.0, kkZins: 6.0, mindestRendite: 5.5
   };
+  var G = {};
+  Object.keys(GES_DEF).forEach(function (k) { G[k] = GES_DEF[k]; });
 
   // Objektebene: jedes Objekt trägt seine Annahmen selbst.
   // Neue Objekte starten mit diesen festen Standardwerten.

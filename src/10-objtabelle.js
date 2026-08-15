@@ -1,6 +1,6 @@
   // ---------- Objekttabelle: reine Übersicht ----------
   var SPALTEN = [
-    { h: "Objekt", sub: "Bezeichnung", col: "w-name", links: true, get: function (o, x, i) { return o.name || "Objekt " + (i + 1); } },
+    { h: "Objekt", sub: "Bezeichnung", col: "w-name", links: true, get: function (o, x, i) { return esc(o.name || "Objekt " + (i + 1)); } },
     { h: "Wert", sub: "bei Erwerb", col: "w-num", get: function (o) { return fEur(o.v0); } },
     { h: "Anteil", sub: "%", col: "w-narrow", get: function (o) { return fPct(o.share, 0); } },
     { h: "Entgelt", sub: "% p.a.", col: "w-mid", get: function (o) { return fPct(o.ne, 2); } },

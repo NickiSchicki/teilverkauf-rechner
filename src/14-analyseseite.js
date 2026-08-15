@@ -435,7 +435,7 @@
     R.reihen.forEach(function (r, i) {
       var g2 = r.A.gewaehlt;
       h += '<tr class="zeile" data-open="' + i + '" style="cursor:pointer" title="Projekt öffnen"><td style="color:var(--accent);font-weight:600">' +
-        (r.o.name || "Objekt " + (i + 1)) + "</td>";
+        esc(r.o.name || "Objekt " + (i + 1)) + "</td>";
       var F = kennzahlenFuer(r.ob).mindestEntgelt();
       var noetig = F.status === "gefunden" ? fPct(F.ne, 2)
         : (F.status === "nicht bindend" ? "unter " + fPct(NE_MIN, 0) : "nicht erreichbar");

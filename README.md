@@ -54,6 +54,8 @@ Das Modell startet leer. Angelegte Verträge bleiben nur im Browser und werden n
 
 Eine einzelne HTML-Datei ohne Server, ohne externe Bibliotheken und ohne Datenübertragung. Alle Eingaben bleiben im Browser. Die Datei lässt sich auch herunterladen und lokal öffnen.
 
+Der eingegebene Stand wird selbsttätig im Browser gesichert und beim nächsten Aufruf wiederhergestellt — auf demselben Gerät und im selben Browser. Über die Kopfzeile lässt er sich als Datei sichern und auf einem anderen Gerät wieder einlesen; **Verwerfen** setzt Objekte und Gesellschaftsangaben auf den Ausgangsstand zurück. Ein gelöschter Browserspeicher nimmt den Stand mit — für alles, was erhalten bleiben soll, ist die Sicherung als Datei der verlässliche Weg.
+
 ## Hinweis
 
 Dies ist eine vereinfachte Modellrechnung zu Anschauungszwecken und **keine Rechts-, Steuer- oder Finanzberatung**. Die rechtliche Einordnung des Immobilien-Teilverkaufs ist Gegenstand einer laufenden Diskussion; vor einem Vertragsabschluss sind fachkundiger Rat und eine Prüfung der konkreten Umstände erforderlich.

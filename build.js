@@ -4,7 +4,11 @@
 // funktioniert und ohne Server auf GitHub Pages liegen kann.
 var fs = require("fs"), path = require("path");
 var SRC = path.join(__dirname, "src");
-var ZIEL = process.argv[2] || path.join(__dirname, "modell.html");
+// Voreinstellung sind die Namen, unter denen GitHub Pages und der Artefakt-Stand
+// liegen. Ein abweichender Name lässt sich als Argument mitgeben.
+var ZIEL = process.argv[2] || path.join(__dirname, "index.html");
+var ZIEL_RUMPF = process.argv[3] ||
+  (process.argv[2] ? ZIEL.replace(/\.html$/, "-fragment.html") : path.join(__dirname, "fragment.html"));
 
 function lies(n) {
   var s = fs.readFileSync(path.join(SRC, n), "utf8").replace(/\s+$/, "");
@@ -19,7 +23,7 @@ function lies(n) {
 
 // Reihenfolge ist Abhängigkeitsreihenfolge: untere Schichten zuerst.
 var MODULE = fs.readdirSync(SRC)
-  .filter(function (f) { return /^\d\d-.*\.js$/.test(f); })
+  .filter(function (f) { return /^\d\d[a-z]?-.*\.js$/.test(f); })   // 08b- reiht sich zwischen 08- und 09- ein
   .sort();
 
 var js = MODULE.map(function (f) {
@@ -45,7 +49,7 @@ var seite =
 
 fs.writeFileSync(ZIEL, seite);
 // Fragment ohne Rahmen-Tags — die Artifact-Veröffentlichung setzt sie selbst.
-fs.writeFileSync(ZIEL.replace(/\.html$/, "-fragment.html"), rumpf);
+fs.writeFileSync(ZIEL_RUMPF, rumpf);
 console.log("gebaut: " + path.basename(ZIEL) + " + Fragment  (" + MODULE.length + " Module, " +
   seite.split("\n").length + " Zeilen, " + Math.round(seite.length / 1024) + " KB)");
 MODULE.forEach(function (f) {
