@@ -88,9 +88,9 @@
 
   // Name und Wert der Renditehürde an einer Stelle. Erklärtexte setzen sie ein,
   // statt sie zu behaupten — vorher stand in drei Bildunterschriften noch der
-  // Sollzins, während längst gegen die Mindestrendite gerechnet wurde.
+  // Sollzins, während längst gegen den Renditeanspruch gerechnet wurde.
   var ZIEL = {
-    name: "Mindestrendite",
+    name: "Renditeanspruch",
     wert: function () { return fPct(zielZins(), 2); },
     benannt: function () { return ZIEL.name + " von " + ZIEL.wert(); }
   };

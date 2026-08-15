@@ -46,7 +46,7 @@
           ? "Zwischenzeitlich fehlen bis zu " + fEur(nachschuss) + " auf dem Konto."
           : "Das Konto bleibt durchgehend positiv.")
       : "Jeder Vertrag trägt seine eigenen Annahmen — Immobilienwert, Anteil, Nutzungsentgelt, Finanzierung. " +
-        "Auf Gesellschaftsebene gelten nur laufende Kosten, Steuersätze und die Mindestrendite.";
+        "Auf Gesellschaftsebene gelten nur laufende Kosten, Steuersätze und den Renditeanspruch.";
 
     document.getElementById("kObj").textContent = OBJ.length
       ? OBJ.length + (OBJ.length === 1 ? " Vertrag" : " Verträge")

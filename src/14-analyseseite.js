@@ -82,22 +82,22 @@
     var h = "";
     if (F) {
       h += '<div class="card"><h2>Trägt sich dieser Vertrag?</h2>';
-      h += '<p class="sub">Gemessen am gewichteten Kapitalwert über alle möglichen Haltedauern, gegen eine Hürde von ' +
-        fPct(zielZins(), 2) + " Mindestrendite auf das eingesetzte Eigenkapital.</p>";
+      h += '<p class="sub">Gemessen am gewichteten Kapitalwert über alle möglichen Haltedauern, gegen einen Renditeanspruch von ' +
+        fPct(zielZins(), 2) + " an das eingesetzte Eigenkapital.</p>";
       h += '<div class="derived"><span>Vereinbartes Nutzungsentgelt</span><b>' + fPct(o.ne, 2) + " p.a.</b></div>";
       if (F.status === "gefunden") {
         var reserve = o.ne - F.ne;
-        h += '<div class="derived tight"><span>Nötiges Mindestentgelt</span><b class="' + (reserve < 0 ? "warnzahl" : "") + '">' +
+        h += '<div class="derived tight"><span>Nötiges Nutzungsentgelt</span><b class="' + (reserve < 0 ? "warnzahl" : "") + '">' +
           fPct(F.ne, 2) + " p.a.</b></div>";
         h += '<div class="derived need"><span>' + (reserve >= 0 ? "Reserve" : "Fehlt") + "</span><b>" +
           fPct(Math.abs(reserve), 2) + "-Punkte</b></div>";
-        h += '<div class="ctl-note" style="margin-top:8px">Beim Mindestentgelt zahlt der Eigentümer ' +
+        h += '<div class="ctl-note" style="margin-top:8px">Bei diesem Entgelt zahlt der Eigentümer ' +
           fEur(F.monat) + " im Monat, seine effektiven Jahreskosten lägen bei " + fPct(F.ownerCost) + ".</div>";
       } else if (F.status === "nicht bindend") {
-        h += '<div class="derived tight"><span>Nötiges Mindestentgelt</span><b>unter ' + fPct(NE_MIN, 2) + "</b></div>";
+        h += '<div class="derived tight"><span>Nötiges Nutzungsentgelt</span><b>unter ' + fPct(NE_MIN, 2) + "</b></div>";
         h += '<div class="ctl-note" style="margin-top:8px">Der Vertrag trägt sich in der gesamten zulässigen Spanne — die Hürde ist hier nicht bindend.</div>';
       } else {
-        h += '<div class="derived tight"><span>Nötiges Mindestentgelt</span><b class="warnzahl">nicht erreichbar</b></div>';
+        h += '<div class="derived tight"><span>Nötiges Nutzungsentgelt</span><b class="warnzahl">nicht erreichbar</b></div>';
         h += '<div class="ctl-note" style="margin-top:8px">Auch bei ' + fPct(NE_MAX, 2) +
           " bleibt der gewichtete Kapitalwert negativ. Ursache sind meist zu kurze erwartete Haltedauer, hohe Kaufnebenkosten oder Instandhaltungsverfall.</div>";
       }
@@ -119,7 +119,7 @@
       var faktor = eq0 !== 0 ? barwertR / rueckfluss : 0;
 
       h += '<div class="card"><h2>Kapitalwert (NPV)</h2>';
-      h += '<p class="sub">Alle Zahlungen auf den Erwerbszeitpunkt abgezinst, Maßstab ist die Mindestrendite von ' +
+      h += '<p class="sub">Alle Zahlungen auf den Erwerbszeitpunkt abgezinst, Maßstab ist der Renditeanspruch von ' +
         fPct(G.mindestRendite, 2) + '. Ein positiver Kapitalwert heißt: Das Projekt bringt mehr als den Anspruch — ein negativer, dass der Anspruch nicht gedeckt ist.</p>';
       h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
         "<th>Zahlung</th><th>Zeitpunkt</th><th>Betrag</th><th>Abzinsung</th><th>Barwert</th>" +
@@ -174,7 +174,7 @@
       }
 
       // Umkehrrechnung je Stellschraube
-      h += '<div class="card"><h2>Welche Stellschraube bringt die Mindestrendite?</h2>';
+      h += '<div class="card"><h2>Welche Stellschraube bringt den Renditeanspruch?</h2>';
       h += '<p class="sub">Ziel sind ' + fPct(G.mindestRendite, 2) +
         ' auf das Eigenkapital, gerechnet einschließlich der anteiligen Gemeinkosten. Jede Zeile verändert genau eine Größe, alle übrigen bleiben unverändert; der kritische Wert ist der Punkt, an dem der gewichtete Kapitalwert gerade null wird.</p>';
 
@@ -203,7 +203,7 @@
       // Die Hürde in Gesamtrendite über die Kapitalbindung, der Jahreszins darunter —
       // ausgeschüttet wird nichts, der gesamte Rückfluss entsteht beim Verkauf.
       var zielGes = gesamtRendite(G.mindestRendite, LZ.bindung);
-      h += '<tr class="exit-row"><td>Mindestrendite<span class="zsub">gesamt über ' + fJahre(LZ.bindung) +
+      h += '<tr class="exit-row"><td>Renditeanspruch<span class="zsub">gesamt über ' + fJahre(LZ.bindung) +
         ' Kapitalbindung</span></td><td>' + fPct(zielGes, 1) +
         '<span class="zsub">' + fPct(G.mindestRendite, 2) + " p.a.</span></td>";
       if (R.status === "gefunden") {
@@ -242,7 +242,7 @@
         h += "</tr>";
       });
       h += "</tbody></table></div>";
-      h += '<p class="caption">Die erste Zeile ist die Hürde selbst: Ihr kritischer Wert ist die Rendite, die dieser Vertrag tatsächlich abwirft — als Gesamtrendite über die Kapitalbindung, weil nichts ausgeschüttet wird. Sie gilt für die ganze Gesellschaft, die übrigen Zeilen nur für dieses Objekt. „Reicht allein nicht aus“ heißt: Selbst am günstigsten Ende dieser Größe bleibt der Kapitalwert negativ.</p>';
+      h += '<p class="caption">Die erste Zeile ist der Anspruch selbst: Sein kritischer Wert ist die Rendite, die dieser Vertrag tatsächlich abwirft — als Gesamtrendite über die Kapitalbindung, weil nichts ausgeschüttet wird. Sie gilt für die ganze Gesellschaft, die übrigen Zeilen nur für dieses Objekt. „Reicht allein nicht aus“ heißt: Selbst am günstigsten Ende dieser Größe bleibt der Kapitalwert negativ.</p>';
       h += "</div>";
     }
     h += '<div class="card"><div class="stat-row">';
@@ -253,7 +253,7 @@
     h += '<div><div class="stat-label"><span class="dot s2"></span>Break-even</div><div class="stat-num">' +
       (A.beKW ? A.beKW + " J." : "nie") +
       '</div><div class="stat-sub">' +
-      (A.beKW ? "ab hier über " + fPct(G.mindestRendite, 2) : "Mindestrendite nie erreicht") +
+      (A.beKW ? "ab hier über " + fPct(G.mindestRendite, 2) : "Renditeanspruch nie erreicht") +
       (A.beNull ? " · Kapitalerhalt ab " + A.beNull + " J." : "") + "</div></div>";
     h += '<div><div class="stat-label">Verkauf davor</div><div class="stat-num">' + fPct(A.pVorBE, 0) +
       '</div><div class="stat-sub">' + (A.beKW ? "Wahrscheinlichkeit eines Frühexits" : "kein Zeitpunkt erreicht die Hürde") + "</div></div>";
@@ -278,7 +278,7 @@
     h += '<div class="legend"><span><span class="swatch" style="background:var(--s3)"></span>Verkaufswahrscheinlichkeit je Jahr</span>' +
       '<span><span class="swatch" style="background:var(--s1)"></span>Kapitalwert der Beteiligung</span></div>';
     h += '<div class="chart-box">' + exitChart(A, o) + "</div>";
-    h += '<p class="caption">Der Kapitalwert misst gegen die Mindestrendite von ' + fPct(G.mindestRendite, 2) +
+    h += '<p class="caption">Der Kapitalwert misst gegen den Renditeanspruch von ' + fPct(G.mindestRendite, 2) +
       " — oberhalb der Nulllinie erreicht das Projekt den Anspruch. " +
       "Die rot hinterlegte Zone ist die Verlustzone: Dort sind Grunderwerbsteuer und Notarkosten noch nicht verdient.</p>";
     h += "</div>";
@@ -369,7 +369,7 @@
     h += '<div><div class="stat-label"><span class="dot s2"></span>Frühexit-Risiko</div><div class="stat-num">' + fPct(gewFrueh, 0) +
       '</div><div class="stat-sub">' + (ohneBE ? ohneBE + " von " + R.reihen.length + " ohne Break-even" : "alle Objekte erreichen den Break-even") + "</div></div>";
     h += '<div><div class="stat-label"><span class="dot s3"></span>Kapitalwert</div><div class="stat-num' + (kwSumme < 0 ? " warnzahl" : "") + '">' + fEur(kwSumme) +
-      '</div><div class="stat-sub">gewichtet, gegen die Mindestrendite von ' + fPct(G.mindestRendite, 2) + "</div></div>";
+      '</div><div class="stat-sub">gewichtet, gegen den Renditeanspruch von ' + fPct(G.mindestRendite, 2) + "</div></div>";
     h += '<div><div class="stat-label">Abweichung</div><div class="stat-num">' +
       abweichung.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
       '</div><div class="stat-sub">Jahre zwischen Eingabe und Erwartung</div></div>';

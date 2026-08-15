@@ -7,7 +7,7 @@
       { id: "hebesatz", label: "Gewerbesteuer-Hebesatz", min: 200, max: 600, step: 10, fmt: function (v) { return fPct(v, 0); }, note: "nur ohne erweiterte Kürzung relevant" },
       { id: "anlage", label: "Anlagezins", min: 0, max: 6, step: 0.1, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "Bundeswertpapiere für geparkte Mittel" },
       { id: "kkZins", label: "Kontokorrentzins", min: 0, max: 12, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "bei negativem Konto der Gesellschaft" },
-      { id: "mindestRendite", label: "Mindestrendite", min: 0, max: 12, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "auf das Eigenkapital — Maßstab für Break-even und Ankaufsfilter" }
+      { id: "mindestRendite", label: "Renditeanspruch", min: 0, max: 12, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "eigene Vorgabe an die Eigenkapitalrendite — Maßstab für Break-even und Ankaufsfilter" }
     ], tax: true }
   ];
 
@@ -33,7 +33,7 @@
       { id: "holdAuto", label: "Haltedauer aus Sterbetafel", bool: true, note: "rechnet über die Exit-Verteilung statt über eine feste Annahme" },
       { id: "hold", label: "Haltedauer", min: 1, max: 40, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "angenommener Verkaufszeitpunkt, wirkt nur ohne Sterbetafel-Kopplung" },
       { id: "de", label: "Durchführungsentgelt", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "vom Gesamterlös beim Verkauf" },
-      { id: "min", label: "Mindesterlös", min: 0, max: 140, step: 1, fmt: function (v) { return v === 0 ? "keiner" : fPct(v, 0); }, note: "garantierter Rückfluss in % der Auszahlung" },
+      { id: "min", label: "Mindesterlös", min: 0, max: 140, step: 1, fmt: function (v) { return v === 0 ? "keiner" : fPct(v, 0); }, note: "Vertragsklausel: garantierter Rückfluss an die GmbH, unabhängig vom Marktpreis" },
       { id: "vkKosten", label: "Verkaufskosten beim Exit", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "Makler etc., anteilig getragen" }
     ] },
     { title: "Ankauf & Finanzierung", dot: "s2", zu: true, hinweis: "Nebenkosten, Darlehen", items: [
@@ -54,7 +54,7 @@
   ];
 
 
-  // Umkehrrechnung: Welcher Wert bringt ceteris paribus die Mindestrendite?
+  // Umkehrrechnung: Welcher Wert bringt ceteris paribus den Renditeanspruch?
   var STELLSCHRAUBEN = [
     { k: "ne", label: "Nutzungsentgelt", min: 0.5, max: 15, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
     { k: "abschlag", label: "Ankaufsabschlag", min: 0, max: 60, fmt: function (v) { return fPct(v, 1); }, richtung: "mehr" },

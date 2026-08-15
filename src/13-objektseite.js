@@ -12,9 +12,10 @@
       rows.forEach(function () { html += "<td></td>"; });
       html += "</tr>";
       g.rows.forEach(function (row) {
-        html += '<tr' + (row.sum ? ' class="sum"' : "") + "><td>" + row.l + "</td>";
-        rows.forEach(function (r) {
-          var v = row.f(r);
+        var werte = rows.map(row.f);
+        html += '<tr' + (row.sum ? ' class="sum"' : "") + '><td><span class="zl">' + row.l +
+          "</span>" + sparkline(werte, row.sum ? "var(--ink-2)" : "var(--ink-3)") + "</td>";
+        werte.forEach(function (v) {
           html += '<td class="' + (v < -0.5 ? "neg" : "") + '">' + fEur(v) + "</td>";
         });
         html += "</tr>";

@@ -220,3 +220,38 @@
     return '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Ergebnisbrücke: Beiträge zur Schlussliquidität">' +
       s.join("") + "</svg>";
   }
+
+  // ---------- Sparkline ----------
+  // Ein Verlauf in Daumennagelgröße, gedacht für die feststehende erste Spalte der
+  // Rechenwerke: Man sieht die Entwicklung einer Position, ohne durch achtzehn
+  // Jahresspalten zu scrollen. Jede Zeile hat ihre eigene Skala — verglichen wird
+  // die Form über die Zeit, nicht die Höhe zwischen den Zeilen.
+  function sparkline(werte, farbe) {
+    var W = 58, H = 16, pad = 1.5;
+    var echte = werte.filter(function (v) { return isFinite(v); });
+    if (echte.length < 2) return "";
+    var min = Math.min.apply(null, echte), max = Math.max.apply(null, echte);
+    var alleNull = Math.abs(min) < 0.5 && Math.abs(max) < 0.5;
+    if (alleNull) return "";
+    // Vorzeichenwechsel sichtbar machen: Dann gehört die Null in die Skala.
+    if (min > 0 && max > 0) min = 0;
+    if (min < 0 && max < 0) max = 0;
+    if (max === min) max = min + 1;
+    function x(i) { return pad + i / (werte.length - 1) * (W - 2 * pad); }
+    function y(v) { return H - pad - (v - min) / (max - min) * (H - 2 * pad); }
+
+    var d = "";
+    werte.forEach(function (v, i) { d += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); });
+    var s = "";
+    if (min < -0.5 && max > 0.5) {
+      s += '<line x1="0" x2="' + W + '" y1="' + y(0).toFixed(1) + '" y2="' + y(0).toFixed(1) +
+        '" stroke="var(--axis)" stroke-width="0.75"/>';
+    }
+    s += '<path d="' + d + '" fill="none" stroke="' + (farbe || "var(--ink-3)") +
+      '" stroke-width="1.25" stroke-linejoin="round" stroke-linecap="round"/>';
+    // Endpunkt als Anker — er sagt, wo die Reihe endet
+    var letzte = werte[werte.length - 1];
+    s += '<circle cx="' + x(werte.length - 1).toFixed(1) + '" cy="' + y(letzte).toFixed(1) +
+      '" r="1.8" fill="' + (farbe || "var(--ink-3)") + '"/>';
+    return '<svg class="spark" viewBox="0 0 ' + W + " " + H + '" aria-hidden="true">' + s + "</svg>";
+  }

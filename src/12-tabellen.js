@@ -45,10 +45,11 @@
       html += "</tr>";
       csvFin.push([g.title]);
       g.rows.forEach(function (row) {
-        html += '<tr' + (row.sum ? ' class="sum"' : "") + "><td>" + row.l + "</td>";
+        var werte = rows.map(row.f);
+        html += '<tr' + (row.sum ? ' class="sum"' : "") + '><td><span class="zl">' + row.l +
+          "</span>" + sparkline(werte, row.sum ? "var(--ink-2)" : "var(--ink-3)") + "</td>";
         var line = [row.l];
-        rows.forEach(function (r) {
-          var v = row.f(r);
+        werte.forEach(function (v) {
           html += '<td class="' + (v < -0.5 ? "neg" : "") + '">' + fEur(v) + "</td>";
           line.push(csvNum(v));
         });

@@ -65,7 +65,7 @@
   };
 
   // Umkehrrechnung: Welcher Wert einer Stellschraube bringt — bei sonst unveränderten
-  // Annahmen — genau die Mindestrendite? Die Wirkungsrichtung wird gemessen, nicht unterstellt.
+  // Annahmen — genau den Renditeanspruch? Die Wirkungsrichtung wird gemessen, nicht unterstellt.
   Kennzahlen.prototype.kritischerWert = function (sch) {
     var self = this, disk = G.mindestRendite / 100, ist = this.ob.a[sch.k];
     function bei(v) { return self.kw(disk, self.ob.mit(zuweisung(sch.k, v))); }
