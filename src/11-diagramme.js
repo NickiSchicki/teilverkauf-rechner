@@ -50,12 +50,18 @@
     for (var v = 0; v <= yMax + 1e-6; v += step) ticks.push(v);
     for (var vn = -step; vn >= yMin; vn -= step) ticks.push(vn);
     if (minV < 0) ticks.push(minV);
-    ticks.forEach(function (tv) {
+    ticks.forEach(function (tv, ti) {
       var py = yy(tv);
       var istNull = Math.abs(tv) < 1e-6;
       var istTief = tv === minV && minV < 0;
       svg.push('<line x1="' + M.l + '" x2="' + (CW - M.r) + '" y1="' + py + '" y2="' + py + '" stroke="' + (istNull ? "var(--axis)" : "var(--grid)") + '" stroke-width="1"' + (istTief ? ' stroke-dasharray="2 3"' : "") + "/>");
-      svg.push('<text x="' + (M.l - 8) + '" y="' + (py + 4) + '" text-anchor="end" font-size="11" fill="' + (istTief ? "var(--s2)" : "var(--ink-3)") + '" style="font-variant-numeric:tabular-nums">' + fShort(tv) + "</text>");
+      // Der Tiefpunkt wird zusätzlich zum Raster eingezogen. Liegt er dicht an einer
+      // Gitterlinie, blieben zwei Zahlen übereinander stehen — dann trägt die Linie
+      // allein, ihr Wert steht ohnehin in der Bildunterschrift.
+      var eng = ticks.some(function (a, ai) { return ai !== ti && Math.abs(yy(a) - py) < 13; });
+      if (!(istTief && eng)) {
+        svg.push('<text x="' + (M.l - 8) + '" y="' + (py + 4) + '" text-anchor="end" font-size="11" fill="' + (istTief ? "var(--s2)" : "var(--ink-3)") + '" style="font-variant-numeric:tabular-nums">' + fShort(tv) + "</text>");
+      }
     });
     var tickEvery = spanne <= 12 ? 1 : (spanne <= 25 ? 5 : 10);
     for (var ty = T0; ty <= T; ty += tickEvery) {
@@ -129,3 +135,88 @@
 
   // ---------- Rechenwerke ----------
   var csvFin = [];
+
+  // ---------- Ergebnisbrücke ----------
+  // Woher das Endvermögen kommt. Die Rechenwerke enthalten diese Antwort in
+  // mehreren hundert Zellen; hier steht sie als ein Bild. Die Posten summieren
+  // sich exakt auf die Schlussliquidität — die Aufnahme und Tilgung des Darlehens
+  // heben sich auf und bleiben deshalb draußen, sein Preis steht als Zinsaufwand.
+  function bilanzBruecke(rows) {
+    var s = { einlage: 0, ne: 0, proceeds: 0, anlage: 0, invest: 0,
+              akquise: 0, zins: 0, kk: 0, opex: 0, tax: 0 };
+    rows.forEach(function (r) {
+      s.einlage += r.einlage; s.ne += r.ne; s.proceeds += r.proceeds;
+      s.anlage += r.anlageErtrag || 0; s.invest += r.invest;
+      s.akquise += r.akquise || 0; s.zins += r.zins; s.kk += r.kkZins || 0;
+      s.opex += r.opex; s.tax += r.tax;
+    });
+    var p = [{ l: "Eigenkapital", v: s.einlage, art: "start" }];
+    function zu(label, wert) { if (Math.abs(wert) > 0.5) p.push({ l: label, v: wert, art: wert >= 0 ? "plus" : "minus" }); }
+    zu("Nutzungsentgelte", s.ne);
+    zu("Verkaufserlöse", s.proceeds);
+    zu("Zinserträge", s.anlage);
+    zu("Anschaffung", -s.invest);
+    zu("Akquisitionskosten", -s.akquise);
+    zu("Zinsaufwand", -(s.zins + s.kk));
+    zu("Laufende Kosten", -s.opex);
+    zu("Steuern", -s.tax);
+    var ende = p.reduce(function (a, x) { return a + x.v; }, 0);
+    p.push({ l: "Schlussliquidität", v: ende, art: "ende" });
+    return p;
+  }
+
+  // Waagerechter Wasserfall: viele Posten mit langen Namen lesen sich liegend
+  // besser, und auf schmalen Bildschirmen bleibt die Beschriftung lesbar.
+  function brueckeChart(posten) {
+    var zeilenH = 30, m = { l: 148, r: 96, t: 10, b: 22 };
+    var W = 816, H = m.t + posten.length * zeilenH + m.b;
+    var pw = W - m.l - m.r;
+
+    // Skala über den gesamten durchlaufenen Bereich, damit kein Balken abgeschnitten wird
+    var lauf = 0, min = 0, max = 0;
+    posten.forEach(function (p) {
+      if (p.art === "start" || p.art === "ende") { lauf = p.v; }
+      else { lauf += p.v; }
+      min = Math.min(min, lauf); max = Math.max(max, lauf);
+    });
+    if (max === min) max = min + 1;
+    function x(v) { return m.l + (v - min) / (max - min) * pw; }
+
+    var s = [], y = m.t, kum = 0;
+    // Nulllinie als ruhige Haarlinie
+    if (min < 0 && max > 0) s.push('<line x1="' + x(0) + '" x2="' + x(0) + '" y1="' + m.t +
+      '" y2="' + (H - m.b) + '" stroke="var(--axis)" stroke-width="1"/>');
+
+    posten.forEach(function (p, i) {
+      var von, bis;
+      if (p.art === "start") { von = 0; bis = p.v; kum = p.v; }
+      else if (p.art === "ende") { von = 0; bis = p.v; }
+      else { von = kum; bis = kum + p.v; kum = bis; }
+      var links = Math.min(x(von), x(bis)), rechts = Math.max(x(von), x(bis));
+      var breite = Math.max(2, rechts - links);
+      var farbe = p.art === "plus" ? "var(--s3)" : p.art === "minus" ? "var(--s2)" : "var(--ink-3)";
+      var bh = p.art === "start" || p.art === "ende" ? 18 : 14;   // Bestände kräftiger als Bewegungen
+      var by = y + (zeilenH - bh) / 2;
+
+      // Verbindung zum vorigen Balken — sie macht aus einzelnen Balken eine Kaskade
+      if (i > 0 && p.art !== "ende") {
+        var vorH = posten[i - 1].art === "start" ? 18 : 14;
+        s.push('<line x1="' + x(von) + '" x2="' + x(von) + '" y1="' + (y - zeilenH + (zeilenH + vorH) / 2) +
+          '" y2="' + by + '" stroke="var(--axis)" stroke-width="1"/>');
+      }
+      s.push('<rect x="' + links.toFixed(1) + '" y="' + by + '" width="' + breite.toFixed(1) +
+        '" height="' + bh + '" rx="3" fill="' + farbe + '"' +
+        (p.art === "start" || p.art === "ende" ? ' opacity="0.85"' : "") +
+        '><title>' + p.l + ": " + fEur(p.v) + "</title></rect>");
+      s.push('<text x="' + (m.l - 10) + '" y="' + (y + zeilenH / 2 + 4) +
+        '" text-anchor="end" font-size="12" fill="var(--ink-2)">' + p.l + "</text>");
+      s.push('<text x="' + (W - m.r + 8) + '" y="' + (y + zeilenH / 2 + 4) +
+        '" font-size="12" fill="' + (p.art === "start" || p.art === "ende" ? "var(--ink)" : "var(--ink-2)") +
+        '" style="font-variant-numeric:tabular-nums' + (p.art === "start" || p.art === "ende" ? ";font-weight:600" : "") +
+        '">' + fEur(p.v) + "</text>");
+      y += zeilenH;
+    });
+
+    return '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Ergebnisbrücke: Beiträge zur Schlussliquidität">' +
+      s.join("") + "</svg>";
+  }

@@ -56,11 +56,14 @@
     document.getElementById("kCash").textContent = fEur(P.cashFinal);
     document.getElementById("kCost").textContent = fEur(P.taxSum + P.opexSum);
 
+    document.getElementById("brueckeBox").innerHTML = OBJ.length
+      ? brueckeChart(bilanzBruecke(P.rows)) : "";
+
     renderContrib(P);
 
     // Karten, die ohne Objekte nichts zeigen können, bleiben weg — ein leeres
     // Portfolio soll auf den Einstieg zeigen, nicht auf fünf leere Kästen.
-    ["cardBeitrag", "cardChart", "cardFin"].forEach(function (id) {
+    ["cardBeitrag", "cardChart", "cardFin", "cardBruecke"].forEach(function (id) {
       var e = document.getElementById(id);
       if (e) e.hidden = !OBJ.length;
     });

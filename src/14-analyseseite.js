@@ -64,7 +64,11 @@
     marke(o.hold, "var(--ink-2)", "gewählt " + o.hold, false);
     if (A.median) marke(A.median, "var(--s3)", "Median " + A.median, false);
 
+    // Der Achsentitel sitzt rechts außen; der letzte Tick würde darunter geraten,
+    // deshalb endet die Skala rechtzeitig davor.
+    var titelAb = W - m.r - 108;
     for (var t = 5; t <= HMAX; t += 5) {
+      if (x(t) > titelAb) continue;
       s.push('<text x="' + x(t) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">' + t + "</text>");
     }
     s.push('<text x="' + (W - m.r) + '" y="' + (H - 6) + '" text-anchor="end" font-size="10.5" fill="var(--ink-3)">Haltedauer in Jahren</text>');
@@ -192,7 +196,7 @@
       }
       h += "</div>";
       h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
-        "<th>Stellschraube</th><th>eingestellt</th><th>kritischer Wert</th><th>Abstand</th><th>Status</th><th></th></tr></thead><tbody>";
+        "<th>Stellschraube</th><th>eingestellt</th><th>kritischer Wert</th><th>Abstand<span class=\"th-sub\">Anteil am Reglerweg</span></th><th>Status</th><th></th></tr></thead><tbody>";
 
       // Die Hürde selbst zuerst — sie zeigt, was der Vertrag tatsächlich abwirft
       var R = Rk;
@@ -220,7 +224,14 @@
         if (K.status === "gefunden") {
           var delta = Math.abs(ist - K.wert);
           h += "<td>" + sch.fmt(K.wert) + "</td>";
-          h += "<td>" + (K.reicht ? "+" : "−") + sch.fmt(delta).replace(" p.a.", "") + "</td>";
+          // Die Abstände tragen verschiedene Einheiten und lassen sich nicht direkt
+          // vergleichen. Der Balken normiert sie auf den Regelbereich der jeweiligen
+          // Größe: Wie weit müsste man diesen einen Regler ziehen?
+          var anteil = Math.max(0, Math.min(1, delta / Math.max(1e-9, sch.max - sch.min)));
+          h += '<td><div class="weg">' +
+            '<span class="weg-zahl">' + (K.reicht ? "+" : "−") + sch.fmt(delta).replace(" p.a.", "") + "</span>" +
+            '<span class="weg-bar"><i class="' + (K.reicht ? "" : "fern") + '" style="width:' +
+            (anteil * 100).toFixed(1) + '%"></i></span></div></td>';
           h += '<td class="' + (K.reicht ? "" : "neg") + '">' + (K.reicht ? "reicht" : "reicht nicht") + "</td>";
           h += '<td><button type="button" class="act" data-setz="' + si + '" title="Diesen Wert übernehmen">setzen</button></td>';
         } else if (K.status === "unkritisch") {

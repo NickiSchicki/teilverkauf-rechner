@@ -178,6 +178,14 @@
     h += "</details>";
 
     // Rechenwerke
+    h += '<div class="card"><h2>Woher das Vermögen kommt</h2>';
+    h += '<p class="sub">Vom eingesetzten Eigenkapital zur Schlussliquidität dieses Projekts, mit anteiligen Gemeinkosten.</p>';
+    h += '<div class="bar-legend"><span><span class="sq" style="background:var(--s3)"></span>trägt bei</span>' +
+      '<span><span class="sq" style="background:var(--s2)"></span>zieht ab</span>' +
+      '<span><span class="sq" style="background:var(--ink-3)"></span>Bestand</span></div>';
+    h += '<div class="chart-box">' + brueckeChart(bilanzBruecke(D.rows)) + "</div>";
+    h += "</div>";
+
     h += '<details class="card ausklapp"><summary><h2>Bilanz, GuV und Cashflow</h2>' +
       '<span class="ausklapp-hinweis">Nur dieses Projekt, mit anteiligen Gemeinkosten</span></summary>';
     h += '<div class="fin-scroll"><table class="fin">' +
