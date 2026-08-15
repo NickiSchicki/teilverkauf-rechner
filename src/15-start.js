@@ -68,6 +68,16 @@
       if (e) e.hidden = !OBJ.length;
     });
 
+    // Das Gesellschaftspanel wechselt zwischen offen und zugeklappt, je nachdem ob
+    // ein Objekt geöffnet ist. Neu gebaut wird es nur bei diesem Wechsel — sonst
+    // verlöre ein Regler bei jeder Bewegung den Fokus.
+    var gesZustand = detailIdx !== null ? "detail" : "portfolio";
+    var pG = document.getElementById("panelGes");
+    if (pG.dataset.zustand !== gesZustand) {
+      pG.dataset.zustand = gesZustand;
+      baueGruppen(pG, GES_GROUPS, G, "g", gesGeaendert);
+    }
+
     // Die Einleitung erklärt den Aufbau des Modells und gehört auf die Einstiegsseite.
     // Auf Objekt- und Analyseseite kostet sie nur Platz über dem eigentlichen Inhalt.
     var lede = document.getElementById("lede");

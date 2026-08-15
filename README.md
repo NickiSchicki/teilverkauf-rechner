@@ -23,7 +23,9 @@ Das Modell bildet beide Seiten ab:
 
 Die Zeitachse läuft in Kalenderjahren. Das **Basisjahr** ist auf Gesellschaftsebene einstellbar und benennt die Achse, ohne die Objekte zu verschieben — ein 2020 erworbenes Objekt bleibt bei 2020. Erwerbsjahre dürfen vor dem Basisjahr liegen; solche Objekte sind Bestand, und die konsolidierte Rechnung beginnt dann beim frühesten Erwerb.
 
-Jedes Objekt trägt seine Annahmen selbst — Immobilienwert, Anteil, Nutzungsentgelt, Finanzierung, Grunderwerbsteuer, Abschreibung sowie Alter und Zusammensetzung des Haushalts. Auf Gesellschaftsebene verbleiben nur laufende Kosten, Gewerbesteuer-Hebesatz, Anlage- und Kontokorrentzins sowie die Schalter für die erweiterte Kürzung und die Abgeltungsteuer.
+Jedes Objekt trägt seine Annahmen selbst — Immobilienwert, Anteil, Nutzungsentgelt, Finanzierung, Grunderwerbsteuer, Abschreibung sowie Alter und Zusammensetzung des Haushalts. Auf Gesellschaftsebene verbleiben nur laufende Kosten, Gewerbesteuer-Hebesatz, Anlage- und Kontokorrentzins, der Renditeanspruch sowie die Schalter für die erweiterte Kürzung und die Abgeltungsteuer.
+
+Die Annahmen stehen über den Auswertungen: erst einstellen, dann ablesen. Ihre Regler verteilen sich quer über die Breite; selten benutzte Gruppen und auf schmalen Bildschirmen alle Gruppen sind zugeklappt.
 
 ## Rechengrundlagen
 

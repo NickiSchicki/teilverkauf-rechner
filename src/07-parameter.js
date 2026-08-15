@@ -1,7 +1,7 @@
   // ---------- Regler- und Spaltendefinitionen ----------
   // Gesellschaftsebene — gilt für alle Objekte
   var GES_GROUPS = [
-    { title: "Gesellschaft", dot: "s3", items: [
+    { title: "Gesellschaft", dot: "s3", zuImDetail: true, hinweis: "gilt für alle Objekte", items: [
       { id: "basisjahr", label: "Basisjahr", min: 2015, max: 2040, step: 1, fmt: function (v) { return String(v); }, note: "Bezugsjahr der Zeitachse; Objekte dürfen davor liegen" },
       { id: "opex", label: "Laufende Kosten", min: 0, max: 20000, step: 250, fmt: function (v) { return fEur(v) + " / Jahr"; }, note: "je Geschäftsjahr, unabhängig von der Objektzahl" },
       { id: "hebesatz", label: "Gewerbesteuer-Hebesatz", min: 200, max: 600, step: 10, fmt: function (v) { return fPct(v, 0); }, note: "nur ohne erweiterte Kürzung relevant" },

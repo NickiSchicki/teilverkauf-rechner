@@ -22,19 +22,30 @@
     gruppen.forEach(function (g) {
       // Gruppen mit zu: true starten zugeklappt — Größen, die man einmal einstellt
       // und danach nicht mehr anfasst, sollen die Liste nicht dominieren.
-      var card = document.createElement(g.zu ? "details" : "div");
-      card.className = "card" + (g.zu ? " ausklapp grp-zu" : "");
-      var kopf = document.createElement(g.zu ? "summary" : "div");
+      // zuImDetail gilt nur, solange ein Objekt geöffnet ist.
+      // Auf schmalen Bildschirmen sind alle Gruppen zugeklappt: Die Annahmen stehen
+      // dort ebenfalls oben, würden aufgeklappt aber drei Bildschirme füllen, bevor
+      // die erste Zahl kommt.
+      var schmal = window.matchMedia && window.matchMedia("(max-width: 760px)").matches;
+      var faltbar = g.zu || schmal || (g.zuImDetail && detailIdx !== null);
+      var card = document.createElement(faltbar ? "details" : "div");
+      card.className = "card" + (faltbar ? " ausklapp grp-zu" : "");
+      var kopf = document.createElement(faltbar ? "summary" : "div");
       kopf.className = "grp-title";
       if (g.dot) { var d = document.createElement("span"); d.className = "dot " + g.dot; kopf.appendChild(d); }
       kopf.appendChild(document.createTextNode(g.title));
-      if (g.zu && g.hinweis) {
+      if (faltbar && g.hinweis) {
         var hn = document.createElement("span");
         hn.className = "ausklapp-hinweis";
         hn.textContent = g.hinweis;
         kopf.appendChild(hn);
       }
       card.appendChild(kopf);
+      // Eigener Rumpf: Über dem Inhalt stehend brauchen die Regler mehrere Spalten,
+      // sonst schiebt eine Gruppe mit acht Größen die Auswertung nach unten.
+      var rumpf = document.createElement("div");
+      rumpf.className = "grp-body";
+      card.appendChild(rumpf);
 
       g.items.forEach(function (it) {
         if (praefix === "g") fmtOf[it.id] = it.fmt;
@@ -52,7 +63,7 @@
           lb.appendChild(document.createTextNode(it.label));
           ctl.appendChild(lb);
           if (it.note) { var n0 = document.createElement("div"); n0.className = "ctl-note"; n0.style.marginLeft = "22px"; n0.textContent = it.note; ctl.appendChild(n0); }
-          card.appendChild(ctl);
+          rumpf.appendChild(ctl);
           return;
         }
 
@@ -107,7 +118,7 @@
           ctl.appendChild(inp);
         }
         if (it.note) { var n = document.createElement("div"); n.className = "ctl-note"; n.textContent = it.note; ctl.appendChild(n); }
-        card.appendChild(ctl);
+        rumpf.appendChild(ctl);
       });
 
       if (g.tax) {
