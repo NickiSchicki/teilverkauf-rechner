@@ -6,9 +6,19 @@ Die Quelldateien liegen in `src/`. `index.html` wird daraus erzeugt:
 node build.js index.html
 ```
 
-Kein npm, keine Abhängigkeiten. Das Ergebnis ist eine eigenständige HTML-Datei,
-die sich ohne Server per Doppelklick öffnen lässt — deshalb der Build-Schritt
-statt ES-Modulen, die über `file://` blockiert werden.
+Kein npm, keine Abhängigkeiten. Der Build erzeugt zwei Dateien:
+
+- `index.html` — vollständige Seite mit Doctype, für GitHub Pages und zum lokalen
+  Öffnen per Doppelklick. **Der Doctype ist nicht optional**: Ohne ihn rendert der
+  Browser im Quirks-Modus, Abstände fallen anders aus und Layoutfehler bleiben
+  unentdeckt.
+- `fragment.html` — derselbe Inhalt ohne Rahmen-Tags, für Veröffentlichungswege,
+  die `<html>`/`<head>`/`<body>` selbst setzen.
+
+Der Build-Schritt ersetzt ES-Module, die über `file://` blockiert würden. Er lehnt
+Quelldateien ab, die die umgebenden Tags selbst mitbringen — ein verirrtes `<style>`
+in `_css.css` verschluckt sonst die erste CSS-Regel und damit alle Farbvariablen,
+ohne dass die Seite sichtbar bricht.
 
 ## Aufbau
 
@@ -33,3 +43,9 @@ Kennzahlen. `src/vergleich.js` stellt zwei solche Abdrücke numerisch gegenüber
 unterscheidet echte Abweichungen von Rundungsgrenzen. Änderungen an der Rechnung
 sind erst dann fertig, wenn der Abdruck unverändert ist oder die Abweichung
 begründet werden kann.
+
+Der Zahlenabdruck allein genügt nicht: Ein zerstörter Style-Block lässt alle Zahlen
+unverändert und macht die Seite trotzdem unlesbar. Zusätzlich zu prüfen sind
+deshalb im Browser: `document.compatMode === "CSS1Compat"`, alle Farbvariablen
+gesetzt, kein horizontaler Seitenüberlauf, und keine `position: sticky`-Zelle ohne
+deckenden Hintergrund.
