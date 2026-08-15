@@ -109,6 +109,45 @@
       monat: this.ob.preise().P * (ne / 100) / 12, kwAktuell: kwAktuell };
   };
 
+  // Welcher Immobilienwert beim Verkauf trägt den Renditeanspruch?
+  // Übersetzt die Hürde in eine Aussage über den Markt: Nicht „welche Wachstumsrate",
+  // sondern „wie viel Prozent des heutigen Werts muss der Verkaufspreis erreichen".
+  // Das hängt an allem — Anteil, Entgelt, Finanzierung, Kosten —, ist aber die Größe,
+  // die sich am ehesten mit einer Markteinschätzung vergleichen lässt.
+  Kennzahlen.prototype.werterhalt = function () {
+    var o = this.ob.a, disk = G.mindestRendite / 100, self = this;
+    var t = this.ob.laufzeiten().verkauf;
+    if (!(t > 0)) return { status: "unerreichbar" };
+
+    // Gesucht ist der Faktor auf den heutigen Wert. Er wirkt allein über den
+    // Verkaufspreis, deshalb wird er als Wachstumsrate eingesetzt und danach
+    // wieder in einen Faktor zurückgerechnet — inklusive Instandhaltungsverfall,
+    // denn der mindert denselben Preis.
+    function faktorVon(g) {
+      return Math.pow(1 + g / 100, t) * Math.pow(1 - o.verfall / 100, t);
+    }
+    function kwBei(g) { return self.kw(disk, self.ob.mit({ growth: g })); }
+
+    var lo = -20, hi = 25;
+    if (kwBei(hi) < 0) return { status: "unerreichbar", jetzt: faktorVon(o.growth) * 100 };
+    if (kwBei(lo) >= 0) return { status: "immer", jetzt: faktorVon(o.growth) * 100 };
+    for (var i = 0; i < 40 && hi - lo > 1e-4; i++) {
+      var mid = (lo + hi) / 2;
+      if (kwBei(mid) >= 0) hi = mid; else lo = mid;
+    }
+    var noetig = faktorVon(hi) * 100;
+    var jetzt = faktorVon(o.growth) * 100;
+    return {
+      status: "gefunden",
+      noetig: noetig,                       // in Prozent des heutigen Werts
+      jetzt: jetzt,                         // was die Annahmen ergeben
+      wachstum: hi,                         // die zugehörige Rate p.a.
+      preis: o.v0 * noetig / 100,           // absoluter Verkaufspreis
+      jahre: t,
+      reicht: jetzt >= noetig - 0.2
+    };
+  };
+
   // Verteilung des Exit-Zeitpunkts mit Break-even und Kapitalwertverlauf
   Kennzahlen.prototype.analyse = function () {
     if (this._c.a) return this._c.a;
@@ -164,7 +203,7 @@
     var A = this.analyse();
     this._c.alles = {
       A: A, lz: A.lz, rendite: A.rendite, ohneHebel: this.ohneHebel(),
-      entgelt: this.mindestEntgelt(),
+      entgelt: this.mindestEntgelt(), werterhalt: this.werterhalt(),
       stell: STELLSCHRAUBEN.map(this.kritischerWert, this)
     };
     return this._c.alles;

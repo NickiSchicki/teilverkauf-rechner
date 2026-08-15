@@ -205,6 +205,7 @@
     F.stell = KZ.stell;
     F.rendite = KZ.rendite;
     F.ohneHebel = KZ.ohneHebel;
+    F.werterhalt = KZ.werterhalt;
     h += objektAnalyseHtml(o, A, F);
 
     host.innerHTML = h;

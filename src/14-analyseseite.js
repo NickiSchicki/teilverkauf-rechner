@@ -146,6 +146,40 @@
           : "") + "</div>";
       h += "</div>";
 
+      // ---- Welcher Immobilienwert trägt den Anspruch? ----
+      // Die zweite Ertragsquelle neben dem Entgelt ist der Verkaufserlös. Als
+      // Wachstumsrate ist er schwer einzuschätzen, als Anteil des heutigen Werts
+      // dagegen vergleichbar mit dem, was man dem Markt zutraut.
+      var WE = F.werterhalt;
+      h += '<div class="card"><h2>Welchen Immobilienwert braucht der Vertrag?</h2>';
+      h += '<p class="sub">Alles andere unverändert: Auf welchen Anteil des heutigen Werts muss der Verkaufspreis kommen, damit der Renditeanspruch aufgeht? Das hängt am verkauften Anteil, am Entgelt und an allen Kosten.</p>';
+      if (WE.status === "gefunden") {
+        var fehlt = WE.noetig - WE.jetzt;
+        h += '<div class="derived"><span>Heutiger Immobilienwert</span><b>' + fEur(o.v0) + "</b></div>";
+        h += '<div class="derived tight"><span>Nötiger Verkaufspreis ' + fJahr(o.start + Math.round(WE.jahre)) +
+          '</span><b class="' + (WE.reicht ? "" : "warnzahl") + '">' + fEur(WE.preis) + "</b></div>";
+        h += '<div class="derived tight"><span>entspricht</span><b class="' + (WE.reicht ? "" : "warnzahl") + '">' +
+          fPct(WE.noetig, 0) + " des heutigen Werts</b></div>";
+        h += '<div class="derived need"><span>' + (WE.reicht ? "Die Annahmen ergeben" : "Die Annahmen ergeben nur") +
+          "</span><b>" + fPct(WE.jetzt, 0) + "</b></div>";
+        h += '<div class="ctl-note" style="margin-top:8px">' +
+          (WE.noetig >= 100
+            ? "Der Wert müsste um " + fPct(WE.noetig - 100, 0) + " steigen, das sind " +
+              fPct(WE.wachstum, 2) + " im Jahr über " + fJahre(WE.jahre) + ". "
+            : "Der Wert dürfte auf " + fPct(WE.noetig, 0) + " fallen und der Vertrag trüge sich noch. ") +
+          (WE.reicht
+            ? "Die eingestellte Wertentwicklung reicht dafür aus."
+            : "Es fehlen " + fPct(fehlt, 0) + "-Punkte — über den Verkaufserlös allein ist der Anspruch damit nicht zu decken.") +
+          "</div>";
+      } else if (WE.status === "immer") {
+        h += '<div class="derived"><span>Nötiger Werterhalt</span><b>unter dem Prüfbereich</b></div>';
+        h += '<div class="ctl-note" style="margin-top:8px">Der Vertrag trägt sich auch bei stark fallenden Preisen — das laufende Entgelt deckt den Anspruch allein.</div>';
+      } else {
+        h += '<div class="derived"><span>Nötiger Werterhalt</span><b class="warnzahl">nicht erreichbar</b></div>';
+        h += '<div class="ctl-note" style="margin-top:8px">Selbst bei sehr starkem Wertzuwachs bleibt der Kapitalwert negativ. Dann tragen die laufenden Kosten und der Kapitaldienst mehr, als ein Verkauf je einbringen kann.</div>';
+      }
+      h += "</div>";
+
       // ---- Hebelwirkung: trägt sich der Vertrag aus sich heraus? ----
       var OH = F.ohneHebel;
       if (Rk.status === "gefunden" && OH && OH.status === "gefunden") {

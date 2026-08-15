@@ -1346,6 +1346,45 @@
       monat: this.ob.preise().P * (ne / 100) / 12, kwAktuell: kwAktuell };
   };
 
+  // Welcher Immobilienwert beim Verkauf trägt den Renditeanspruch?
+  // Übersetzt die Hürde in eine Aussage über den Markt: Nicht „welche Wachstumsrate",
+  // sondern „wie viel Prozent des heutigen Werts muss der Verkaufspreis erreichen".
+  // Das hängt an allem — Anteil, Entgelt, Finanzierung, Kosten —, ist aber die Größe,
+  // die sich am ehesten mit einer Markteinschätzung vergleichen lässt.
+  Kennzahlen.prototype.werterhalt = function () {
+    var o = this.ob.a, disk = G.mindestRendite / 100, self = this;
+    var t = this.ob.laufzeiten().verkauf;
+    if (!(t > 0)) return { status: "unerreichbar" };
+
+    // Gesucht ist der Faktor auf den heutigen Wert. Er wirkt allein über den
+    // Verkaufspreis, deshalb wird er als Wachstumsrate eingesetzt und danach
+    // wieder in einen Faktor zurückgerechnet — inklusive Instandhaltungsverfall,
+    // denn der mindert denselben Preis.
+    function faktorVon(g) {
+      return Math.pow(1 + g / 100, t) * Math.pow(1 - o.verfall / 100, t);
+    }
+    function kwBei(g) { return self.kw(disk, self.ob.mit({ growth: g })); }
+
+    var lo = -20, hi = 25;
+    if (kwBei(hi) < 0) return { status: "unerreichbar", jetzt: faktorVon(o.growth) * 100 };
+    if (kwBei(lo) >= 0) return { status: "immer", jetzt: faktorVon(o.growth) * 100 };
+    for (var i = 0; i < 40 && hi - lo > 1e-4; i++) {
+      var mid = (lo + hi) / 2;
+      if (kwBei(mid) >= 0) hi = mid; else lo = mid;
+    }
+    var noetig = faktorVon(hi) * 100;
+    var jetzt = faktorVon(o.growth) * 100;
+    return {
+      status: "gefunden",
+      noetig: noetig,                       // in Prozent des heutigen Werts
+      jetzt: jetzt,                         // was die Annahmen ergeben
+      wachstum: hi,                         // die zugehörige Rate p.a.
+      preis: o.v0 * noetig / 100,           // absoluter Verkaufspreis
+      jahre: t,
+      reicht: jetzt >= noetig - 0.2
+    };
+  };
+
   // Verteilung des Exit-Zeitpunkts mit Break-even und Kapitalwertverlauf
   Kennzahlen.prototype.analyse = function () {
     if (this._c.a) return this._c.a;
@@ -1401,7 +1440,7 @@
     var A = this.analyse();
     this._c.alles = {
       A: A, lz: A.lz, rendite: A.rendite, ohneHebel: this.ohneHebel(),
-      entgelt: this.mindestEntgelt(),
+      entgelt: this.mindestEntgelt(), werterhalt: this.werterhalt(),
       stell: STELLSCHRAUBEN.map(this.kritischerWert, this)
     };
     return this._c.alles;
@@ -2309,6 +2348,7 @@
     F.stell = KZ.stell;
     F.rendite = KZ.rendite;
     F.ohneHebel = KZ.ohneHebel;
+    F.werterhalt = KZ.werterhalt;
     h += objektAnalyseHtml(o, A, F);
 
     host.innerHTML = h;
@@ -2487,6 +2527,40 @@
           ? " Der Kapitalwert wird genau dann null, wenn der Anspruch bei " + fPct(Rk.wert, 2) +
             " liegt — das ist die Rendite, die dieser Vertrag abwirft."
           : "") + "</div>";
+      h += "</div>";
+
+      // ---- Welcher Immobilienwert trägt den Anspruch? ----
+      // Die zweite Ertragsquelle neben dem Entgelt ist der Verkaufserlös. Als
+      // Wachstumsrate ist er schwer einzuschätzen, als Anteil des heutigen Werts
+      // dagegen vergleichbar mit dem, was man dem Markt zutraut.
+      var WE = F.werterhalt;
+      h += '<div class="card"><h2>Welchen Immobilienwert braucht der Vertrag?</h2>';
+      h += '<p class="sub">Alles andere unverändert: Auf welchen Anteil des heutigen Werts muss der Verkaufspreis kommen, damit der Renditeanspruch aufgeht? Das hängt am verkauften Anteil, am Entgelt und an allen Kosten.</p>';
+      if (WE.status === "gefunden") {
+        var fehlt = WE.noetig - WE.jetzt;
+        h += '<div class="derived"><span>Heutiger Immobilienwert</span><b>' + fEur(o.v0) + "</b></div>";
+        h += '<div class="derived tight"><span>Nötiger Verkaufspreis ' + fJahr(o.start + Math.round(WE.jahre)) +
+          '</span><b class="' + (WE.reicht ? "" : "warnzahl") + '">' + fEur(WE.preis) + "</b></div>";
+        h += '<div class="derived tight"><span>entspricht</span><b class="' + (WE.reicht ? "" : "warnzahl") + '">' +
+          fPct(WE.noetig, 0) + " des heutigen Werts</b></div>";
+        h += '<div class="derived need"><span>' + (WE.reicht ? "Die Annahmen ergeben" : "Die Annahmen ergeben nur") +
+          "</span><b>" + fPct(WE.jetzt, 0) + "</b></div>";
+        h += '<div class="ctl-note" style="margin-top:8px">' +
+          (WE.noetig >= 100
+            ? "Der Wert müsste um " + fPct(WE.noetig - 100, 0) + " steigen, das sind " +
+              fPct(WE.wachstum, 2) + " im Jahr über " + fJahre(WE.jahre) + ". "
+            : "Der Wert dürfte auf " + fPct(WE.noetig, 0) + " fallen und der Vertrag trüge sich noch. ") +
+          (WE.reicht
+            ? "Die eingestellte Wertentwicklung reicht dafür aus."
+            : "Es fehlen " + fPct(fehlt, 0) + "-Punkte — über den Verkaufserlös allein ist der Anspruch damit nicht zu decken.") +
+          "</div>";
+      } else if (WE.status === "immer") {
+        h += '<div class="derived"><span>Nötiger Werterhalt</span><b>unter dem Prüfbereich</b></div>';
+        h += '<div class="ctl-note" style="margin-top:8px">Der Vertrag trägt sich auch bei stark fallenden Preisen — das laufende Entgelt deckt den Anspruch allein.</div>';
+      } else {
+        h += '<div class="derived"><span>Nötiger Werterhalt</span><b class="warnzahl">nicht erreichbar</b></div>';
+        h += '<div class="ctl-note" style="margin-top:8px">Selbst bei sehr starkem Wertzuwachs bleibt der Kapitalwert negativ. Dann tragen die laufenden Kosten und der Kapitaldienst mehr, als ein Verkauf je einbringen kann.</div>';
+      }
       h += "</div>";
 
       // ---- Hebelwirkung: trägt sich der Vertrag aus sich heraus? ----
