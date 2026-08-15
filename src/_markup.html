@@ -1,0 +1,113 @@
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Modellrechner</p>
+    <h1>Teilverkauf-Portfolio in der GmbH</h1>
+    <p class="lede">Mehrere Verträge in einer Gesellschaft: Objekte einzeln anlegen, Ergebnis konsolidiert über alle Jahre. Laufende Kosten und Steuern fallen auf Gesellschaftsebene an, nicht je Vertrag.</p>
+    <span class="chip">Vereinfachte Modellrechnung mit Beispielwerten · keine Rechts-, Steuer- oder Finanzberatung</span>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <div id="panelObjekt" hidden></div>
+      <div id="panelGes"></div>
+    </aside>
+
+    <main>
+      <nav class="tabs" id="tabs" aria-label="Ansicht">
+        <button type="button" class="tab" data-view="portfolio">Portfolio</button>
+        <button type="button" class="tab" data-view="analyse">Analyse</button>
+        <span class="tab-sep" id="tabSep" hidden>›</span>
+        <button type="button" class="tab tab-obj" id="tabObjekt" hidden></button>
+      </nav>
+
+      <div id="viewAnalyse" hidden></div>
+
+      <div id="viewPortfolio">
+      <div class="card hero-card">
+        <div class="hero-main">
+          <div class="stat-label" id="hLabel">Vermögenszuwachs der Gesellschaft</div>
+          <div class="hero-big" id="hZuwachs">–</div>
+          <div class="hero-note" id="hNote"></div>
+        </div>
+        <div class="hero-side">
+          <div class="hs"><span>Objekte</span><b id="kObj">–</b></div>
+          <div class="hs"><span>Kapitalbedarf</span><b id="kNeed">–</b></div>
+          <div class="hs"><span>Rendite nach Steuern</span><b id="kIrr">–</b></div>
+          <div class="hs"><span>Liquidität am Ende</span><b id="kCash">–</b></div>
+          <div class="hs"><span>Steuern &amp; Gemeinkosten</span><b id="kCost">–</b></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="head-row">
+          <div>
+            <h2>Objekte</h2>
+            <p class="sub">Zeile anklicken, um ein Projekt zu öffnen und seine Annahmen zu bearbeiten</p>
+          </div>
+          <button type="button" class="act primary" id="addBtn">+ Objekt hinzufügen</button>
+        </div>
+        <div class="obj-scroll">
+          <table class="obj" id="objTable"></table>
+        </div>
+        <p class="caption" id="objCaption"></p>
+      </div>
+
+      <div class="card">
+        <h2>Beitrag der Objekte</h2>
+        <p class="sub">Direkt zurechenbares Ergebnis je Projekt über die gesamte Laufzeit, vor Gemeinkosten und Steuern.</p>
+        <div id="contribList"></div>
+        <p class="caption" id="contribCaption"></p>
+      </div>
+
+      <div class="card">
+        <h2>Liquidität und Eigenkapital im Zeitverlauf</h2>
+        <p class="sub">Das Bankkonto der GmbH über alle Jahre. Unter der Nulllinie besteht Finanzierungsbedarf, den Kontokorrent oder Gesellschafterdarlehen decken müssen.</p>
+        <div class="legend">
+          <span><span class="swatch" style="background:var(--s1)"></span>Bankguthaben</span>
+          <span><span class="swatch" style="background:var(--s3)"></span>Eigenkapital</span>
+          <span><span class="swatch" style="background:var(--s2)"></span>Kumulierte Einlagen</span>
+        </div>
+        <div class="chart-box" id="chartBox">
+          <svg id="chart" viewBox="0 0 820 340" role="img" aria-label="Liniendiagramm: Bankguthaben, Eigenkapital und kumulierte Einlagen der GmbH über die Jahre"></svg>
+          <div class="tooltip" id="tip"></div>
+        </div>
+        <p class="caption" id="chartCaption"></p>
+      </div>
+
+      <div class="card">
+        <div class="head-row">
+          <div>
+            <h2>Bilanz, GuV und Cashflow</h2>
+            <p class="sub" id="finSub"></p>
+          </div>
+          <button type="button" class="act" id="csvBtn">Als CSV kopieren</button>
+        </div>
+        <div class="fin-scroll">
+          <table class="fin" id="finTable"></table>
+        </div>
+        <p class="caption" id="finCaption"></p>
+      </div>
+
+      </div><!-- /viewPortfolio -->
+
+      <div id="viewDetail" hidden></div>
+
+      <div class="card fine">
+        <h2>Methodik &amp; Annahmen</h2>
+        <p><b>Portfolio:</b> Alle Objekte liegen in derselben GmbH. Je Objekt zahlt der Eigentümer ein Nutzungsentgelt auf den Auszahlungsbetrag; beim Gesamtverkauf erhält die GmbH ihren Anteil am dann erzielten Preis, mindestens aber den Mindesterlös. <b>Jedes Objekt trägt seine Annahmen selbst</b> — Immobilienwert, Anteil, Haushalt und Alter, Wertentwicklung und Instandhaltungsverfall, sämtliche Vertragskonditionen, die komplette Finanzierung samt Zins, Tilgung und Zinsbindung sowie Grunderwerbsteuer, AfA-Satz und Gebäudeanteil. Sie werden auf der jeweiligen Objektseite eingestellt. Auf Gesellschaftsebene verbleiben nur die laufenden Kosten, der Gewerbesteuer-Hebesatz, die erweiterte Kürzung, die Abgeltungsteuer sowie Anlage- und Kontokorrentzins. Das Portfolio rechnet die Objekte lediglich zusammen. Neue Objekte starten mit festen Standardwerten.</p>
+        <p><b>Steuern:</b> Körperschaftsteuer 15 % plus Solidaritätszuschlag ergibt 15,825 %. Gewerbesteuer entfällt bei erweiterter Kürzung nach § 9 Nr. 1 S. 2 GewStG, sonst kommen 3,5 % Messzahl × Hebesatz hinzu. <b>Die Besteuerung erfolgt konsolidiert:</b> Gewinne und Verluste aller Objekte werden im selben Wirtschaftsjahr verrechnet, verbleibende Verluste vorgetragen. Genau das unterscheidet ein Portfolio von mehreren Einzelrechnungen — ein anlaufendes Objekt mindert die Steuer eines ertragreichen.</p>
+        <p><b>Laufende Kosten</b> (Steuerberater, Jahresabschluss, Handelsregister, Versicherungen) fallen einmal je Geschäftsjahr an, unabhängig von der Objektzahl. Sie sind der Grund, warum sich ein einzelner Vertrag kaum trägt und erst mehrere Objekte die Struktur finanzieren.</p>
+        <p><b>Anschaffungsnebenkosten</b> (Grunderwerbsteuer, Notar, Grundbuch, Maklercourtage) werden aktiviert und erhöhen den Bilanzwert; sie wirken über die AfA und den Buchwert beim Verkauf, nicht als Aufwand. <b>AfA</b> läuft auf den Gebäudeanteil der Anschaffungskosten; Grund und Boden wird nicht abgeschrieben. Beim Verkauf erhöht die kumulierte AfA über den niedrigeren Buchwert den steuerpflichtigen Gewinn — sie wirkt als Stundung, nicht als dauerhafte Ersparnis.</p>
+        <p><b>Verkaufskosten</b> tragen beide Eigentümer nach ihrem Anteil; der Teil der GmbH mindert Erlös und Veräußerungsgewinn.</p>
+        <p><b>Kapitalfluss:</b> Bei jedem Ankauf legen die Gesellschafter genau das benötigte Eigenkapital ein, der Rest wird über ein Annuitätendarlehen finanziert (Zins und Anfangstilgung fest, 0 % Tilgung = endfällig). Danach bleiben alle Mittel in der Gesellschaft, es wird nie ausgeschüttet.</p>
+        <p><b>Zinsbindung und Geldanlage:</b> Fällt der Verkauf in die Zinsbindung, lässt sich das Darlehen nicht entschädigungsfrei ablösen. Ist der entsprechende Schalter gesetzt, läuft es bis zum Ende der Zinsbindung weiter, während der Verkaufserlös zum Anlagezins geparkt wird — als Näherung für kurzlaufende Bundeswertpapiere. Aus der Differenz zwischen Sollzins und Anlagezins entsteht ein laufender Verlust auf dem geparkten Betrag; im Gegenzug entfällt eine Vorfälligkeitsentschädigung, die hier nicht gerechnet wird. Ohne den Schalter wird beim Verkauf abgelöst, ebenfalls ohne Entschädigung — die Wahrheit liegt dazwischen. Guthaben werden durchgehend zum Anlagezins verzinst, negative Salden zum Sollzins plus Aufschlag; beides läuft über die GuV und erhöht oder mindert die Steuer. Eine Zinsänderung nach Ablauf der Bindung ist nicht modelliert. Die Rendite ist der interne Zinsfuß der Einlagen gegen die Schlussliquidität; der Schalter „Abgeltungsteuer“ zeigt als Nebenrechnung, was nach einer späteren Entnahme bliebe (26,375 % auf den Betrag oberhalb der Einlagen).</p>
+        <p><b>Haltedauer:</b> Sie lässt sich je Objekt frei setzen oder über den Schalter „Haltedauer aus Sterbetafel“ an den Median der Exit-Verteilung koppeln. Ist die Kopplung aktiv, wirkt das Alter des Haushalts bis in Bilanz, Rendite und Liquiditätsverlauf durch; andernfalls beeinflusst es nur die Analyse. Verwendet wird der Median und nicht der Erwartungswert, weil die Rechenwerke eine ganze Zahl brauchen und der Median einen konkreten Vertrag beschreibt, während der Erwartungswert durch die lange rechte Flanke der Verteilung nach oben gezogen wird.</p>
+        <p><b>Ankaufsfilter:</b> Die Umkehrung der Renditerechnung — gesucht wird der Wert, bei dem der wahrscheinlichkeitsgewichtete Kapitalwert gerade null wird, gemessen gegen die auf Gesellschaftsebene eingestellte Mindestrendite. Diese Zielgröße kommt <b>ohne unterstellte Haltedauer</b> aus: Weil der Kapitalwert linear in den Zahlungen ist, entspricht der gewichtete Kapitalwert exakt dem Kapitalwert des gewichteten Zahlungsstroms. Gerechnet wird einschließlich der anteiligen laufenden Kosten der Gesellschaft — dieselbe Kostenbasis wie in der übrigen Objektrechnung, damit auf einer Seite nicht zwei verschiedene Renditen für denselben Vertrag stehen.</p>
+        <p><b>Laufzeiten:</b> Drei Zeiträume fallen auseinander. Die <em>Vertragslaufzeit</em> ist an die Kreditbindung gekoppelt — so lange ist die Gesellschaft gebunden. Der <em>Verkauf des Anteils</em> erfolgt entweder zum angenommenen Zeitpunkt oder, bei zugeschalteter Sterbetafel-Kopplung, über die Exit-Verteilung gewichtet. Liegt der Verkauf vor dem Ende der Kreditbindung, läuft das Darlehen weiter und der Erlös wird bis zur Ablösung zum Anlagezins geparkt; die <em>Kapitalbindung</em> ist dann länger als die Zeit bis zum Verkauf. Da diese Nachlaufzeit kein Nutzungsentgelt trägt, der Sollzins aber weiterläuft, drückt sie die Rendite — sie steht deshalb neben der Mindestrendite. Alle Renditeangaben beziehen sich auf die Kapitalbindung, nicht auf die Zeit bis zum Verkauf.</p>
+        <p><b>Umkehrrechnung je Stellschraube:</b> Jede Zeile der Stellschraubentabelle beantwortet dieselbe Frage für genau eine Größe, alle übrigen unverändert. Die Suche läuft als Bisektion; die Wirkungsrichtung wird gemessen und nicht unterstellt. Liegt die Lösung außerhalb des zulässigen Bereichs, erscheint „reicht allein nicht aus“ oder „im gesamten Bereich unkritisch“ statt eines an den Rand geklemmten Werts. Die erste Zeile behandelt die Mindestrendite selbst als Stellschraube: Ihr kritischer Wert ist die Rendite, die der Vertrag bei den aktuellen Annahmen tatsächlich abwirft, und stimmt mit der erwarteten Rendite der Analyse überein — beides ist der Zinsfuß, bei dem derselbe gewichtete Kapitalwert null wird.</p>
+        <p><b>Effektive Kosten je Eigentümer</b> sind der interne Zinsfuß aus dessen Sicht: Auszahlung heute gegen Nutzungsentgelte und den Anteil, der beim Verkauf an die GmbH geht. Verkaufskosten des Eigentümers zählen nicht dazu, weil sie bei einem Verkauf ohne Teilverkauf ebenso anfielen.</p>
+        <p>Alle Werte jährlich nachschüssig, vor Inflation. Ausfall-, Instandhaltungs- und Bewertungsrisiken sind nicht modelliert.</p>
+      </div>
+    </main>
+  </div>
+</div>

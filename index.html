@@ -1,6 +1,10 @@
+<!doctype html>
+<html lang="de">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Teilverkauf-Portfolio</title>
+<style>
 <style>
   :root {
     color-scheme: light;
@@ -393,7 +397,8 @@
   table.sched tfoot td { font-weight: 700; border-top: 1px solid var(--axis); border-bottom: none; }
   table.sched .neg { color: var(--s2); }
 </style>
-
+</head>
+<body>
 <div class="wrap">
   <header>
     <p class="eyebrow">Modellrechner</p>
@@ -507,28 +512,37 @@
     </main>
   </div>
 </div>
-
 <script>
 (function () {
   "use strict";
 
+  // ══════════ 01-format.js ══════════
+  // Zahlen- und Zeitformate. Einzige Stelle, an der aus Werten Text wird.
+
+  var KST = 15.825;     // Körperschaftsteuer einschließlich Solidaritätszuschlag
+  var ABGELT = 26.375;  // Abgeltungsteuer einschließlich Solidaritätszuschlag
+  var HMAX = 40;        // längste betrachtete Haltedauer, deckt den Regler ab
+
   var eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
-  function fEur(v) { var n = v < 0 ? -Math.round(-v) : Math.round(v); return eur.format(n === 0 ? 0 : n); }
+
+  function fEur(v) {
+    var n = v < 0 ? -Math.round(-v) : Math.round(v);
+    return eur.format(n === 0 ? 0 : n);
+  }
+
   function fPct(v, d) {
     if (v === null || v === undefined || !isFinite(v)) return "–";
-    d = d === undefined ? 1 : d;
-    return v.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d }) + " %";
+    return v.toLocaleString("de-DE", {
+      minimumFractionDigits: d === undefined ? 1 : d,
+      maximumFractionDigits: d === undefined ? 1 : d
+    }) + " %";
   }
-  function csvNum(v) { return (Math.round(v * 100) / 100).toFixed(2).replace(".", ","); }
 
-  // Alle Zeitangaben laufen intern relativ zum Basisjahr; angezeigt werden Kalenderjahre.
-  // Negative Werte sind zulässig — sie bezeichnen Objekte, die schon im Bestand sind.
-  function fJahr(j) { return String(G.basisjahr + Math.round(j)); }
-  // Ohne Zwischenausschüttungen realisiert sich die gesamte Rendite beim Verkauf:
-  // Das Eigenkapital geht einmal hinein und kommt einmal zurück. Die Gesamtrendite
-  // über die Kapitalbindung ist deshalb die anschaulichere Größe; der Jahreszins ist
-  // nur ihre Verteilung auf die Zeit.
-  function gesamtRendite(pa, jahre) { return (Math.pow(1 + pa / 100, jahre) - 1) * 100; }
+  function fFaktor(v, d) {
+    return v.toLocaleString("de-DE", { minimumFractionDigits: d || 4, maximumFractionDigits: d || 4 });
+  }
+
+  function csvNum(v) { return (Math.round(v * 100) / 100).toFixed(2).replace(".", ","); }
 
   // Jahresangaben: ganze Zahlen ohne Nachkomma, gemittelte mit einer Stelle
   function fJahre(v) {
@@ -537,8 +551,148 @@
     return v.toLocaleString("de-DE", { minimumFractionDigits: ganz ? 0 : 1, maximumFractionDigits: ganz ? 0 : 1 }) +
       (ganz && Math.round(v) === 1 ? " Jahr" : " Jahre");
   }
+  function fJahreDat(v) { return fJahre(v).replace(" Jahre", " Jahren"); }
 
-  var KST = 15.825, ABGELT = 26.375;
+  // Zeitangaben laufen intern relativ zum Basisjahr; angezeigt werden Kalenderjahre.
+  // Negative Werte sind zulässig — sie bezeichnen Objekte, die schon im Bestand sind.
+  function fJahr(j) { return String(G.basisjahr + Math.round(j)); }
+
+  // Ohne Zwischenausschüttungen realisiert sich die gesamte Rendite beim Verkauf:
+  // Das Eigenkapital geht einmal hinein und kommt einmal zurück. Die Gesamtrendite
+  // über die Kapitalbindung ist deshalb die anschaulichere Größe; der Jahreszins ist
+  // nur ihre Verteilung auf die Zeit.
+  function gesamtRendite(pa, jahre) { return (Math.pow(1 + pa / 100, jahre) - 1) * 100; }
+
+  // Interner Zinsfuß über Bisektion. Ohne Vorzeichenwechsel gibt es keine Lösung.
+  function irr(cfs) {
+    function npv(r) {
+      var a = 0;
+      for (var i = 0; i < cfs.length; i++) a += cfs[i] / Math.pow(1 + r, i);
+      return a;
+    }
+    var lo = -0.95, hi = 10;
+    if (npv(lo) * npv(hi) > 0) return null;
+    for (var i = 0; i < 90 && hi - lo > 1e-11; i++) {
+      var mid = (lo + hi) / 2;
+      if (npv(lo) * npv(mid) <= 0) hi = mid; else lo = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  function kapitalwert(flows, r) {
+    var a = 0;
+    for (var i = 0; i < flows.length; i++) a += flows[i] / Math.pow(1 + r, i);
+    return a;
+  }
+
+  // ══════════ 02-konten.js ══════════
+  // ---------- Kontenrahmen ----------
+  // Jede Position wird hier einmal deklariert. Ergebnis vor Steuern, die drei
+  // Cashflow-Bereiche und sämtliche Tabellenzeilen werden daraus abgeleitet —
+  // nicht getrennt gepflegt. Damit kann eine Position nicht mehr in der einen
+  // Sicht auftauchen und in der anderen fehlen; genau daran ist die Rechnung
+  // zuvor mehrfach auseinandergelaufen.
+  //
+  //   feld     Name im Jahresdatensatz
+  //   guv      Vorzeichen in der Gewinn- und Verlustrechnung, 0 = nicht ergebniswirksam
+  //   cf       Bereich der Kapitalflussrechnung, null = nicht zahlungswirksam
+  //   cfVz     Vorzeichen in der Kapitalflussrechnung (voreingestellt wie guv)
+  var POSTEN = [
+    { feld: "ne",           guv: +1, cf: "operativ",     label: "Nutzungsentgelt",      labelP: "Nutzungsentgelte" },
+    { feld: "anlageErtrag", guv: +1, cf: "operativ",     label: "Zinserträge aus Geldanlage" },
+    { feld: "afa",          guv: -1, cf: null,           label: "Abschreibungen (AfA)" },
+    { feld: "opex",         guv: -1, cf: "operativ",     label: "Anteilige laufende Kosten", labelP: "Sonstige betriebliche Aufwendungen" },
+    { feld: "akquise",      guv: -1, cf: "operativ",     label: "Akquisitionskosten" },
+    { feld: "zins",         guv: -1, cf: "operativ",     label: "Zinsaufwand Darlehen" },
+    { feld: "kkZins",       guv: -1, cf: "operativ",     label: "Zinsaufwand Kontokorrent" },
+    { feld: "vGewinn",      guv: +1, cf: null,           label: "Ergebnis Anteilsverkauf", labelP: "Ergebnis Anteilsverkäufe" },
+    { feld: "tax",          guv:  0, cf: "operativ", cfVz: -1, label: null },   // eigene Zeile unter dem Ergebnis
+    { feld: "proceeds",     guv:  0, cf: "investiv", cfVz: +1, label: null },
+    { feld: "invest",       guv:  0, cf: "investiv", cfVz: -1, label: null },
+    { feld: "einlage",      guv:  0, cf: "finanzierung", cfVz: +1, label: null },
+    { feld: "loanNew",      guv:  0, cf: "finanzierung", cfVz: +1, label: null },
+    { feld: "tilg",         guv:  0, cf: "finanzierung", cfVz: -1, label: null },
+    { feld: "payoff",       guv:  0, cf: "finanzierung", cfVz: -1, label: null }
+  ];
+
+  function vz(p) { return p.cfVz === undefined ? p.guv : p.cfVz; }
+  function wert(r, feld) { return r[feld] || 0; }
+
+  // Ergebnis vor Steuern aus dem Kontenrahmen
+  function ebtVon(r) {
+    var a = 0;
+    POSTEN.forEach(function (p) { if (p.guv) a += p.guv * wert(r, p.feld); });
+    return a;
+  }
+
+  // Ein Cashflow-Bereich aus dem Kontenrahmen
+  function cfVon(r, bereich) {
+    var a = 0;
+    POSTEN.forEach(function (p) { if (p.cf === bereich) a += vz(p) * wert(r, p.feld); });
+    return a;
+  }
+
+  // Summe aller drei Bereiche — dies ist die Veränderung der Zahlungsmittel.
+  // Weil die Kassenrechnung dieselbe Funktion benutzt, kann sie nicht von der
+  // ausgewiesenen Gliederung abweichen.
+  function cashChangeVon(r) {
+    return cfVon(r, "operativ") + cfVon(r, "investiv") + cfVon(r, "finanzierung");
+  }
+
+  // Tabellenzeilen der Gewinn- und Verlustrechnung, portfolio = konsolidierte Bezeichnungen
+  function guvZeilen(portfolio) {
+    var z = POSTEN.filter(function (p) { return p.guv && p.label; }).map(function (p) {
+      return { l: (portfolio && p.labelP) || p.label, f: function (r) { return p.guv * wert(r, p.feld); } };
+    });
+    z.push({ l: "Ergebnis vor Steuern", sum: true, f: function (r) { return r.ebt; } });
+    z.push({ l: portfolio ? "Steuern (KSt, Soli, GewSt)" : "Steuern (anteilig)", f: function (r) { return -wert(r, "tax"); } });
+    z.push({ l: "Jahresüberschuss", sum: true, f: function (r) { return r.jue; } });
+    return z;
+  }
+
+  function cfZeilen(mitEinlagen) {
+    var z = [
+      { l: "Operativer Cashflow", f: function (r) { return cfVon(r, "operativ"); } },
+      { l: "Investitionscashflow", f: function (r) { return cfVon(r, "investiv"); } },
+      { l: "Finanzierungscashflow", f: function (r) { return cfVon(r, "finanzierung"); } }
+    ];
+    if (mitEinlagen) z.push({ l: "davon Einlagen", f: function (r) { return wert(r, "einlage"); } });
+    z.push({ l: "Veränderung Zahlungsmittel", sum: true, f: function (r) { return r.cashChange; } });
+    z.push({ l: "Bestand Zahlungsmittel", f: function (r) { return r.cash; } });
+    return z;
+  }
+
+  function bilanzZeilen(portfolio) {
+    return [
+      { l: portfolio ? "Immobilienanteile (Buchwert)" : "Immobilienanteil (Buchwert)", f: function (r) { return r.buchwert; } },
+      { l: "Guthaben und Wertpapiere", f: function (r) { return r.cash; } },
+      { l: "Summe Aktiva", sum: true, f: function (r) { return r.buchwert + r.cash; } },
+      { l: "Eigenkapital", f: function (r) { return r.ek; } },
+      { l: "Bankdarlehen", f: function (r) { return r.rest; } },
+      { l: "Summe Passiva", sum: true, f: function (r) { return r.ek + r.rest; } }
+    ];
+  }
+
+  function rechenwerkGruppen(portfolio) {
+    return [
+      { title: "Gewinn- und Verlustrechnung", rows: guvZeilen(portfolio) },
+      { title: "Bilanz (Stichtag 31.12.)", rows: bilanzZeilen(portfolio) },
+      { title: "Kapitalflussrechnung", rows: cfZeilen(portfolio) }
+    ];
+  }
+
+  // Steuer eines Jahres unter Berücksichtigung des Verlustvortrags.
+  // Gibt den neuen Vortrag zurück, damit der Aufrufer keinen eigenen Zustand führt.
+  function steuer(ebt, vortrag, satz) {
+    if (ebt > 0) {
+      var genutzt = Math.min(vortrag, ebt);
+      return { tax: (ebt - genutzt) * satz, vortrag: vortrag - genutzt };
+    }
+    return { tax: 0, vortrag: vortrag - ebt };
+  }
+
+  // ══════════ 03-stammdaten.js ══════════
+  // ---------- Sterblichkeit, Stammdaten und Exit-Verteilung ----------
 
   // Gompertz-Makeham, kalibriert an die ferneren Lebenserwartungen der amtlichen
   // Sterbetafel 2022/24 (Alter 65/70/80, Abweichung unter 0,4 Jahren).
@@ -570,19 +724,6 @@
     afaSatz: 2, gebAnteil: 70
   };
 
-  function neuesObjekt(name) {
-    var o = {};
-    Object.keys(OBJ_DEF).forEach(function (k) { o[k] = OBJ_DEF[k]; });
-    if (name) o.name = name;
-    return o;
-  }
-
-  // Beispielobjekte mit generischen Werten — keine echten Vertragsdaten
-  var OBJ = [
-    Object.assign(neuesObjekt("Beispielobjekt A"), { v0: 500000, share: 50, alter: 75, haus: "Paar" }),
-    Object.assign(neuesObjekt("Beispielobjekt B"), { v0: 400000, share: 40, start: 2, hold: 15, alter: 80, haus: "w" })
-  ];
-
   // Verteilung des Exit-Zeitpunkts: Sterblichkeit (bei Paaren der Letztversterbende)
   // plus eine konstante Wahrscheinlichkeit für Pflegeheim oder Auszug.
   function exitVerteilung(o, maxJahre) {
@@ -612,7 +753,12 @@
   // Einziger Ort, an dem die Exit-Verteilung normiert wird.
   // Die Restmasse jenseits des Horizonts wird dem letzten Jahr zugeschlagen, statt sie
   // wegzuwerfen — sonst rutschen Median und Erwartungswert bei jungen Haushalten zu weit nach vorn.
+  var GEW_CACHE = {};
   function exitGewichte(o) {
+    // Schlüssel aus genau den Größen, von denen die Verteilung abhängt — dadurch
+    // veraltet der Zwischenspeicher nicht, wenn Regler die Annahmen ändern.
+    var key = (o.haus || "Paar") + "|" + (o.alter || 75) + "|" + (o.pflege || 0);
+    if (GEW_CACHE[key]) return GEW_CACHE[key];
     var V = exitVerteilung(o, HMAX);
     var w = [0], summe = 0;
     for (var k = 1; k <= HMAX; k++) { w.push(V.p[k]); summe += V.p[k]; }
@@ -625,38 +771,111 @@
       eH += w[m] * m;
       if (median === HMAX && kum >= 0.5) median = m;
     }
-    return { w: w, median: median, eH: eH };
+    GEW_CACHE[key] = { w: w, median: median, eH: eH };
+    return GEW_CACHE[key];
   }
 
-  // Die Haltedauer, mit der tatsächlich gerechnet wird
-  function holdEffektiv(o) {
-    return o.holdAuto ? exitGewichte(o).median : o.hold;
+  // Renditehürde: was das eingesetzte Eigenkapital mindestens bringen muss.
+  // Bewusst unabhängig vom Sollzins — Eigenkapital haftet und ist lange gebunden,
+  // der Maßstab ist die Alternativanlage, nicht die Bankkondition.
+  function zielZins() { return G.mindestRendite; }
+
+  // Name und Wert der Renditehürde an einer Stelle. Erklärtexte setzen sie ein,
+  // statt sie zu behaupten — vorher stand in drei Bildunterschriften noch der
+  // Sollzins, während längst gegen die Mindestrendite gerechnet wurde.
+  var ZIEL = {
+    name: "Mindestrendite",
+    wert: function () { return fPct(zielZins(), 2); },
+    benannt: function () { return ZIEL.name + " von " + ZIEL.wert(); }
+  };
+
+  // ══════════ 04-objekt.js ══════════
+  // ---------- Klasse Objekt ----------
+  // Ein Objekt trägt seine Annahmen und leitet daraus alles ab, was es allein
+  // betrifft: Preise, Finanzierungsverlauf, Rechenwerk und Zahlungsstrom.
+  // Was mehrere Objekte betrifft — Steuersatz, Gemeinkostenanteil — kommt als
+  // Kontext von außen und wird nie im Objekt festgehalten.
+
+  function Objekt(daten) {
+    this.a = daten;                 // die Annahmen, unverändert
   }
+
+  Objekt.neu = function (name) {
+    var o = {};
+    Object.keys(OBJ_DEF).forEach(function (k) { o[k] = OBJ_DEF[k]; });
+    if (name) o.name = name;
+    return new Objekt(o);
+  };
+
+  // Eine Kopie mit abgewandelten Annahmen — Grundlage jeder Was-wäre-wenn-Rechnung.
+  Objekt.prototype.mit = function (aenderungen) {
+    return new Objekt(Object.assign({}, this.a, aenderungen));
+  };
+
+  // ---- Preise und Kapitaleinsatz ----
+  // Bewusst ohne Zwischenspeicher: Die Regler schreiben direkt in a, ein Cache
+  // würde veraltete Werte liefern. Die Rechnung selbst ist billig.
+  Objekt.prototype.preise = function () {
+    var o = this.a, s = o.share / 100;
+    // Der Ankaufsabschlag mindert nur den Kaufpreis. Der spätere Anteil am
+    // Verkaufserlös richtet sich weiter nach der Beteiligungsquote — genau darin
+    // liegt der Renditehebel des Abschlags.
+    var vollpreis = s * o.v0;
+    var P = vollpreis * (1 - (o.abschlag || 0) / 100);
+    // Grunderwerbsteuer, Notar und Maklercourtage sind Anschaffungsnebenkosten und
+    // werden aktiviert. Die Courtage trägt die Gesellschaft in voller Höhe — bewusst
+    // die ungünstigere Annahme, statt sie mit dem Verkäufer zu teilen.
+    var nebenSatz = o.grest / 100 + o.notar / 100 + (o.makler || 0) / 100;
+    var invest0 = P * (1 + nebenSatz);
+    var loan0 = P * o.ltv / 100;
+    // Akquisitionskosten sind Vertriebsaufwand, nicht dem Erwerb einzeln zurechenbar:
+    // Sie werden nicht aktiviert, sondern im Erwerbsjahr aufwandswirksam. Bezahlt
+    // werden müssen sie trotzdem, deshalb erhöhen sie den Eigenkapitalbedarf.
+    var akquise = Math.max(0, o.akquise || 0);
+    return {
+      vollpreis: vollpreis, P: P, nebenkosten: invest0 - P, invest0: invest0,
+      loan0: loan0, akquise: akquise, equity0: invest0 - loan0 + akquise,
+      annuity: loan0 * (o.zins + o.tilg) / 100
+    };
+  };
+
+  // ---- Laufzeiten ----
+  // Drei Zeiträume, die auseinanderfallen können:
+  //   kredit  — die Bindung des Darlehens, an der sich der Vertrag ausrichtet
+  //   verkauf — wann der Anteil tatsächlich veräußert wird
+  //   bindung — wie lange das Eigenkapital gebunden bleibt
+  // Endet der Vertrag vor dem Kredit, liegt der Erlös bis zur Ablösung in der
+  // Geldanlage: Das Kapital arbeitet dann zum Anlagezins statt im Objekt.
+  Objekt.prototype.holdEffektiv = function () {
+    return this.a.holdAuto ? this.exitGewichte().median : this.a.hold;
+  };
+
+  Objekt.prototype.darlehensJahre = function (hold) {
+    var h = hold === undefined ? this.a.hold : hold;
+    return this.a.weiterfuehren ? Math.max(h, this.a.zinsbindung) : h;
+  };
+
+  Objekt.prototype.exitGewichte = function () { return exitGewichte(this.a); };
 
   // Über welche Zeit die Rendite gerechnet wird. Ohne Sterbetafel-Kopplung ist der
   // Verkaufszeitpunkt eine feste Annahme, mit ihr eine Verteilung. Beides führt auf
   // dieselbe gewichtete Form — im ersten Fall mit einem einzigen Gewicht von 1.
-  // Dadurch wirkt der Schalter auch auf die Rendite und nicht nur auf die Bilanz.
-  function renditeGewichte(o) {
-    if (o.holdAuto) return exitGewichte(o).w;
-    var h = Math.min(HMAX, Math.max(1, Math.round(o.hold)));
-    var w = [];
-    for (var k = 0; k <= HMAX; k++) w.push(k === h ? 1 : 0);
-    return w;
-  }
+  Objekt.prototype.renditeGewichte = function () {
+    if (!this.a.holdAuto) {
+      var h = Math.min(HMAX, Math.max(1, Math.round(this.a.hold)));
+      var w = [];
+      for (var k = 0; k <= HMAX; k++) w.push(k === h ? 1 : 0);
+      return w;
+    }
+    return this.exitGewichte().w;
+  };
 
-  // Drei Laufzeiten, die auseinanderfallen können:
-  //   kredit   — die Bindung des Darlehens, an der sich der Vertrag ausrichtet
-  //   verkauf  — wann der Anteil tatsächlich veräußert wird
-  //   bindung  — wie lange das Eigenkapital gebunden bleibt
-  // Endet der Vertrag vor dem Kredit, liegt der Erlös bis zur Ablösung in der
-  // Geldanlage: Das Kapital arbeitet dann zum Anlagezins statt im Objekt.
-  function laufzeiten(o) {
-    var w = renditeGewichte(o), GW = exitGewichte(o);
+  Objekt.prototype.laufzeiten = function () {
+    var o = this.a, w = this.renditeGewichte(), GW = this.exitGewichte();
     var verkauf = 0, bindung = 0, nachlauf = 0, pNachlauf = 0;
     for (var k = 1; k <= HMAX; k++) {
       if (!w[k]) continue;
-      var ende = o.weiterfuehren ? Math.max(k, o.zinsbindung) : k;
+      var ende = this.darlehensJahre(k);
       verkauf += w[k] * k;
       bindung += w[k] * ende;
       nachlauf += w[k] * (ende - k);
@@ -665,13 +884,441 @@
     return { kredit: o.zinsbindung, verkauf: verkauf, bindung: bindung,
       nachlauf: nachlauf, pNachlauf: pNachlauf * 100,
       auto: !!o.holdAuto, median: GW.median, eH: GW.eH, gesetzt: o.hold };
+  };
+
+  // ---- Verlauf über die Jahre ----
+  // hold ist ausdrücklich ein Parameter: Die Kurven der Analyse rechnen dasselbe
+  // Objekt über alle möglichen Haltedauern.
+  Objekt.prototype.verlauf = function (hold) {
+    var o = this.a, pr = this.preise();
+    var h = hold === undefined ? o.hold : hold;
+    var ende = this.darlehensJahre(h);
+    var s = o.share / 100, g = o.growth / 100;
+    var afaBase = pr.invest0 * o.gebAnteil / 100;
+    var afaYear = afaBase * o.afaSatz / 100;
+
+    var bal = pr.loan0, cumAfa = 0, years = [], ownerFlows = [pr.P];
+    for (var k = 1; k <= ende; k++) {
+      var imBestand = k <= h;
+      var ne = imBestand ? pr.P * (o.ne / 100) * Math.pow(1 + o.esc / 100, k - 1) : 0;
+      var zins = bal * o.zins / 100;
+      var pay = Math.min(pr.annuity, bal + zins);
+      var tilg = pay - zins;
+      bal = bal + zins - pay;
+      if (bal < 0.005) bal = 0;
+      var afa = imBestand ? Math.min(afaYear, Math.max(0, afaBase - cumAfa)) : 0;
+      cumAfa += afa;
+      years.push({ y: o.start + k, ne: ne, zins: zins, tilg: tilg, pay: pay, afa: afa,
+        buchwert: pr.invest0 - cumAfa, rest: bal, imBestand: imBestand });
+      if (imBestand) ownerFlows.push(-ne);
+    }
+
+    // Marktentwicklung und Zustandsverfall wirken multiplikativ auf den Verkaufspreis
+    var VT = o.v0 * Math.pow(1 + g, h) * Math.pow(1 - o.verfall / 100, h);
+    var B = Math.max(s * VT, (o.min / 100) * pr.P);
+    var DE = (o.de / 100) * VT;
+    var vkTotal = (o.vkKosten / 100) * VT;
+    var vkBuyer = s * vkTotal;
+    var buchwert = pr.invest0 - cumAfa;
+    ownerFlows[h] -= (B + DE);
+
+    var exitY = o.start + h, ablöseY = o.start + ende;
+    var restBeiExit = 0;
+    years.forEach(function (r) { if (r.y === exitY) restBeiExit = r.rest; });
+
+    return {
+      // o ist die Rechnungsgrundlage dieses Verlaufs, nicht die rohen Annahmen:
+      // Bei aktiver Sterbetafel-Kopplung steht hier die gerechnete Haltedauer,
+      // nicht der Reglerwert. Die Annahmen selbst stehen unter obj.a.
+      o: h === o.hold ? o : Object.assign({}, o, { hold: h }),
+      obj: this, hold: h, years: years, exitY: exitY, ablöseY: ablöseY,
+      darlehensJahre: ende, restBeiExit: restBeiExit, restAtExit: bal,
+      VT: VT, B: B, DE: DE, vkTotal: vkTotal, vkBuyer: vkBuyer,
+      proceeds: B + DE - vkBuyer, buchwert: buchwert, cumAfa: cumAfa,
+      gewinn: (B + DE - vkBuyer) - buchwert,
+      // direkt zurechenbares Ergebnis, vor Gemeinkosten und Steuern
+      beitrag: years.reduce(function (a, r) { return a + r.ne - r.zins - r.afa; }, 0) + (B + DE - vkBuyer) - buchwert,
+      ownerFlows: ownerFlows,
+      ownerGets: Math.max(0, VT - B - DE - (vkTotal - vkBuyer)),
+      P: pr.P, vollpreis: pr.vollpreis, invest0: pr.invest0, loan0: pr.loan0,
+      equity0: pr.equity0, akquise: pr.akquise, annuity: pr.annuity
+    };
+  };
+
+  // Effektive Jahreskosten des Eigentümers — teuer, deshalb nur auf Anforderung
+  Objekt.prototype.ownerCost = function (hold) {
+    var r = irr(this.verlauf(hold).ownerFlows);
+    return r === null ? null : r * 100;
+  };
+
+  // ---- Rechenwerk des einzelnen Projekts ----
+  // ctx: { opexShare, taxRate, anlage, kkZins } — alles, was von außen kommt.
+  Objekt.prototype.rechenwerk = function (ctx, hold) {
+    var v = this.verlauf(hold);
+    var vortrag = v.akquise, cash = 0, cumProfit = -v.akquise;
+    var taxSum = 0, neSum = 0, opexSum = 0, dsSum = 0;
+
+    // Erwerbsjahr: Anschaffung, Darlehen und Einlage. Der Akquiseaufwand fällt hier
+    // an und erzeugt einen Verlust, der vorgetragen wird.
+    var rows = [zeile({
+      y: v.o.start, akquise: v.akquise, invest: v.invest0, loanNew: v.loan0,
+      einlage: v.equity0, buchwert: v.invest0, cash: 0, ek: v.equity0 - v.akquise,
+      rest: v.loan0, erwerb: true
+    }, 0, ctx.taxRate)];
+
+    v.years.forEach(function (r) {
+      var isExit = r.y === v.exitY, isAbloese = r.y === v.ablöseY;
+      neSum += r.ne; opexSum += ctx.opexShare; dsSum += r.pay;
+      var roh = {
+        y: r.y, ne: r.ne, afa: r.afa, zins: r.zins, opex: ctx.opexShare,
+        anlageErtrag: Math.max(0, cash) * ctx.anlage / 100,
+        kkZins: Math.max(0, -cash) * ctx.kkZins / 100,
+        vGewinn: isExit ? v.gewinn : 0,
+        proceeds: isExit ? v.proceeds : 0,
+        payoff: isAbloese ? v.restAtExit : 0,
+        tilg: r.tilg, pay: r.pay,
+        buchwert: r.y >= v.exitY ? 0 : r.buchwert,
+        rest: r.y >= v.ablöseY ? 0 : r.rest,
+        exit: isExit, abloese: isAbloese
+      };
+      var z = zeile(roh, vortrag, ctx.taxRate);
+      vortrag = z._vortrag;
+      taxSum += z.tax;
+      cumProfit += z.jue;
+      cash += z.cashChange;
+      z.cash = cash;
+      z.ek = v.equity0 + cumProfit;
+      rows.push(z);
+    });
+
+    return {
+      v: v, rows: rows, cashFinal: cash, taxSum: taxSum, neSum: neSum,
+      opexSum: opexSum, dsSum: dsSum, gewinn: cash - v.equity0
+    };
+  };
+
+  // Baut eine Jahreszeile: Ergebnis, Steuer und Zahlungswirkung entstehen
+  // ausschließlich aus dem Kontenrahmen.
+  function zeile(roh, vortrag, taxRate) {
+    var r = Object.assign({ ne: 0, afa: 0, zins: 0, opex: 0, akquise: 0, anlageErtrag: 0,
+      kkZins: 0, vGewinn: 0, proceeds: 0, payoff: 0, invest: 0, loanNew: 0,
+      einlage: 0, tilg: 0, pay: 0, tax: 0 }, roh);
+    r.ebt = ebtVon(r);
+    var st = steuer(r.ebt, vortrag, taxRate);
+    r.tax = st.tax;
+    r._vortrag = st.vortrag;
+    r.jue = r.ebt - r.tax;
+    r.cashChange = cashChangeVon(r);
+    if (r.cash === undefined) r.cash = 0;
+    return r;
   }
 
-  // Renditehürde: was das eingesetzte Eigenkapital mindestens bringen muss.
-  // Bewusst unabhängig vom Sollzins — Eigenkapital haftet und ist lange gebunden,
-  // der Maßstab ist die Alternativanlage, nicht die Bankkondition.
-  function zielZins(o) { return G.mindestRendite; }
+  // Rendite dieses einen Szenarios. Bewusst getrennt vom Rechenwerk, weil der
+  // Zinsfuß teuer ist und die Kapitalwertkurven ihn nicht brauchen.
+  Objekt.prototype.projektRendite = function (ctx, hold) {
+    var r = irr(this.ekStrom(ctx, hold).flows);
+    return r === null ? null : r * 100;
+  };
 
+  // ---- Zahlungsstrom des Eigenkapitals ----
+  // Der Rückfluss steht erst zur Verfügung, wenn auch das Darlehen abgelöst ist.
+  // Läuft es nach dem Verkauf bis zum Ende der Zinsbindung weiter, ist das später
+  // als der Verkaufszeitpunkt — sonst würde die Rendite zu gut gerechnet.
+  Objekt.prototype.ekStrom = function (ctx, hold) {
+    var R = this.rechenwerk(ctx, hold);
+    var ende = R.v.darlehensJahre;
+    var f = [-R.v.equity0];
+    for (var k = 1; k <= ende; k++) f.push(0);
+    f[ende] += R.cashFinal;
+    return { flows: f, cashFinal: R.cashFinal, equity0: R.v.equity0, ende: ende, rechenwerk: R };
+  };
+
+  // ══════════ 05-portfolio.js ══════════
+  // ---------- Klasse Portfolio ----------
+  // Das Portfolio ist die Aggregation der Objekte. Es hält keine eigenen Annahmen
+  // über einzelne Verträge, sondern nur, was für die Gesellschaft gilt: Steuersatz,
+  // Gemeinkosten und Zinsen auf den Kassenbestand.
+
+  function Portfolio(objekte, ges) {
+    this.objekte = objekte;
+    this.G = ges;
+    this.taxRate = (KST + (ges.erwKuerzung ? 0 : 3.5 * ges.hebesatz / 100)) / 100;
+    this.opexShare = objekte.length ? ges.opex / objekte.length : 0;
+    // Der Kontext, den ein Objekt braucht, um sich allein zu rechnen
+    this.ctx = { opexShare: this.opexShare, taxRate: this.taxRate,
+                 anlage: ges.anlage, kkZins: ges.kkZins };
+    this._cache = {};
+  }
+
+  // Verläufe aller Objekte bei ihrer jeweils maßgeblichen Haltedauer
+  Portfolio.prototype.verlaeufe = function () {
+    if (this._cache.v) return this._cache.v;
+    this._cache.v = this.objekte.map(function (ob) {
+      var v = ob.verlauf(ob.holdEffektiv());
+      var r = irr(v.ownerFlows);
+      v.ownerCost = r === null ? null : r * 100;   // effektive Jahreskosten des Eigentümers
+      return v;
+    });
+    return this._cache.v;
+  };
+
+  Portfolio.prototype.rechnen = function () {
+    if (this._cache.r) return this._cache.r;
+    var self = this, vs = this.verlaeufe();
+
+    var T = 0, start0 = 0;
+    if (vs.length) {
+      T = Math.max.apply(null, vs.map(function (v) { return v.ablöseY; }));
+      start0 = Math.min.apply(null, vs.map(function (v) { return v.o.start; }));
+    }
+
+    // Die Zeitachse beginnt beim frühesten Erwerb, nicht beim Basisjahr — Objekte
+    // dürfen davor liegen, dann ist ihr Erwerb Bestand und start0 wird negativ.
+    var Y = [];
+    for (var y = start0; y <= T; y++) {
+      Y.push({ y: y, ne: 0, zins: 0, tilg: 0, pay: 0, afa: 0, opex: 0, akquise: 0,
+        vGewinn: 0, proceeds: 0, payoff: 0, invest: 0, loanNew: 0, einlage: 0,
+        buchwert: 0, rest: 0, aktiv: 0 });
+    }
+    function at(y) { return Y[y - start0]; }
+
+    vs.forEach(function (v) {
+      var e = at(v.o.start);
+      e.invest += v.invest0; e.loanNew += v.loan0;
+      e.einlage += v.equity0; e.akquise += v.akquise;
+      e.buchwert += v.invest0; e.rest += v.loan0; e.aktiv += 1;
+      v.years.forEach(function (r) {
+        var t = at(r.y);
+        t.ne += r.ne; t.zins += r.zins; t.tilg += r.tilg; t.pay += r.pay; t.afa += r.afa;
+        // Bestände am Jahresende: Buchwert nur solange gehalten, Restschuld bis zur Ablösung
+        if (r.y < v.exitY) { t.buchwert += r.buchwert; t.aktiv += 1; }
+        if (r.y < v.ablöseY) t.rest += r.rest;
+      });
+      at(v.exitY).vGewinn += v.gewinn;
+      at(v.exitY).proceeds += v.proceeds;
+      at(v.ablöseY).payoff += v.restAtExit;
+    });
+
+    var vortrag = 0, cash = 0, cumProfit = 0, cumEinlage = 0, taxSum = 0, opexSum = 0;
+    var flows = [], rows = [];
+    for (var i = start0; i <= T; i++) {
+      var t = at(i);
+      // Die GmbH trägt laufende Kosten von der ersten Anschaffung bis zum letzten Verkauf
+      t.opex = vs.length ? self.G.opex : 0;
+      opexSum += t.opex;
+      // Zinsen auf den Kassenbestand des Vorjahres: Guthaben in Anleihen, Fehlbetrag im Kontokorrent
+      t.anlageErtrag = Math.max(0, cash) * self.G.anlage / 100;
+      t.kkZins = Math.max(0, -cash) * self.G.kkZins / 100;
+
+      var z = zeile(t, vortrag, self.taxRate);
+      vortrag = z._vortrag;
+      taxSum += z.tax;
+      cumProfit += z.jue;
+      cumEinlage += z.einlage;
+      cash += z.cashChange;
+      z.cash = cash;
+      z.ek = cumEinlage + cumProfit;
+      z.aktiv = t.aktiv;
+      flows.push(-z.einlage);
+      rows.push(z);
+    }
+
+    var austax = this.G.ausschuetten ? Math.max(0, cash - cumEinlage) * ABGELT / 100 : 0;
+    if (flows.length) flows[flows.length - 1] += cash - austax;
+    var minCash = 0;
+    rows.forEach(function (x) { minCash = Math.min(minCash, x.cash); });
+    var r = (vs.length && cumEinlage > 0) ? irr(flows) : null;
+
+    this._cache.r = {
+      verlaeufe: vs, rows: rows, T: T, start0: start0, taxRate: this.taxRate * 100,
+      cashFinal: cash, austax: austax, payout: cash - austax, taxSum: taxSum,
+      opexSum: opexSum, cumEinlage: cumEinlage, ekFinal: cumEinlage + cumProfit,
+      minCash: minCash, irr: r === null ? null : r * 100,
+      investTotal: summe(vs, "invest0"), loanTotal: summe(vs, "loan0"),
+      payoutTotal: summe(vs, "P"), akquiseTotal: summe(vs, "akquise")
+    };
+    return this._cache.r;
+  };
+
+  function summe(liste, feld) {
+    return liste.reduce(function (a, x) { return a + x[feld]; }, 0);
+  }
+
+  // ══════════ 06-kennzahlen.js ══════════
+  // ---------- Kennzahlen eines Objekts ----------
+  // Eine einzige Stelle, an der Rendite, Kapitalwert und Laufzeiten entstehen.
+  // Zuvor rechneten drei Ansichten dieselbe Größe unabhängig voneinander und
+  // zeigten drei verschiedene Zahlen; jede Aufrufstelle musste selbst an die
+  // richtige Gewichtung und Kostenbasis denken. Beides steckt jetzt hier.
+
+  function Kennzahlen(ob, pf) {
+    this.ob = ob;
+    this.pf = pf;
+    this.ctx = pf.ctx;
+    this._c = {};
+  }
+
+  // Kapitalwertkurve über alle Haltedauern — ohne Zinsfuß, deshalb schnell genug
+  // für Bisektionen. Grundlage sowohl der Analyse als auch des Ankaufsfilters.
+  Kennzahlen.prototype.kurve = function (ob) {
+    var o = ob || this.ob, ctx = this.ctx, k = [];
+    for (var h = 1; h <= HMAX; h++) {
+      var s = o.ekStrom(ctx, h);
+      k.push({ h: h, ende: s.ende, endwert: s.cashFinal, equity0: s.equity0, flows: s.flows });
+    }
+    return k;
+  };
+
+  // Wahrscheinlichkeitsgewichteter Kapitalwert. Weil der Kapitalwert linear in den
+  // Zahlungen ist, entspricht er exakt dem Kapitalwert des gewichteten Zahlungsstroms —
+  // die Zielgröße braucht daher keine unterstellte Haltedauer.
+  function gewKapitalwert(kurve, w, disk) {
+    var a = 0;
+    for (var k = 1; k <= HMAX; k++) a += w[k] * kapitalwert(kurve[k - 1].flows, disk);
+    return a;
+  }
+
+  Kennzahlen.prototype.kw = function (disk, ob) {
+    var o = ob || this.ob;
+    return gewKapitalwert(this.kurve(o), o.renditeGewichte(), disk);
+  };
+
+  // Der Zinsfuß, bei dem der gewichtete Kapitalwert null wird: die Rendite, die
+  // dieser Vertrag tatsächlich abwirft. Alle Renditeangaben leiten sich hieraus ab.
+  Kennzahlen.prototype.rendite = function (ob) {
+    var self = this, o = ob || this.ob;
+    var kurve = this.kurve(o), w = o.renditeGewichte();
+    function bei(r) { return gewKapitalwert(kurve, w, r / 100); }
+    var jetzt = bei(G.mindestRendite);
+    var lo = -60, hi = 40;
+    if (bei(lo) < 0) return { status: "unerreichbar", jetzt: jetzt };
+    if (bei(hi) >= 0) return { status: "unkritisch", jetzt: jetzt };
+    for (var i = 0; i < 48 && hi - lo > 1e-7; i++) {
+      var mid = (lo + hi) / 2;
+      if (bei(mid) >= 0) lo = mid; else hi = mid;
+    }
+    // wert ist der angezeigte Jahreszins, exakt der ungerundete — aus ihm wird die
+    // Gesamtrendite gerechnet, sonst potenziert sich der Rundungsrest über die Jahre.
+    var wrt = Math.round(lo * 100) / 100;
+    return { status: "gefunden", wert: wrt, exakt: lo, jetzt: jetzt,
+      reicht: G.mindestRendite <= wrt + 0.02 };
+  };
+
+  // Dasselbe Projekt ohne Fremdkapital. Ohne Darlehen gibt es auch keine Zinsbindung —
+  // sonst läge der Erlös nach dem Verkauf ohne Grund in der Geldanlage und der
+  // Vergleich fiele zugunsten der Finanzierung aus.
+  Kennzahlen.prototype.ohneHebel = function () {
+    return this.rendite(this.ob.mit({ ltv: 0, weiterfuehren: false }));
+  };
+
+  // Umkehrrechnung: Welcher Wert einer Stellschraube bringt — bei sonst unveränderten
+  // Annahmen — genau die Mindestrendite? Die Wirkungsrichtung wird gemessen, nicht unterstellt.
+  Kennzahlen.prototype.kritischerWert = function (sch) {
+    var self = this, disk = G.mindestRendite / 100, ist = this.ob.a[sch.k];
+    function bei(v) { return self.kw(disk, self.ob.mit(zuweisung(sch.k, v))); }
+    var kwMin = bei(sch.min), kwMax = bei(sch.max);
+    var jetzt = bei(ist);
+    var steigend = kwMax > kwMin;
+    var gut = steigend ? sch.max : sch.min, schlecht = steigend ? sch.min : sch.max;
+    if ((steigend ? kwMax : kwMin) < 0) return { status: "unerreichbar", jetzt: jetzt };
+    if ((steigend ? kwMin : kwMax) >= 0) return { status: "unkritisch", jetzt: jetzt };
+    var lo = schlecht, hi = gut;
+    for (var i = 0; i < 22 && Math.abs(hi - lo) > 0.005; i++) {
+      var mid = (lo + hi) / 2;
+      if (bei(mid) < 0) lo = mid; else hi = mid;
+    }
+    var wrt = Math.round(hi * 100) / 100;
+    // Toleranz, damit an der Nullstelle kein Rundungsrest als Unterschreitung erscheint
+    return { status: "gefunden", wert: wrt, jetzt: jetzt,
+      reicht: steigend ? ist >= wrt - 0.02 : ist <= wrt + 0.02 };
+  };
+
+  function zuweisung(k, v) { var o = {}; o[k] = v; return o; }
+
+  // Ankaufsfilter: Welches Nutzungsentgelt ist nötig, damit der gewichtete
+  // Kapitalwert gerade null wird?
+  var NE_MIN = 1, NE_MAX = 9;
+  Kennzahlen.prototype.mindestEntgelt = function () {
+    var self = this, disk = G.mindestRendite / 100;
+    function bei(ne) { return self.kw(disk, self.ob.mit({ ne: ne })); }
+    var kwAktuell = bei(this.ob.a.ne);
+    if (bei(NE_MIN) >= 0) return { status: "nicht bindend", ne: NE_MIN, kwAktuell: kwAktuell };
+    if (bei(NE_MAX) < 0) return { status: "nicht erreichbar", ne: null, kwAktuell: kwAktuell };
+    var lo = NE_MIN, hi = NE_MAX;
+    for (var i = 0; i < 24 && hi - lo > 0.005; i++) {
+      var mid = (lo + hi) / 2;
+      if (bei(mid) < 0) lo = mid; else hi = mid;
+    }
+    var ne = Math.ceil(hi * 100) / 100;
+    // Eigentümerkosten zum Mindestentgelt — ohne sie entstehen Preise, die niemand zahlt
+    var xo = this.ob.mit({ ne: ne });
+    return { status: "gefunden", ne: ne, ownerCost: xo.ownerCost(xo.holdEffektiv()),
+      monat: this.ob.preise().P * (ne / 100) / 12, kwAktuell: kwAktuell };
+  };
+
+  // Verteilung des Exit-Zeitpunkts mit Break-even und Kapitalwertverlauf
+  Kennzahlen.prototype.analyse = function () {
+    if (this._c.a) return this._c.a;
+    var ob = this.ob, ctx = this.ctx, disk = G.mindestRendite / 100;
+    var GW = ob.exitGewichte(), w = GW.w, wR = ob.renditeGewichte();
+    var LZ = ob.laufzeiten();
+
+    var kurve = [];
+    for (var h = 1; h <= HMAX; h++) {
+      var s = ob.ekStrom(ctx, h);
+      kurve.push({ h: h, ende: s.ende, kw: kapitalwert(s.flows, disk),
+        endwert: s.cashFinal, equity0: s.equity0, flows: s.flows });
+    }
+
+    // Break-even über den Kapitalwert — bei kurzen Haltedauern mit stark negativen
+    // Anfangszahlungen ist der interne Zinsfuß nicht eindeutig.
+    var beKW = null, beNull = null;
+    kurve.forEach(function (p) {
+      if (beKW === null && p.kw >= 0) beKW = p.h;
+      if (beNull === null && p.endwert >= p.equity0) beNull = p.h;
+    });
+
+    var eEnd = 0, eEndR = 0, pVorBE = 0;
+    for (var k = 1; k <= HMAX; k++) {
+      eEnd += w[k] * kurve[k - 1].endwert;
+      eEndR += wR[k] * kurve[k - 1].endwert;
+      // Anteil der Fälle, in denen der Kapitalwert negativ bleibt — setzt keine
+      // Monotonie über die Haltedauer voraus, anders als ein einzelner Break-even-Punkt
+      if (kurve[k - 1].kw < 0) pVorBE += w[k];
+    }
+
+    var R = this.rendite();
+    var hEff = Math.min(HMAX, Math.max(1, ob.holdEffektiv()));
+    // Zinsfuß nur für den gewählten Punkt — nicht für alle vierzig Haltedauern,
+    // das war in der alten Fassung der teuerste Teil der Analyse.
+    var gew = kurve[hEff - 1];
+    var rGew = irr(gew.flows);
+    gew.irr = rGew === null ? null : rGew * 100;
+    this._c.a = {
+      kurve: kurve, beKW: beKW, beNull: beNull, median: GW.median, eH: GW.eH,
+      eEnd: eEnd, eEndR: eEndR, pVorBE: pVorBE * 100, lz: LZ, w: w, wR: wR,
+      hEff: hEff, gewaehlt: gew,
+      // Die Rendite kommt aus derselben Bisektion wie die Stellschraubentabelle,
+      // damit auf einer Seite nicht zwei Zahlen für dieselbe Größe stehen.
+      rendite: R, eIrr: R.status === "gefunden" ? R.exakt : null
+    };
+    return this._c.a;
+  };
+
+  // Alles, was die Objektseite braucht — einmal gerechnet, von allen Blöcken gelesen.
+  Kennzahlen.prototype.alles = function () {
+    if (this._c.alles) return this._c.alles;
+    var A = this.analyse();
+    this._c.alles = {
+      A: A, lz: A.lz, rendite: A.rendite, ohneHebel: this.ohneHebel(),
+      entgelt: this.mindestEntgelt(),
+      stell: STELLSCHRAUBEN.map(this.kritischerWert, this)
+    };
+    return this._c.alles;
+  };
+
+  // ══════════ 07-parameter.js ══════════
+  // ---------- Regler- und Spaltendefinitionen ----------
   // Gesellschaftsebene — gilt für alle Objekte
   var GES_GROUPS = [
     { title: "Gesellschaft", dot: "s3", items: [
@@ -726,6 +1373,45 @@
     ] }
   ];
 
+
+  // Umkehrrechnung: Welcher Wert bringt ceteris paribus die Mindestrendite?
+  var STELLSCHRAUBEN = [
+    { k: "ne", label: "Nutzungsentgelt", min: 0.5, max: 15, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
+    { k: "abschlag", label: "Ankaufsabschlag", min: 0, max: 60, fmt: function (v) { return fPct(v, 1); }, richtung: "mehr" },
+    { k: "growth", label: "Wertentwicklung", min: -5, max: 10, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
+    { k: "verfall", label: "Instandhaltungsverfall", min: 0, max: 6, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "weniger" },
+    { k: "zins", label: "Sollzins", min: 0, max: 12, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "weniger" },
+    { k: "grest", label: "Grunderwerbsteuer", min: 0, max: 10, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" },
+    { k: "makler", label: "Maklercourtage", min: 0, max: 8, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" },
+    { k: "vkKosten", label: "Verkaufskosten", min: 0, max: 12, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" }
+  ];
+
+  // ══════════ 08-zustand.js ══════════
+  // ---------- Anwendungszustand ----------
+  // Die Objektliste ist Zustand, keine Stammdaten — sie steht deshalb hinter der
+  // Klasse und nicht bei den Voreinstellungen.
+
+  // Beispielobjekte mit generischen Werten — keine echten Vertragsdaten
+  var OBJ = [
+    new Objekt(Object.assign({}, OBJ_DEF, { name: "Beispielobjekt A", v0: 500000, share: 50, alter: 75, haus: "Paar" })),
+    new Objekt(Object.assign({}, OBJ_DEF, { name: "Beispielobjekt B", v0: 400000, share: 40, start: 2, hold: 15, alter: 80, haus: "w" }))
+  ];
+
+  var detailIdx = null;   // geöffnetes Projekt, null = Portfolioansicht
+  var ansicht = "portfolio";
+
+  // Das jeweils aktuelle Portfolio. Wird bei jeder Änderung neu gebaut, damit
+  // keine veralteten Zwischenergebnisse überleben.
+  var PF = null;
+  function portfolioJetzt() {
+    PF = new Portfolio(OBJ, G);
+    return PF;
+  }
+
+  function kennzahlenFuer(ob) { return new Kennzahlen(ob, PF || portfolioJetzt()); }
+
+  // ══════════ 09-regler.js ══════════
+  // ---------- Reglerpanels ----------
   var fmtOf = {};
 
   // Baut eine Reglergruppe. quelle ist das Objekt, dessen Werte bearbeitet werden.
@@ -736,7 +1422,7 @@
   function gesGeaendert() {
     if (G.basisjahr !== basisAlt) {
       var d = G.basisjahr - basisAlt;
-      OBJ.forEach(function (o) { o.start = Math.max(-25, Math.min(20, o.start - d)); });
+      OBJ.forEach(function (ob) { ob.a.start = Math.max(-25, Math.min(20, ob.a.start - d)); });
       var pO = document.getElementById("panelObjekt");
       if (pO) pO.dataset.idx = "";
     }
@@ -857,473 +1543,8 @@
     });
   }
 
-  function irr(cfs) {
-    function npv(r) { var a = 0; for (var i = 0; i < cfs.length; i++) a += cfs[i] / Math.pow(1 + r, i); return a; }
-    var lo = -0.95, hi = 5, flo = npv(lo), fhi = npv(hi);
-    if (!isFinite(flo) || !isFinite(fhi) || flo * fhi > 0) return null;
-    for (var k = 0; k < 60; k++) { // 2^-60 liegt weit jenseits der Anzeigegenauigkeit
-      var mid = (lo + hi) / 2, fm = npv(mid);
-      if (flo * fm <= 0) { hi = mid; fhi = fm; } else { lo = mid; flo = fm; }
-    }
-    return (lo + hi) / 2;
-  }
-
-  // Zahlungsströme eines einzelnen Objekts, auf absolute Portfoliojahre bezogen
-  // schnell = true überspringt den internen Zinsfuß; er kostet den Großteil der Rechenzeit
-  // und wird beim Aufbau der Kurven nicht gebraucht.
-  function buildObject(o, schnell) {
-    var s = o.share / 100, g = o.growth / 100;
-    // Der Ankaufsabschlag mindert nur den Kaufpreis. Der spätere Anteil am
-    // Verkaufserlös richtet sich weiter nach der Beteiligungsquote — genau darin
-    // liegt der Renditehebel des Abschlags.
-    var vollpreis = s * o.v0;
-    var P = vollpreis * (1 - (o.abschlag || 0) / 100);
-    // Die Maklercourtage wird hier in voller Höhe von der Gesellschaft getragen —
-    // bewusst die ungünstigere Annahme, statt sie mit dem Verkäufer zu teilen.
-    // Wie Grunderwerbsteuer und Notar ist sie Anschaffungsnebenkosten und wird aktiviert.
-    var nebenSatz = o.grest / 100 + o.notar / 100 + (o.makler || 0) / 100;
-    var invest0 = P * (1 + nebenSatz);
-    var loan0 = P * o.ltv / 100;
-    // Akquisitionskosten sind Vertriebsaufwand, nicht dem Erwerb einzeln zurechenbar:
-    // Sie werden nicht aktiviert, sondern im Erwerbsjahr aufwandswirksam. Bezahlt
-    // werden müssen sie trotzdem, deshalb erhöhen sie den Eigenkapitalbedarf.
-    var akquise = Math.max(0, o.akquise || 0);
-    var equity0 = invest0 - loan0 + akquise;
-    var annuity = loan0 * (o.zins + o.tilg) / 100;
-    var afaBase = invest0 * o.gebAnteil / 100;
-    var afaYear = afaBase * o.afaSatz / 100;
-
-    // Bei Verkauf vor Ende der Zinsbindung kann das Darlehen nicht entschädigungsfrei
-    // abgelöst werden — es läuft weiter, während der Erlös verzinst angelegt wird.
-    var darlehensJahre = o.weiterfuehren ? Math.max(o.hold, o.zinsbindung) : o.hold;
-
-    var bal = loan0, cumAfa = 0;
-    var years = [];
-    var ownerFlows = [P];
-    for (var k = 1; k <= darlehensJahre; k++) {
-      var imBestand = k <= o.hold;
-      var ne = imBestand ? P * (o.ne / 100) * Math.pow(1 + o.esc / 100, k - 1) : 0;
-      var zins = bal * o.zins / 100;
-      var pay = Math.min(annuity, bal + zins);
-      var tilg = pay - zins;
-      bal = bal + zins - pay;
-      if (bal < 0.005) bal = 0;
-      var afa = imBestand ? Math.min(afaYear, Math.max(0, afaBase - cumAfa)) : 0;
-      cumAfa += afa;
-      years.push({ y: o.start + k, ne: ne, zins: zins, tilg: tilg, pay: pay, afa: afa,
-        buchwert: invest0 - cumAfa, rest: bal, imBestand: imBestand });
-      if (imBestand) ownerFlows.push(-ne);
-    }
-    // Marktentwicklung und Zustandsverfall wirken multiplikativ auf den Verkaufspreis
-    var VT = o.v0 * Math.pow(1 + g, o.hold) * Math.pow(1 - o.verfall / 100, o.hold);
-    var B = Math.max(s * VT, (o.min / 100) * P);
-    var DE = (o.de / 100) * VT;
-    var vkTotal = (o.vkKosten / 100) * VT;
-    var vkBuyer = s * vkTotal;
-    var proceeds = B + DE - vkBuyer;
-    var buchwert = invest0 - cumAfa;
-    ownerFlows[o.hold] -= (B + DE);
-    var oc = schnell ? null : irr(ownerFlows);
-
-    var exitY = o.start + o.hold;
-    var ablöseY = o.start + darlehensJahre;
-    var restBeiExit = 0;
-    years.forEach(function (r) { if (r.y === exitY) restBeiExit = r.rest; });
-
-    return {
-      o: o, P: P, vollpreis: vollpreis, invest0: invest0, loan0: loan0, equity0: equity0, akquise: akquise, annuity: annuity,
-      years: years, exitY: exitY, ablöseY: ablöseY, darlehensJahre: darlehensJahre,
-      restBeiExit: restBeiExit, VT: VT, B: B, DE: DE,
-      vkTotal: vkTotal, vkBuyer: vkBuyer, proceeds: proceeds,
-      buchwert: buchwert, restAtExit: bal, cumAfa: cumAfa,
-      gewinn: proceeds - buchwert,
-      ownerCost: oc === null ? null : oc * 100,
-      ownerGets: Math.max(0, VT - B - DE - (vkTotal - vkBuyer))
-    };
-  }
-
-  function portfolio() {
-    // Die Haltedauer kommt je nach Schalter aus der Sterbetafel; OBJ bleibt unberührt
-    var objs = OBJ.map(function (o) {
-      return buildObject(Object.assign({}, o, { hold: holdEffektiv(o) }));
-    });
-    // direkt zurechenbares Ergebnis je Projekt, vor Gemeinkosten und Steuern
-    objs.forEach(function (x) {
-      x.beitrag = x.years.reduce(function (a, r) { return a + r.ne - r.zins - r.afa; }, 0) + x.gewinn;
-    });
-    var T = 0;
-    objs.forEach(function (x) { T = Math.max(T, x.ablöseY); });
-    var start0 = objs.length ? Math.min.apply(null, objs.map(function (x) { return x.o.start; })) : 0;
-
-    var gewst = G.erwKuerzung ? 0 : 3.5 * G.hebesatz / 100;
-    var taxRate = (KST + gewst) / 100;
-
-    // Die Zeitachse beginnt beim frühesten Erwerb, nicht beim Basisjahr — Objekte
-    // dürfen davor liegen, dann ist ihr Erwerb Bestand und start0 wird negativ.
-    var Y = [];
-    for (var y = start0; y <= T; y++) {
-      Y.push({ y: y, ne: 0, zins: 0, tilg: 0, pay: 0, afa: 0, opex: 0, akquise: 0, vGewinn: 0, proceeds: 0, payoff: 0, invest: 0, loanNew: 0, einlage: 0, buchwert: 0, rest: 0, aktiv: 0 });
-    }
-    function at(y) { return Y[y - start0]; }
-
-    objs.forEach(function (x) {
-      at(x.o.start).invest += x.invest0;
-      at(x.o.start).loanNew += x.loan0;
-      at(x.o.start).einlage += x.equity0;
-      at(x.o.start).akquise += x.akquise;
-      x.years.forEach(function (r) {
-        var t = at(r.y);
-        t.ne += r.ne; t.zins += r.zins; t.tilg += r.tilg; t.pay += r.pay; t.afa += r.afa;
-      });
-      at(x.exitY).vGewinn += x.gewinn;
-      at(x.exitY).proceeds += x.proceeds;
-      at(x.ablöseY).payoff += x.restAtExit;
-    });
-
-    // Bestände am Jahresende: Buchwerte nur solange gehalten, Restschuld bis zur Ablösung
-    objs.forEach(function (x) {
-      at(x.o.start).buchwert += x.invest0;
-      at(x.o.start).rest += x.loan0;
-      at(x.o.start).aktiv += 1;
-      x.years.forEach(function (r) {
-        if (r.y < x.exitY) { at(r.y).buchwert += r.buchwert; at(r.y).aktiv += 1; }
-        if (r.y < x.ablöseY) at(r.y).rest += r.rest;
-      });
-    });
-
-    var lossCarry = 0, cash = 0, cumProfit = 0, cumEinlage = 0, taxSum = 0, opexSum = 0;
-    var flows = [];
-    var rows = [];
-    for (var i = start0; i <= T; i++) {
-      var t = at(i);
-      // Die GmbH trägt laufende Kosten von der ersten Anschaffung bis zum letzten Verkauf
-      var opex = (objs.length && i >= start0) ? G.opex : 0;
-      t.opex = opex;
-      opexSum += opex;
-
-      // Zinsen auf den Kassenbestand des Vorjahres: Guthaben in Anleihen, Fehlbetrag im Kontokorrent
-      var anlageErtrag = Math.max(0, cash) * G.anlage / 100;
-      var kkZins = Math.max(0, -cash) * G.kkZins / 100;
-
-      var ebt = t.ne + anlageErtrag - t.afa - t.zins - kkZins - opex - t.akquise + t.vGewinn;
-      var tax = 0;
-      {
-        if (ebt > 0) {
-          var used = Math.min(lossCarry, ebt);
-          lossCarry -= used;
-          tax = (ebt - used) * taxRate;
-        } else {
-          lossCarry += -ebt;
-        }
-      }
-      taxSum += tax;
-      var jue = ebt - tax;
-      cumProfit += jue;
-      cumEinlage += t.einlage;
-
-      var cashChange = t.einlage + t.loanNew - t.invest - t.akquise + t.ne - t.pay - opex - tax
-        + t.proceeds - t.payoff + anlageErtrag - kkZins;
-      cash += cashChange;
-
-      flows.push(-t.einlage);
-
-      rows.push({
-        y: i, ne: t.ne, afa: t.afa, zins: t.zins, opex: opex, akquise: t.akquise, vGewinn: t.vGewinn,
-        anlageErtrag: anlageErtrag, kkZins: kkZins,
-        ebt: ebt, tax: tax, jue: jue,
-        buchwert: t.buchwert, cash: cash, ek: cumEinlage + cumProfit, rest: t.rest,
-        einlage: t.einlage, loanNew: t.loanNew, invest: t.invest,
-        proceeds: t.proceeds, payoff: t.payoff, tilg: t.tilg, pay: t.pay,
-        cashChange: cashChange, aktiv: t.aktiv
-      });
-    }
-
-    var cashFinal = cash;
-    var austax = G.ausschuetten ? Math.max(0, cashFinal - cumEinlage) * ABGELT / 100 : 0;
-    var payout = cashFinal - austax;
-    if (flows.length) flows[flows.length - 1] += payout;
-    // ohne Objekte oder ohne Einlage gibt es keinen sinnvollen Zinsfuß
-    var r = (objs.length && cumEinlage > 0) ? irr(flows) : null;
-
-    var minCash = 0;
-    rows.forEach(function (x) { minCash = Math.min(minCash, x.cash); });
-
-    return {
-      objs: objs, rows: rows, T: T, start0: start0, taxRate: taxRate * 100,
-      cashFinal: cashFinal, payout: payout, austax: austax, taxSum: taxSum, opexSum: opexSum,
-      cumEinlage: cumEinlage, ekFinal: cumEinlage + cumProfit, minCash: minCash,
-      irr: r === null ? null : r * 100,
-      investTotal: objs.reduce(function (a, x) { return a + x.invest0; }, 0),
-      loanTotal: objs.reduce(function (a, x) { return a + x.loan0; }, 0),
-      payoutTotal: objs.reduce(function (a, x) { return a + x.P; }, 0)
-    };
-  }
-
-  // Eigenständige Rechenwerke für ein einzelnes Projekt.
-  // Die Gemeinkosten der GmbH werden dabei anteilig zugeordnet, die Steuer auf das
-  // Projekt allein gerechnet — die maßgebliche Steuer steht in der Portfolioansicht.
-  function objectDetail(x, opexShare, taxRate, schnell) {
-    var lossCarry = 0, cash = 0, cumProfit = 0, taxSum = 0, neSum = 0, opexSum = 0, dsSum = 0;
-    // Der Akquiseaufwand fällt im Erwerbsjahr an und erzeugt dort einen Verlust,
-    // der vorgetragen wird. Einlage und Aufwand heben sich in der Kasse auf.
-    var akq = x.akquise || 0;
-    lossCarry = akq;
-    cumProfit = -akq;
-    var rows = [{
-      y: x.o.start, ne: 0, afa: 0, zins: 0, opex: 0, akquise: akq, vGewinn: 0,
-      ebt: -akq, tax: 0, jue: -akq,
-      buchwert: x.invest0, cash: 0, ek: x.equity0 - akq, rest: x.loan0,
-      einlage: x.equity0, loanNew: x.loan0, invest: x.invest0,
-      proceeds: 0, payoff: 0, tilg: 0, pay: 0, cashChange: 0, erwerb: true
-    }];
-
-    x.years.forEach(function (r) {
-      var isExit = r.y === x.exitY;
-      var isAbloese = r.y === x.ablöseY;
-      var vG = isExit ? x.gewinn : 0;
-      neSum += r.ne; opexSum += opexShare; dsSum += r.pay;
-      var anlageErtrag = Math.max(0, cash) * G.anlage / 100;
-      var kkZins = Math.max(0, -cash) * G.kkZins / 100;
-      var ebt = r.ne + anlageErtrag - r.afa - r.zins - kkZins - opexShare + vG;
-      var tax = 0;
-      if (ebt > 0) {
-        var used = Math.min(lossCarry, ebt);
-        lossCarry -= used;
-        tax = (ebt - used) * taxRate;
-      } else { lossCarry += -ebt; }
-      taxSum += tax;
-      var jue = ebt - tax;
-      cumProfit += jue;
-      var cashChange = r.ne - r.pay - opexShare - tax + anlageErtrag - kkZins +
-        (isExit ? x.proceeds : 0) - (isAbloese ? x.restAtExit : 0);
-      cash += cashChange;
-      rows.push({
-        y: r.y, ne: r.ne, afa: r.afa, zins: r.zins, opex: opexShare, vGewinn: vG,
-        anlageErtrag: anlageErtrag, kkZins: kkZins,
-        ebt: ebt, tax: tax, jue: jue,
-        buchwert: r.y >= x.exitY ? 0 : r.buchwert, cash: cash, ek: x.equity0 + cumProfit,
-        rest: r.y >= x.ablöseY ? 0 : r.rest,
-        einlage: 0, loanNew: 0, invest: 0,
-        proceeds: isExit ? x.proceeds : 0, payoff: isAbloese ? x.restAtExit : 0,
-        tilg: r.tilg, pay: r.pay, cashChange: cashChange, exit: isExit, abloese: isAbloese
-      });
-    });
-
-    var flows = [-x.equity0];
-    for (var k = 1; k < rows.length; k++) flows.push(0);
-    flows[flows.length - 1] += cash;
-    var ri = schnell ? null : irr(flows);
-    return {
-      rows: rows, cashFinal: cash, taxSum: taxSum, neSum: neSum, opexSum: opexSum, dsSum: dsSum,
-      gewinn: cash - x.equity0, irr: ri === null ? null : ri * 100
-    };
-  }
-
-  // ---------- Exit-Analyse je Objekt ----------
-  var HMAX = 40; // muss mindestens dem Maximum des Haltedauer-Reglers entsprechen
-
-  // Zahlungsströme des Objekts bei Haltedauer h, aus Sicht der GmbH (Eigenkapital).
-  // Die Steuer wird hier objektbezogen mit anteiligen Gemeinkosten gerechnet.
-  function ekStrom(o, h, opexShare, taxRate, schnell) {
-    var x = buildObject(Object.assign({}, o, { hold: h }), schnell);
-    var D = objectDetail(x, opexShare, taxRate, schnell);
-    // Der Rückfluss steht erst zur Verfügung, wenn auch das Darlehen abgelöst ist.
-    // Läuft es nach dem Verkauf bis zum Ende der Zinsbindung weiter, ist das später
-    // als der Verkaufszeitpunkt — sonst würde die Rendite zu gut gerechnet.
-    var ende = x.darlehensJahre;
-    var f = [-x.equity0];
-    for (var k = 1; k <= ende; k++) f.push(0);
-    f[ende] += D.cashFinal;
-    return { flows: f, cashFinal: D.cashFinal, equity0: x.equity0, obj: x, ende: ende };
-  }
-
-  function kapitalwert(flows, r) {
-    var a = 0;
-    for (var i = 0; i < flows.length; i++) a += flows[i] / Math.pow(1 + r, i);
-    return a;
-  }
-
-  // Kapitalwertkurve über alle Haltedauern — ohne Zinsfuß, deshalb schnell genug
-  // für Bisektionen. Grundlage sowohl der Analyse als auch des Ankaufsfilters.
-  function kwKurve(o, opexShare, taxRate, disk) {
-    var kurve = [];
-    for (var h = 1; h <= HMAX; h++) {
-      var s = ekStrom(o, h, opexShare, taxRate, true);
-      kurve.push({ h: h, ende: s.ende, kw: kapitalwert(s.flows, disk),
-        endwert: s.cashFinal, equity0: s.equity0, flows: s.flows });
-    }
-    return kurve;
-  }
-
-  // Wahrscheinlichkeitsgewichteter Kapitalwert. Weil der Kapitalwert linear in den
-  // Zahlungen ist, entspricht er exakt dem Kapitalwert des gewichteten Zahlungsstroms —
-  // die Zielgröße braucht daher keine unterstellte Haltedauer.
-  function eKapitalwert(kurve, w, disk) {
-    var summe = 0;
-    for (var k = 1; k <= HMAX; k++) summe += w[k] * kurve[k - 1].kw;
-    return summe;
-  }
-
-  // Ankaufsfilter: Welches Nutzungsentgelt ist nötig, damit der gewichtete Kapitalwert
-  // gerade null wird? Die Zielgröße ist haltedauerfrei, deshalb entfällt jede Annahme
-  // darüber, wie lange der Eigentümer bleibt.
-  var NE_MIN = 1, NE_MAX = 9;
-
-  // Umkehrrechnung für beliebige Stellschrauben: Welcher Wert bringt — bei sonst
-  // unveränderten Annahmen — genau die Mindestrendite? Grundlage ist derselbe
-  // gewichtete Kapitalwert, der ohne unterstellte Haltedauer auskommt.
-  var STELLSCHRAUBEN = [
-    { k: "ne", label: "Nutzungsentgelt", min: 0.5, max: 15, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
-    { k: "abschlag", label: "Ankaufsabschlag", min: 0, max: 60, fmt: function (v) { return fPct(v, 1); }, richtung: "mehr" },
-    { k: "growth", label: "Wertentwicklung", min: -5, max: 10, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
-    { k: "verfall", label: "Instandhaltungsverfall", min: 0, max: 6, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "weniger" },
-    { k: "zins", label: "Sollzins", min: 0, max: 12, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "weniger" },
-    { k: "grest", label: "Grunderwerbsteuer", min: 0, max: 10, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" },
-    { k: "makler", label: "Maklercourtage", min: 0, max: 8, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" },
-    { k: "vkKosten", label: "Verkaufskosten", min: 0, max: 12, fmt: function (v) { return fPct(v, 2); }, richtung: "weniger" }
-  ];
-
-  // Die Hürde selbst ist ebenfalls eine Stellschraube: Ihr kritischer Wert ist die
-  // Rendite, die der Vertrag bei den aktuellen Annahmen tatsächlich abwirft.
-  function kritischeRendite(o, opexShare, taxRate) {
-    var w = renditeGewichte(o);
-    function kwBei(r) { return eKapitalwert(kwKurve(o, opexShare, taxRate, r / 100), w, r / 100); }
-    var lo = -20, hi = 40;
-    if (kwBei(lo) < 0) return { status: "unerreichbar", jetzt: kwBei(G.mindestRendite) };
-    if (kwBei(hi) >= 0) return { status: "unkritisch", jetzt: kwBei(G.mindestRendite) };
-    for (var i = 0; i < 32 && hi - lo > 0.0002; i++) {
-      var mid = (lo + hi) / 2;
-      if (kwBei(mid) >= 0) lo = mid; else hi = mid;
-    }
-    // wert ist der angezeigte Jahreszins, exakt der ungerundete — aus ihm wird die
-    // Gesamtrendite gerechnet, sonst potenziert sich der Rundungsrest über die Jahre.
-    var wert = Math.round(lo * 100) / 100;
-    return { status: "gefunden", wert: wert, exakt: lo, jetzt: kwBei(G.mindestRendite),
-      reicht: G.mindestRendite <= wert + 0.02 };
-  }
-
-  // Dasselbe Projekt ohne Fremdkapital. Ohne Darlehen gibt es auch keine Zinsbindung —
-  // sonst läge der Erlös nach dem Verkauf ohne Grund in der Geldanlage und der
-  // Vergleich fiele zugunsten der Finanzierung aus.
-  function ohneHebel(o, opexShare, taxRate) {
-    return kritischeRendite(Object.assign({}, o, { ltv: 0, weiterfuehren: false }), opexShare, taxRate);
-  }
-
-  function kritischerWert(o, sch, opexShare, taxRate) {
-    var disk = zielZins(o) / 100;
-    var w = renditeGewichte(o);
-    function kwBei(v) {
-      var oo = Object.assign({}, o); oo[sch.k] = v;
-      return eKapitalwert(kwKurve(oo, opexShare, taxRate, disk), w, disk);
-    }
-    var kwMin = kwBei(sch.min), kwMax = kwBei(sch.max);
-    var jetzt = kwBei(o[sch.k]);
-    // Die Wirkungsrichtung wird gemessen, nicht unterstellt
-    var steigend = kwMax > kwMin;
-    var gut = steigend ? sch.max : sch.min;
-    var schlecht = steigend ? sch.min : sch.max;
-    if (kwBei(gut) < 0) return { status: "unerreichbar", jetzt: jetzt };
-    if (kwBei(schlecht) >= 0) return { status: "unkritisch", jetzt: jetzt };
-    var lo = schlecht, hi = gut;
-    for (var i = 0; i < 22 && Math.abs(hi - lo) > 0.005; i++) {
-      var mid = (lo + hi) / 2;
-      if (kwBei(mid) < 0) lo = mid; else hi = mid;
-    }
-    var wert = Math.round(hi * 100) / 100;
-    // Toleranz, damit an der Nullstelle kein Rundungsrest als Unterschreitung erscheint
-    return { status: "gefunden", wert: wert, jetzt: jetzt,
-      reicht: steigend ? o[sch.k] >= wert - 0.02 : o[sch.k] <= wert + 0.02 };
-  }
-
-  function mindestEntgelt(o, opexShare, taxRate) {
-    var disk = zielZins(o) / 100;
-    var w = renditeGewichte(o);
-    function kwBei(ne) {
-      return eKapitalwert(kwKurve(Object.assign({}, o, { ne: ne }), opexShare, taxRate, disk), w, disk);
-    }
-    var kwUnten = kwBei(NE_MIN), kwOben = kwBei(NE_MAX);
-    if (kwUnten >= 0) {
-      return { status: "nicht bindend", ne: NE_MIN, kwAktuell: kwBei(o.ne) };
-    }
-    if (kwOben < 0) {
-      return { status: "nicht erreichbar", ne: null, kwAktuell: kwBei(o.ne) };
-    }
-    var lo = NE_MIN, hi = NE_MAX;
-    for (var i = 0; i < 24 && hi - lo > 0.005; i++) {
-      var mid = (lo + hi) / 2;
-      if (kwBei(mid) < 0) lo = mid; else hi = mid;
-    }
-    var ne = Math.ceil(hi * 100) / 100;
-    // Eigentümerkosten zum Mindestentgelt — ohne sie entstehen Preise, die niemand zahlt
-    var xo = buildObject(Object.assign({}, o, { ne: ne, hold: holdEffektiv(o) }));
-    return { status: "gefunden", ne: ne, ownerCost: xo.ownerCost,
-      monat: xo.P * (ne / 100) / 12, kwAktuell: kwBei(o.ne) };
-  }
-
-  function exitAnalyse(o, opexShare, taxRate) {
-    var GW = exitGewichte(o);
-    var w = GW.w;              // reine Sterbetafel — Diagramm und Risikoanteile
-    var wR = renditeGewichte(o); // maßgeblich für die Rendite, folgt dem Schalter
-    var LZ = laufzeiten(o);
-    var disk = zielZins(o) / 100; // dieselbe Hürde wie im Ankaufsfilter
-    var kurve = [];
-    for (var h = 1; h <= HMAX; h++) {
-      var s = ekStrom(o, h, opexShare, taxRate);
-      var xo = s.obj;
-      kurve.push({
-        h: h,
-        ende: s.ende,
-        irr: (function () { var r = irr(s.flows); return r === null ? null : r * 100; })(),
-        kw: kapitalwert(s.flows, disk),
-        endwert: s.cashFinal,
-        equity0: s.equity0,
-        ownerCost: xo.ownerCost
-      });
-    }
-
-    // Break-even über den Kapitalwert — bei kurzen Haltedauern mit stark negativen
-    // Anfangszahlungen ist der interne Zinsfuß nicht eindeutig.
-    var beKW = null, beNull = null;
-    kurve.forEach(function (p) {
-      if (beKW === null && p.kw >= 0) beKW = p.h;
-      if (beNull === null && p.endwert >= p.equity0) beNull = p.h;
-    });
-
-    var eH = GW.eH, eEnd = 0, eEndR = 0, median = GW.median, pVorBE = 0;
-    for (var k2 = 1; k2 <= HMAX; k2++) {
-      eEnd += w[k2] * kurve[k2 - 1].endwert;
-      // Rückfluss auf der maßgeblichen Gewichtung — Grundlage der Kapitalwertrechnung
-      eEndR += wR[k2] * kurve[k2 - 1].endwert;
-      // Anteil der Fälle, in denen der Kapitalwert negativ bleibt — setzt keine
-      // Monotonie über die Haltedauer voraus, anders als ein einzelner Break-even-Punkt
-      if (kurve[k2 - 1].kw < 0) pVorBE += w[k2];
-    }
-    var summe = 1;
-
-    // Rendite als interner Zinsfuß des gewichteten Zahlungsstroms. Gewichtet wird mit
-    // wR, damit ohne Sterbetafel-Kopplung genau der eingestellte Zeitpunkt gilt.
-    var maxEnde = HMAX;
-    kurve.forEach(function (p) { maxEnde = Math.max(maxEnde, p.ende); });
-    var eFlows = [-kurve[0].equity0];
-    for (var k3 = 1; k3 <= maxEnde; k3++) eFlows.push(0);
-    for (var k4 = 1; k4 <= HMAX; k4++) {
-      // Rückfluss zum tatsächlichen Ablösejahr, nicht zum Verkaufsjahr
-      eFlows[kurve[k4 - 1].ende] += wR[k4] * kurve[k4 - 1].endwert;
-    }
-    var eIrrRaw = irr(eFlows);
-
-    // Die gerechnete Haltedauer, nicht der Reglerwert — sonst zeigt die Analyse
-    // bei aktiver Sterbetafel-Kopplung einen anderen Punkt als die Bilanz.
-    var hEff = Math.min(HMAX, Math.max(1, holdEffektiv(o)));
-    return {
-      kurve: kurve, beKW: beKW, beNull: beNull,
-      median: median, eH: eH, eEnd: eEnd, eEndR: eEndR, pVorBE: pVorBE * 100, lz: LZ, wR: wR,
-      eIrr: eIrrRaw === null ? null : eIrrRaw * 100, w: w, hEff: hEff,
-      gewaehlt: kurve[hEff - 1]
-    };
-  }
-
-  // ---------- Objekttabelle: reine Übersicht, Bearbeitung auf der Objektseite ----------
+  // ══════════ 10-objtabelle.js ══════════
+  // ---------- Objekttabelle: reine Übersicht ----------
   var SPALTEN = [
     { h: "Objekt", sub: "Bezeichnung", col: "w-name", links: true, get: function (o, x, i) { return o.name || "Objekt " + (i + 1); } },
     { h: "Wert", sub: "bei Erwerb", col: "w-num", get: function (o) { return fEur(o.v0); } },
@@ -1353,7 +1574,7 @@
     html += "<th></th><th></th></tr></thead><tbody>";
 
     OBJ.forEach(function (o, idx) {
-      var x = P.objs[idx];
+      var x = P.verlaeufe[idx];
       html += '<tr class="zeile" data-row="' + idx + '">';
       SPALTEN.forEach(function (c, i) {
         html += "<td class=\"" + (i === 0 ? "c-name" : "calc") + (c.lead ? " lead" : "") + "\">" + c.get(x.o, x, idx) + "</td>";
@@ -1394,11 +1615,12 @@
 
   document.getElementById("addBtn").addEventListener("click", function () {
     var n = OBJ.length + 1;
-    OBJ.push(neuesObjekt("Objekt " + n));
+    OBJ.push(Objekt.neu("Objekt " + n));
     refresh();
   });
 
-  // ---------- Chart ----------
+  // ══════════ 11-diagramme.js ══════════
+  // ---------- Diagramme ----------
   var CW = 820, CH = 340, M = { l: 62, r: 16, t: 14, b: 30 };
   var chartRows = [], chartGeom = null;
 
@@ -1462,7 +1684,7 @@
       svg.push('<text x="' + x(ty) + '" y="' + (CH - 8) + '" text-anchor="middle" font-size="11" fill="var(--ink-3)">' + fJahr(ty) + "</text>");
     }
 
-    P.objs.forEach(function (o) {
+    P.verlaeufe.forEach(function (o) {
       svg.push('<line x1="' + x(o.exitY) + '" x2="' + x(o.exitY) + '" y1="' + M.t + '" y2="' + (CH - M.b) + '" stroke="var(--axis)" stroke-width="1" stroke-dasharray="2 4"/>');
     });
 
@@ -1530,6 +1752,8 @@
   // ---------- Rechenwerke ----------
   var csvFin = [];
 
+  // ══════════ 12-tabellen.js ══════════
+  // ---------- Rechenwerke und Beitragskarte ----------
   function buildStatements(P) {
     var rows = P.rows, T = P.T;
     var groups = [
@@ -1610,15 +1834,15 @@
 
   function renderContrib(P) {
     var host = document.getElementById("contribList");
-    if (!P.objs.length) {
+    if (!P.verlaeufe.length) {
       host.innerHTML = '<div class="empty">Noch keine Objekte.</div>';
       document.getElementById("contribCaption").textContent = "";
       return;
     }
-    var max = Math.max.apply(null, P.objs.map(function (x) { return Math.abs(x.beitrag); })) || 1;
-    var summe = P.objs.reduce(function (a, x) { return a + x.beitrag; }, 0);
+    var max = Math.max.apply(null, P.verlaeufe.map(function (x) { return Math.abs(x.beitrag); })) || 1;
+    var summe = P.verlaeufe.reduce(function (a, x) { return a + x.beitrag; }, 0);
     var h = '<div class="contrib">';
-    P.objs.forEach(function (x, i) {
+    P.verlaeufe.forEach(function (x, i) {
       var anteil = summe !== 0 ? x.beitrag / summe * 100 : 0;
       h += '<div class="contrib-row" data-open="' + i + '" role="button" tabindex="0">' +
         '<div class="contrib-name" title="' + (x.o.name || "").replace(/"/g, "&quot;") + '">' +
@@ -1647,6 +1871,8 @@
   var detailIdx = null;
   var view = "portfolio";
 
+  // ══════════ 13-objektseite.js ══════════
+  // ---------- Objektseite ----------
   function openDetail(i) { detailIdx = i; refresh(); window.scrollTo(0, 0); }
   function closeDetail() { detailIdx = null; refresh(); window.scrollTo(0, 0); }
 
@@ -1671,44 +1897,18 @@
     return html + "</tbody>";
   }
 
-  var STMT_GROUPS = [
-    { title: "Gewinn- und Verlustrechnung", rows: [
-      { l: "Nutzungsentgelt", f: function (r) { return r.ne; } },
-      { l: "Zinserträge aus Geldanlage", f: function (r) { return r.anlageErtrag || 0; } },
-      { l: "Abschreibungen (AfA)", f: function (r) { return -r.afa; } },
-      { l: "Anteilige laufende Kosten", f: function (r) { return -r.opex; } },
-      { l: "Akquisitionskosten", f: function (r) { return -(r.akquise || 0); } },
-      { l: "Zinsaufwand Darlehen", f: function (r) { return -r.zins; } },
-      { l: "Zinsaufwand Kontokorrent", f: function (r) { return -(r.kkZins || 0); } },
-      { l: "Ergebnis Anteilsverkauf", f: function (r) { return r.vGewinn; } },
-      { l: "Ergebnis vor Steuern", sum: true, f: function (r) { return r.ebt; } },
-      { l: "Steuern (anteilig)", f: function (r) { return -r.tax; } },
-      { l: "Jahresüberschuss", sum: true, f: function (r) { return r.jue; } }
-    ] },
-    { title: "Bilanz (Stichtag 31.12.)", rows: [
-      { l: "Immobilienanteil (Buchwert)", f: function (r) { return r.buchwert; } },
-      { l: "Guthaben und Wertpapiere", f: function (r) { return r.cash; } },
-      { l: "Summe Aktiva", sum: true, f: function (r) { return r.buchwert + r.cash; } },
-      { l: "Eigenkapital", f: function (r) { return r.ek; } },
-      { l: "Bankdarlehen", f: function (r) { return r.rest; } },
-      { l: "Summe Passiva", sum: true, f: function (r) { return r.ek + r.rest; } }
-    ] },
-    { title: "Kapitalflussrechnung", rows: [
-      { l: "Operativer Cashflow", f: function (r) { return r.ne + (r.anlageErtrag || 0) - r.zins - (r.kkZins || 0) - r.opex - (r.akquise || 0) - r.tax; } },
-      { l: "Investitionscashflow", f: function (r) { return r.proceeds - r.invest; } },
-      { l: "Finanzierungscashflow", f: function (r) { return r.einlage + r.loanNew - r.tilg - r.payoff; } },
-      { l: "Veränderung Zahlungsmittel", sum: true, f: function (r) { return r.cashChange; } },
-      { l: "Bestand Zahlungsmittel", f: function (r) { return r.cash; } }
-    ] }
-  ];
 
   function renderDetail(P) {
     var host = document.getElementById("viewDetail");
-    var x = P.objs[detailIdx];
-    if (!x) { detailIdx = null; return; }
-    var o = x.o;
-    var opexShare = OBJ.length ? G.opex / OBJ.length : 0;
-    var D = objectDetail(x, opexShare, P.taxRate / 100);
+    var ob = OBJ[detailIdx];
+    if (!ob) { detailIdx = null; return; }
+    var x = P.verlaeufe[detailIdx];
+    var o = x.o;   // Rechnungsgrundlage: bei Sterbetafel-Kopplung die gerechnete Haltedauer
+    var opexShare = PF.opexShare;
+    var D = ob.rechenwerk(PF.ctx, ob.holdEffektiv());
+    D.irr = ob.projektRendite(PF.ctx, ob.holdEffektiv());
+    // Alle Kennzahlen einmal gerechnet — jeder Block liest aus derselben Mappe.
+    var KZ = kennzahlenFuer(ob).alles();
 
     var h = "";
     h += '<div class="card">';
@@ -1777,7 +1977,7 @@
     h += '<div class="card"><div class="stat-row">';
     h += '<div><div class="stat-label"><span class="dot s2"></span>Eigenkapital</div><div class="stat-num">' + fEur(x.equity0) +
       '</div><div class="stat-sub">' + fEur(x.loan0) + " Darlehen</div></div>";
-    var LZd = laufzeiten(o);
+    var LZd = KZ.lz;
     h += '<div><div class="stat-label"><span class="dot s3"></span>Rendite nach Steuern</div><div class="stat-num">' + fPct(D.irr) +
       '</div><div class="stat-sub">' + (LZd.auto ? "Median-Szenario, " : "über ") +
       fJahre(x.darlehensJahre) + " gebunden</div></div>";
@@ -1836,21 +2036,21 @@
     h += '<div class="card"><h2>Bilanz, GuV und Cashflow</h2>';
     h += '<p class="sub">Nur dieses Projekt, mit anteiligen Gemeinkosten und eigenständig gerechneter Steuer.</p>';
     h += '<div class="fin-scroll"><table class="fin">' +
-      finTableHtml(D.rows, STMT_GROUPS, function (r) { return r.erwerb ? "Erwerb " + fJahr(r.y) : fJahr(r.y); }) +
+      finTableHtml(D.rows, rechenwerkGruppen(false), function (r) { return r.erwerb ? "Erwerb " + fJahr(r.y) : fJahr(r.y); }) +
       "</table></div>";
     h += '<p class="caption">Die maßgebliche Steuer entsteht auf Gesellschaftsebene: Im Portfolio werden Gewinne und Verluste aller Projekte verrechnet, hier wird das Projekt isoliert gerechnet. Die Summe der Einzelsteuern kann daher von der Portfoliosteuer abweichen.</p>';
     h += "</div>";
 
     // ---- Teil 3: Analyse ----
     h += '<div class="section-head"><h3>Analyse</h3><span class="sh-note">Wie belastbar die angenommene Haltedauer ist</span></div>';
-    var A = exitAnalyse(o, opexShare, P.taxRate / 100);
+    var A = KZ.A;
     // Dieselbe Kostenbasis wie in der übrigen Objektrechnung, sonst stünden auf
     // einer Seite zwei verschiedene Renditen für denselben Vertrag.
     var oShare = opexShare;
-    var F = mindestEntgelt(o, oShare, P.taxRate / 100);
-    F.stell = STELLSCHRAUBEN.map(function (sch) { return kritischerWert(o, sch, oShare, P.taxRate / 100); });
-    F.rendite = kritischeRendite(o, oShare, P.taxRate / 100);
-    F.ohneHebel = ohneHebel(o, oShare, P.taxRate / 100);
+    var F = KZ.entgelt;
+    F.stell = KZ.stell;
+    F.rendite = KZ.rendite;
+    F.ohneHebel = KZ.ohneHebel;
     h += objektAnalyseHtml(o, A, F);
 
     host.innerHTML = h;
@@ -1882,7 +2082,7 @@
           if (sch.richtung === "weniger") wert = ab;
           wert = Math.max(reg.min, Math.min(reg.max, Math.round(wert * 100) / 100));
         }
-        OBJ[detailIdx][sch.k] = wert;
+        OBJ[detailIdx].a[sch.k] = wert;
         // Panel neu aufbauen, damit der Regler den übernommenen Wert zeigt
         document.getElementById("panelObjekt").dataset.idx = "";
         refresh();
@@ -1890,6 +2090,7 @@
     });
   }
 
+  // ══════════ 14-analyseseite.js ══════════
   // ---------- Analyseseite ----------
   function exitChart(A, o) {
     var W = 820, H = 300, m = { l: 58, r: 58, t: 12, b: 26 };
@@ -1930,7 +2131,7 @@
       if (Math.abs(yK(v) - yK(0)) < 14) return;
       s.push('<text x="' + (m.l - 8) + '" y="' + (yK(v) + 4) + '" text-anchor="end" font-size="10.5" fill="var(--ink-3)">' + fShort(v) + "</text>");
     });
-    s.push('<text x="' + m.l + '" y="' + (m.t + obereH + luecke + 10) + '" font-size="10.5" fill="var(--ink-3)">Kapitalwert bei ' + fPct(G.mindestRendite, 2) + " Mindestrendite</text>");
+    s.push('<text x="' + m.l + '" y="' + (m.t + obereH + luecke + 10) + '" font-size="10.5" fill="var(--ink-3)">Kapitalwert bei ' + ZIEL.wert() + " " + ZIEL.name + "</text>");
 
     var p = "";
     A.kurve.forEach(function (pt) { p += (p === "" ? "M" : "L") + x(pt.h).toFixed(1) + " " + yK(pt.kw).toFixed(1); });
@@ -1971,7 +2172,7 @@
     if (F) {
       h += '<div class="card"><h2>Trägt sich dieser Vertrag?</h2>';
       h += '<p class="sub">Gemessen am gewichteten Kapitalwert über alle möglichen Haltedauern, gegen eine Hürde von ' +
-        fPct(zielZins(o), 2) + " Mindestrendite auf das eingesetzte Eigenkapital.</p>";
+        fPct(zielZins(), 2) + " Mindestrendite auf das eingesetzte Eigenkapital.</p>";
       h += '<div class="derived"><span>Vereinbartes Nutzungsentgelt</span><b>' + fPct(o.ne, 2) + " p.a.</b></div>";
       if (F.status === "gefunden") {
         var reserve = o.ne - F.ne;
@@ -2172,10 +2373,9 @@
   // Erwartete Rückflüsse aller Objekte auf der Portfolio-Zeitachse
   function portfolioRueckfluss(P, opexShare) {
     var maxJ = 0, reihen = [];
-    P.objs.forEach(function (x, i) {
-      var o = x.o;
-      var A = exitAnalyse(o, opexShare, P.taxRate / 100);
-      reihen.push({ o: o, x: x, A: A });
+    P.verlaeufe.forEach(function (x, i) {
+      var ob = OBJ[i], o = x.o;
+      reihen.push({ ob: ob, o: o, x: x, A: kennzahlenFuer(ob).analyse() });
       maxJ = Math.max(maxJ, o.start + HMAX);
     });
     // Die Achse beginnt beim frühesten Erwerb, der vor dem Basisjahr liegen darf.
@@ -2223,7 +2423,7 @@
   // Portfolioweite Analyse — Gesamtsicht statt Einzelobjekt
   function renderAnalyse(P) {
     var host = document.getElementById("viewAnalyse");
-    if (!P.objs.length) {
+    if (!P.verlaeufe.length) {
       host.innerHTML = '<div class="card"><h2>Analyse</h2><p class="sub">Noch keine Objekte — im Portfolio ein Objekt anlegen.</p></div>';
       return;
     }
@@ -2239,7 +2439,7 @@
       gewDauer += g * r.A.eH;
       if (r.A.eIrr !== null) { gewRendite += g * r.A.eIrr; rMitIrr += g; }
       if (!r.A.beKW) ohneBE++;
-      kwSumme += eKapitalwert(r.A.kurve, r.A.wR, zielZins(r.o) / 100);
+      kwSumme += gewKapitalwert(r.A.kurve, r.A.wR, zielZins() / 100);
       if (!r.o.holdAuto) abweichung += Math.abs(r.o.hold - r.A.eH) * g;
     });
 
@@ -2285,7 +2485,7 @@
       var g2 = r.A.gewaehlt;
       h += '<tr class="zeile" data-open="' + i + '" style="cursor:pointer" title="Projekt öffnen"><td style="color:var(--accent);font-weight:600">' +
         (r.o.name || "Objekt " + (i + 1)) + "</td>";
-      var F = mindestEntgelt(r.o, opexShare, P.taxRate / 100);
+      var F = kennzahlenFuer(r.ob).mindestEntgelt();
       var noetig = F.status === "gefunden" ? fPct(F.ne, 2)
         : (F.status === "nicht bindend" ? "unter " + fPct(NE_MIN, 0) : "nicht erreichbar");
       var knapp = F.status === "nicht erreichbar" || (F.status === "gefunden" && F.ne > r.o.ne);
@@ -2325,14 +2525,16 @@
 
   // ---------- Render ----------
   // refresh() rechnet neu, ohne die Objekttabelle anzufassen — sonst verlöre das
-  // gerade bearbeitete Feld bei jedem Tastendruck den Fokus.
+
+  // ══════════ 15-start.js ══════════
+  // ---------- Neuzeichnen und Verdrahtung ----------
   function refresh() {
     Object.keys(fmtOf).forEach(function (id) {
       var el = document.getElementById("valg_" + id);
       if (el) el.textContent = fmtOf[id](G[id]);
     });
 
-    var P = portfolio();
+    var P = portfolioJetzt().rechnen();
 
     document.getElementById("taxRateOut").textContent = fPct(P.taxRate, 2);
     document.getElementById("investOut").textContent = fEur(P.investTotal);
@@ -2363,7 +2565,7 @@
 
     renderContrib(P);
 
-    if (detailIdx !== null && !P.objs[detailIdx]) detailIdx = null;
+    if (detailIdx !== null && !P.verlaeufe[detailIdx]) detailIdx = null;
     var imDetail = detailIdx !== null;
     var imAnalyse = view === "analyse" && !imDetail;
     document.getElementById("viewPortfolio").hidden = imDetail || imAnalyse;
@@ -2378,7 +2580,7 @@
     document.getElementById("tabSep").hidden = !imDetail;
     tabObj.hidden = !imDetail;
     if (imDetail) {
-      tabObj.textContent = OBJ[detailIdx].name || "Objekt " + (detailIdx + 1);
+      tabObj.textContent = OBJ[detailIdx].a.name || "Objekt " + (detailIdx + 1);
       tabObj.setAttribute("aria-current", "page");
     }
 
@@ -2390,7 +2592,7 @@
         var kopf = document.createElement("div");
         kopf.className = "panel-kopf";
         kopf.textContent = "Annahmen dieses Objekts";
-        baueGruppen(po, OBJ_GROUPS, OBJ[detailIdx], "o", function (nurText) {
+        baueGruppen(po, OBJ_GROUPS, OBJ[detailIdx].a, "o", function (nurText) {
           if (nurText) { refreshLeicht(); } else { refresh(); }
         });
         po.insertBefore(kopf, po.firstChild);
@@ -2409,9 +2611,9 @@
 
   // Bei reiner Namensänderung nicht das Panel neu bauen — sonst verliert das Feld den Fokus
   function refreshLeicht() {
-    var P = portfolio();
-    if (detailIdx !== null && P.objs[detailIdx]) {
-      var nam = OBJ[detailIdx].name || "Objekt " + (detailIdx + 1);
+    var P = portfolioJetzt().rechnen();
+    if (detailIdx !== null && P.verlaeufe[detailIdx]) {
+      var nam = OBJ[detailIdx].a.name || "Objekt " + (detailIdx + 1);
       var t = document.querySelector("#viewDetail h2");
       if (t) t.textContent = nam;
       var tb = document.getElementById("tabObjekt");
@@ -2419,16 +2621,24 @@
     }
   }
 
-  document.querySelectorAll("#tabs .tab[data-view]").forEach(function (t) {
-    t.addEventListener("click", function () {
-      view = t.dataset.view;
-      detailIdx = null;
-      refresh();
-      window.scrollTo(0, 0);
-    });
-  });
 
-  baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", gesGeaendert);
-  refresh();
+  // ---------- Start ----------
+  function start() {
+    document.querySelectorAll("#tabs .tab[data-view]").forEach(function (t) {
+      t.addEventListener("click", function () {
+        view = t.dataset.view;
+        detailIdx = null;
+        refresh();
+        window.scrollTo(0, 0);
+      });
+    });
+
+    baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", gesGeaendert);
+    refresh();
+  }
+
+  start();
 })();
 </script>
+</body>
+</html>
