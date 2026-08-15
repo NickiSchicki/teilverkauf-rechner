@@ -3,7 +3,7 @@
     <p class="eyebrow">Modellrechner</p>
     <h1>Teilverkauf-Portfolio in der GmbH</h1>
     <p class="lede" id="lede">Mehrere Verträge in einer Gesellschaft: Objekte einzeln anlegen, Ergebnis konsolidiert über alle Jahre. Laufende Kosten und Steuern fallen auf Gesellschaftsebene an, nicht je Vertrag.</p>
-    <span class="chip">Vereinfachte Modellrechnung mit Beispielwerten · keine Rechts-, Steuer- oder Finanzberatung</span>
+    <span class="chip">Vereinfachte Modellrechnung · keine Rechts-, Steuer- oder Finanzberatung</span>
   </header>
 
   <div class="layout">
@@ -27,11 +27,12 @@
         <div class="hero-main">
           <div class="stat-label" id="hLabel">Rendite auf das Eigenkapital</div>
           <div class="hero-big" id="hZuwachs">–</div>
-          <div class="ziel">
+          <div class="ziel" id="zielBlock">
             <div class="ziel-bar"><div class="ziel-ist" id="zielIst"></div><div class="ziel-marke" id="zielMarke"></div></div>
             <div class="ziel-text" id="zielText"></div>
           </div>
           <div class="hero-note" id="hNote"></div>
+          <button type="button" class="act gross" id="startBtn" hidden>Erstes Objekt anlegen</button>
         </div>
         <div class="hero-side">
           <div class="hs"><span>Objekte</span><b id="kObj">–</b></div>
@@ -56,14 +57,14 @@
         <p class="caption" id="objCaption"></p>
       </div>
 
-      <div class="card">
+      <div class="card" id="cardBeitrag">
         <h2>Beitrag der Objekte</h2>
         <p class="sub">Direkt zurechenbares Ergebnis je Projekt über die gesamte Laufzeit, vor Gemeinkosten und Steuern.</p>
         <div id="contribList"></div>
         <p class="caption" id="contribCaption"></p>
       </div>
 
-      <div class="card">
+      <div class="card" id="cardChart">
         <h2>Liquidität und Eigenkapital im Zeitverlauf</h2>
         <p class="sub">Das Bankkonto der GmbH über alle Jahre. Unter der Nulllinie besteht Finanzierungsbedarf, den Kontokorrent oder Gesellschafterdarlehen decken müssen.</p>
         <div class="legend">
@@ -78,7 +79,7 @@
         <p class="caption" id="chartCaption"></p>
       </div>
 
-      <div class="card">
+      <div class="card" id="cardFin">
         <div class="head-row">
           <div>
             <h2>Bilanz, GuV und Cashflow</h2>

@@ -67,9 +67,14 @@
       " je Vertrag und Jahr. Alle weiteren Annahmen stehen auf der jeweiligen Objektseite.";
   }
 
-  document.getElementById("addBtn").addEventListener("click", function () {
-    var n = OBJ.length + 1;
-    OBJ.push(Objekt.neu("Objekt " + n));
+  function objektAnlegen() {
+    OBJ.push(Objekt.neu("Objekt " + (OBJ.length + 1)));
+    // Direkt öffnen: Ein neues Objekt trägt Standardwerte und will eingestellt
+    // werden — es in der Liste suchen zu lassen wäre ein unnötiger Schritt.
+    detailIdx = OBJ.length - 1;
     refresh();
-  });
+    window.scrollTo(0, 0);
+  }
+  document.getElementById("addBtn").addEventListener("click", objektAnlegen);
+  document.getElementById("startBtn").addEventListener("click", objektAnlegen);
 

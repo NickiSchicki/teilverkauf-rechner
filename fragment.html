@@ -435,13 +435,16 @@
   .urteil.knapp .urteil-zahl { color: var(--s2); }
   .urteil-rest { flex: 1; min-width: 240px; }
   .urteil .ziel-text { margin-top: 7px; }
+  button.act.gross { margin-top: 16px; padding: 9px 16px; font-size: 14px;
+    background: var(--accent); color: #fff; border-color: transparent; }
+  button.act.gross:hover { filter: brightness(1.08); }
 </style>
 <div class="wrap">
   <header>
     <p class="eyebrow">Modellrechner</p>
     <h1>Teilverkauf-Portfolio in der GmbH</h1>
     <p class="lede" id="lede">Mehrere Verträge in einer Gesellschaft: Objekte einzeln anlegen, Ergebnis konsolidiert über alle Jahre. Laufende Kosten und Steuern fallen auf Gesellschaftsebene an, nicht je Vertrag.</p>
-    <span class="chip">Vereinfachte Modellrechnung mit Beispielwerten · keine Rechts-, Steuer- oder Finanzberatung</span>
+    <span class="chip">Vereinfachte Modellrechnung · keine Rechts-, Steuer- oder Finanzberatung</span>
   </header>
 
   <div class="layout">
@@ -465,11 +468,12 @@
         <div class="hero-main">
           <div class="stat-label" id="hLabel">Rendite auf das Eigenkapital</div>
           <div class="hero-big" id="hZuwachs">–</div>
-          <div class="ziel">
+          <div class="ziel" id="zielBlock">
             <div class="ziel-bar"><div class="ziel-ist" id="zielIst"></div><div class="ziel-marke" id="zielMarke"></div></div>
             <div class="ziel-text" id="zielText"></div>
           </div>
           <div class="hero-note" id="hNote"></div>
+          <button type="button" class="act gross" id="startBtn" hidden>Erstes Objekt anlegen</button>
         </div>
         <div class="hero-side">
           <div class="hs"><span>Objekte</span><b id="kObj">–</b></div>
@@ -494,14 +498,14 @@
         <p class="caption" id="objCaption"></p>
       </div>
 
-      <div class="card">
+      <div class="card" id="cardBeitrag">
         <h2>Beitrag der Objekte</h2>
         <p class="sub">Direkt zurechenbares Ergebnis je Projekt über die gesamte Laufzeit, vor Gemeinkosten und Steuern.</p>
         <div id="contribList"></div>
         <p class="caption" id="contribCaption"></p>
       </div>
 
-      <div class="card">
+      <div class="card" id="cardChart">
         <h2>Liquidität und Eigenkapital im Zeitverlauf</h2>
         <p class="sub">Das Bankkonto der GmbH über alle Jahre. Unter der Nulllinie besteht Finanzierungsbedarf, den Kontokorrent oder Gesellschafterdarlehen decken müssen.</p>
         <div class="legend">
@@ -516,7 +520,7 @@
         <p class="caption" id="chartCaption"></p>
       </div>
 
-      <div class="card">
+      <div class="card" id="cardFin">
         <div class="head-row">
           <div>
             <h2>Bilanz, GuV und Cashflow</h2>
@@ -1432,11 +1436,9 @@
   // Die Objektliste ist Zustand, keine Stammdaten — sie steht deshalb hinter der
   // Klasse und nicht bei den Voreinstellungen.
 
-  // Beispielobjekte mit generischen Werten — keine echten Vertragsdaten
-  var OBJ = [
-    new Objekt(Object.assign({}, OBJ_DEF, { name: "Beispielobjekt A", v0: 500000, share: 50, alter: 75, haus: "Paar" })),
-    new Objekt(Object.assign({}, OBJ_DEF, { name: "Beispielobjekt B", v0: 400000, share: 40, start: 2, hold: 15, alter: 80, haus: "w" }))
-  ];
+  // Das Modell startet leer — es soll mit den eigenen Verträgen gefüllt werden,
+  // nicht mit fremden Beispielwerten, die man erst wegräumen muss.
+  var OBJ = [];
 
   var detailIdx = null;   // geöffnetes Projekt, null = Portfolioansicht
   var ansicht = "portfolio";
@@ -1662,11 +1664,16 @@
       " je Vertrag und Jahr. Alle weiteren Annahmen stehen auf der jeweiligen Objektseite.";
   }
 
-  document.getElementById("addBtn").addEventListener("click", function () {
-    var n = OBJ.length + 1;
-    OBJ.push(Objekt.neu("Objekt " + n));
+  function objektAnlegen() {
+    OBJ.push(Objekt.neu("Objekt " + (OBJ.length + 1)));
+    // Direkt öffnen: Ein neues Objekt trägt Standardwerte und will eingestellt
+    // werden — es in der Liste suchen zu lassen wäre ein unnötiger Schritt.
+    detailIdx = OBJ.length - 1;
     refresh();
-  });
+    window.scrollTo(0, 0);
+  }
+  document.getElementById("addBtn").addEventListener("click", objektAnlegen);
+  document.getElementById("startBtn").addEventListener("click", objektAnlegen);
 
   // ══════════ 11-diagramme.js ══════════
   // ---------- Diagramme ----------
@@ -2611,16 +2618,19 @@
     // jeder Vertrag absolut, entscheidend ist der Abstand zum eigenen Anspruch.
     var ziel = G.mindestRendite, ist = P.irr;
     var hz = document.getElementById("hZuwachs");
-    hz.textContent = OBJ.length ? fPct(ist, 1) : "–";
+    hz.textContent = OBJ.length ? fPct(ist, 1) : "";
     hz.className = "hero-big" + (OBJ.length && ist !== null && ist < ziel - 0.05 ? " neg" : "");
     document.getElementById("hLabel").textContent = OBJ.length
       ? "Rendite auf das Eigenkapital bis " + fJahr(P.T)
-      : "Rendite auf das Eigenkapital";
+      : "Noch kein Vertrag angelegt";
 
     // Balken: erreichter Anteil des Anspruchs, Marke sitzt beim Anspruch selbst.
     var spanne = Math.max(ziel, ist === null ? 0 : ist, 1) * 1.15;
     var erreicht = OBJ.length && ist !== null ? Math.max(0, Math.min(100, ist / spanne * 100)) : 0;
     var markeBei = Math.max(0, Math.min(100, ziel / spanne * 100));
+    // Ohne Objekte gibt es nichts zu messen — dann steht statt des Balkens der Einstieg.
+    document.getElementById("zielBlock").hidden = !OBJ.length;
+    document.getElementById("startBtn").hidden = !!OBJ.length;
     var bIst = document.getElementById("zielIst"), bMarke = document.getElementById("zielMarke");
     bIst.style.width = erreicht + "%";
     bIst.className = "ziel-ist" + (ist !== null && ist < ziel - 0.05 ? " unter" : "");
@@ -2636,7 +2646,8 @@
         (nachschuss > 0
           ? "Zwischenzeitlich fehlen bis zu " + fEur(nachschuss) + " auf dem Konto."
           : "Das Konto bleibt durchgehend positiv.")
-      : "Objekte hinzufügen, um das Portfolio zu berechnen.";
+      : "Jeder Vertrag trägt seine eigenen Annahmen — Immobilienwert, Anteil, Nutzungsentgelt, Finanzierung. " +
+        "Auf Gesellschaftsebene gelten nur laufende Kosten, Steuersätze und die Mindestrendite.";
 
     document.getElementById("kObj").textContent = OBJ.length
       ? OBJ.length + (OBJ.length === 1 ? " Vertrag" : " Verträge")
@@ -2647,6 +2658,13 @@
     document.getElementById("kCost").textContent = fEur(P.taxSum + P.opexSum);
 
     renderContrib(P);
+
+    // Karten, die ohne Objekte nichts zeigen können, bleiben weg — ein leeres
+    // Portfolio soll auf den Einstieg zeigen, nicht auf fünf leere Kästen.
+    ["cardBeitrag", "cardChart", "cardFin"].forEach(function (id) {
+      var e = document.getElementById(id);
+      if (e) e.hidden = !OBJ.length;
+    });
 
     // Die Einleitung erklärt den Aufbau des Modells und gehört auf die Einstiegsseite.
     // Auf Objekt- und Analyseseite kostet sie nur Platz über dem eigentlichen Inhalt.

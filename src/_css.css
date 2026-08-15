@@ -433,3 +433,6 @@
   .urteil.knapp .urteil-zahl { color: var(--s2); }
   .urteil-rest { flex: 1; min-width: 240px; }
   .urteil .ziel-text { margin-top: 7px; }
+  button.act.gross { margin-top: 16px; padding: 9px 16px; font-size: 14px;
+    background: var(--accent); color: #fff; border-color: transparent; }
+  button.act.gross:hover { filter: brightness(1.08); }

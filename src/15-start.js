@@ -17,16 +17,19 @@
     // jeder Vertrag absolut, entscheidend ist der Abstand zum eigenen Anspruch.
     var ziel = G.mindestRendite, ist = P.irr;
     var hz = document.getElementById("hZuwachs");
-    hz.textContent = OBJ.length ? fPct(ist, 1) : "–";
+    hz.textContent = OBJ.length ? fPct(ist, 1) : "";
     hz.className = "hero-big" + (OBJ.length && ist !== null && ist < ziel - 0.05 ? " neg" : "");
     document.getElementById("hLabel").textContent = OBJ.length
       ? "Rendite auf das Eigenkapital bis " + fJahr(P.T)
-      : "Rendite auf das Eigenkapital";
+      : "Noch kein Vertrag angelegt";
 
     // Balken: erreichter Anteil des Anspruchs, Marke sitzt beim Anspruch selbst.
     var spanne = Math.max(ziel, ist === null ? 0 : ist, 1) * 1.15;
     var erreicht = OBJ.length && ist !== null ? Math.max(0, Math.min(100, ist / spanne * 100)) : 0;
     var markeBei = Math.max(0, Math.min(100, ziel / spanne * 100));
+    // Ohne Objekte gibt es nichts zu messen — dann steht statt des Balkens der Einstieg.
+    document.getElementById("zielBlock").hidden = !OBJ.length;
+    document.getElementById("startBtn").hidden = !!OBJ.length;
     var bIst = document.getElementById("zielIst"), bMarke = document.getElementById("zielMarke");
     bIst.style.width = erreicht + "%";
     bIst.className = "ziel-ist" + (ist !== null && ist < ziel - 0.05 ? " unter" : "");
@@ -42,7 +45,8 @@
         (nachschuss > 0
           ? "Zwischenzeitlich fehlen bis zu " + fEur(nachschuss) + " auf dem Konto."
           : "Das Konto bleibt durchgehend positiv.")
-      : "Objekte hinzufügen, um das Portfolio zu berechnen.";
+      : "Jeder Vertrag trägt seine eigenen Annahmen — Immobilienwert, Anteil, Nutzungsentgelt, Finanzierung. " +
+        "Auf Gesellschaftsebene gelten nur laufende Kosten, Steuersätze und die Mindestrendite.";
 
     document.getElementById("kObj").textContent = OBJ.length
       ? OBJ.length + (OBJ.length === 1 ? " Vertrag" : " Verträge")
@@ -53,6 +57,13 @@
     document.getElementById("kCost").textContent = fEur(P.taxSum + P.opexSum);
 
     renderContrib(P);
+
+    // Karten, die ohne Objekte nichts zeigen können, bleiben weg — ein leeres
+    // Portfolio soll auf den Einstieg zeigen, nicht auf fünf leere Kästen.
+    ["cardBeitrag", "cardChart", "cardFin"].forEach(function (id) {
+      var e = document.getElementById(id);
+      if (e) e.hidden = !OBJ.length;
+    });
 
     // Die Einleitung erklärt den Aufbau des Modells und gehört auf die Einstiegsseite.
     // Auf Objekt- und Analyseseite kostet sie nur Platz über dem eigentlichen Inhalt.

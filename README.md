@@ -45,7 +45,7 @@ Bilanz, Kapitalflussrechnung und Kassenfortschreibung prüfen sich gegenseitig: 
 
 Zahlungsausfall des Eigentümers, Vorfälligkeitsentschädigung bei vorzeitiger Ablösung, Zinsänderung nach Ablauf der Zinsbindung, einen Bewertungsabschlag für die schlechtere Verkäuflichkeit eines Miteigentumsanteils mit Wohnrecht, Akquisitionskosten je Vertragsabschluss sowie Wiederanlage der Verkaufserlöse.
 
-Die angezeigten Werte sind **Beispielwerte** und beschreiben keinen bestehenden Vertrag.
+Das Modell startet leer. Angelegte Verträge bleiben nur im Browser und werden nirgends gespeichert oder übertragen.
 
 ## Nutzung
 
