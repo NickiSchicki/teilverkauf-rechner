@@ -170,6 +170,28 @@ console.log("\n=== Werterhalt: gewichtet statt über die Durchschnittsdauer ==="
   }
 })();
 
+console.log("\n=== Streuung der Sterbetafel ===");
+(function () {
+  [[65, "Paar"], [75, "Paar"], [85, "m"], [90, "w"], [55, "w"]].forEach(function (f) {
+    var ob = new M.Objekt(Object.assign({}, M.OBJ_DEF, { alter: f[0], haus: f[1] }));
+    var G2 = ob.exitGewichte();
+    pruef("P25 <= Median <= P75 bei " + f[0] + " / " + f[1],
+      G2.p25 <= G2.median && G2.median <= G2.p75,
+      G2.p25 + " / " + G2.median + " / " + G2.p75);
+    pruef("Erwartungswert liegt in der Spanne bei " + f[0] + " / " + f[1],
+      G2.eH >= 1 && G2.eH <= 40, "eH = " + G2.eH);
+    pruef("Restmasse jenseits des Horizonts ist ein Anteil bei " + f[0] + " / " + f[1],
+      G2.ueber40 >= 0 && G2.ueber40 <= 100, "ueber40 = " + G2.ueber40);
+  });
+  // Ein junger Haushalt muss länger halten als ein alter — sonst stimmt die Tafel nicht
+  var jung = new M.Objekt(Object.assign({}, M.OBJ_DEF, { alter: 60, haus: "Paar", pflege: 0 })).exitGewichte();
+  var alt = new M.Objekt(Object.assign({}, M.OBJ_DEF, { alter: 85, haus: "Paar", pflege: 0 })).exitGewichte();
+  pruef("jüngerer Haushalt hat den späteren Median", jung.median > alt.median,
+    jung.median + " gegen " + alt.median);
+  pruef("jüngerer Haushalt hat mehr Masse jenseits von 40 Jahren", jung.ueber40 > alt.ueber40,
+    jung.ueber40.toFixed(1) + " gegen " + alt.ueber40.toFixed(1));
+})();
+
 console.log("\n=== Sicherheit: Eingaben landen nicht als Markup auf der Seite ===");
 (function () {
   var boese = '<img src=x onerror=alert(1)>';

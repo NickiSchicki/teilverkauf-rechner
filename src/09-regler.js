@@ -124,7 +124,14 @@
       });
 
       if (g.tax) {
-        [["erwKuerzung", "Erweiterte Kürzung (§ 9 Nr. 1 S. 2 GewStG)"], ["ausschuetten", "Abgeltungsteuer auf die Schlussentnahme"]].forEach(function (pair) {
+        // Beide Schalter verschieben das Ergebnis erheblich und dürfen nicht wie
+        // beiläufige Voreinstellungen wirken — jeder trägt deshalb seine Wirkung
+        // im Klartext neben sich.
+        [["erwKuerzung", "Erweiterte Kürzung (§ 9 Nr. 1 S. 2 GewStG)",
+          "Voreingestellt. Ohne sie kommt die Gewerbesteuer hinzu; beide Sätze stehen unten beim Steuersatz."],
+         ["ausschuetten", "Ausschüttung an eine natürliche Person unterstellen",
+          "Vereinfachtes Szenario: Am Ende geht alles oberhalb der Einlagen an einen privaten Gesellschafter, darauf 26,375 % Abgeltungsteuer. Es wirkt allein auf die ausgewiesene Rendite; Liquidität und Vermögenszuwachs bleiben Werte vor Ausschüttung."]
+        ].forEach(function (pair) {
           var lb2 = document.createElement("label");
           lb2.className = "check";
           var cb2 = document.createElement("input");
@@ -133,10 +140,17 @@
           lb2.appendChild(cb2);
           lb2.appendChild(document.createTextNode(pair[1]));
           card.appendChild(lb2);
+          if (pair[2]) {
+            var n2 = document.createElement("div");
+            n2.className = "ctl-note";
+            n2.style.marginLeft = "22px";
+            n2.textContent = pair[2];
+            card.appendChild(n2);
+          }
         });
         var t1 = document.createElement("div");
         t1.className = "derived";
-        t1.innerHTML = '<span>Steuersatz</span><b id="taxRateOut">–</b>';
+        t1.innerHTML = '<span>Steuersatz auf das Ergebnis</span><b id="taxRateOut">–</b>';
         card.appendChild(t1);
         var t2 = document.createElement("div");
         t2.className = "derived tight";

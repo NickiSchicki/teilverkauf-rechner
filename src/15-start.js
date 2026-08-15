@@ -16,6 +16,65 @@
       : "Noch nichts gespeichert";
   }
 
+  // Eine Tabelle, die über den Rand hinausreicht, sieht auf einem schmalen Gerät
+  // aus wie eine vollständige Tabelle — die Spalten rechts bleiben unentdeckt.
+  // Jeder Schiebebereich bekommt deshalb eine Markierung, solange rechts noch
+  // etwas steht, und meldet das auch Vorleseprogrammen.
+  function schiebehinweise() {
+    var bereiche = document.querySelectorAll(".obj-scroll, .fin-scroll, .sched-scroll, .chart-box");
+    Array.prototype.forEach.call(bereiche, function (b) {
+      var huelle = b.parentElement;
+      if (!huelle || !huelle.classList.contains("schiebbar")) {
+        // Der Verlauf braucht einen ruhenden Bezugspunkt: läge er auf dem
+        // scrollenden Kasten, wanderte er mit dem Inhalt aus dem Bild.
+        huelle = document.createElement("div");
+        huelle.className = "schiebbar";
+        b.parentNode.insertBefore(huelle, b);
+        huelle.appendChild(b);
+        b.addEventListener("scroll", function () { markieren(b); }, { passive: true });
+      }
+      markieren(b);
+    });
+  }
+
+  function markieren(b) {
+    var huelle = b.parentElement;
+    var rest = b.scrollWidth - b.clientWidth - b.scrollLeft;
+    var mehr = rest > 4;
+    if (huelle) huelle.style.setProperty("--mehr", mehr ? "1" : "0");
+    // Ein Bereich, in dem etwas verborgen liegt, muss mit der Tastatur erreichbar
+    // sein — sonst kommt man ohne Zeigegerät nicht an die rechten Spalten.
+    var scrollbar = b.scrollWidth - b.clientWidth > 4;
+
+    // Ein Verlauf am Rand sagt nicht, was zu tun ist, und ein Vorleseprogramm
+    // sieht ihn gar nicht. Auf schmalen Geräten steht deshalb eine Zeile darüber.
+    if (huelle) {
+      var hinweis = huelle.previousElementSibling;
+      if (!hinweis || !hinweis.classList.contains("schiebe-hinweis")) {
+        hinweis = document.createElement("p");
+        hinweis.className = "schiebe-hinweis";
+        hinweis.textContent = b.classList.contains("chart-box")
+          ? "Diagramm seitlich verschiebbar"
+          : "Weitere Spalten rechts — Tabelle seitlich verschiebbar";
+        huelle.parentNode.insertBefore(hinweis, huelle);
+      }
+      hinweis.dataset.zeigen = scrollbar ? "ja" : "nein";
+    }
+
+    if (scrollbar) {
+      if (!b.hasAttribute("tabindex")) {
+        b.setAttribute("tabindex", "0");
+        b.setAttribute("role", "region");
+        b.setAttribute("aria-label",
+          (b.classList.contains("chart-box") ? "Diagramm" : "Tabelle") + ", waagerecht verschiebbar");
+      }
+    } else if (b.getAttribute("role") === "region") {
+      b.removeAttribute("tabindex");
+      b.removeAttribute("role");
+      b.removeAttribute("aria-label");
+    }
+  }
+
   function refresh() {
     Object.keys(fmtOf).forEach(function (id) {
       var el = document.getElementById("valg_" + id);
@@ -23,10 +82,6 @@
     });
 
     var P = portfolioJetzt().rechnen();
-
-    document.getElementById("taxRateOut").textContent = fPct(P.taxRate, 2);
-    document.getElementById("investOut").textContent = fEur(P.investTotal);
-    document.getElementById("equityOut").textContent = fEur(P.cumEinlage);
 
     var nachschuss = Math.max(0, -P.minCash);
     var zuwachs = P.cashFinal - P.cumEinlage;
@@ -37,7 +92,7 @@
     hz.textContent = OBJ.length ? fPct(ist, 1) : "";
     hz.className = "hero-big" + (OBJ.length && ist !== null && ist < ziel - 0.05 ? " neg" : "");
     document.getElementById("hLabel").textContent = OBJ.length
-      ? "Rendite auf das Eigenkapital bis " + fJahr(P.T)
+      ? "Rendite auf das Eigenkapital · Planfall bis " + fJahr(P.T)
       : "Noch kein Vertrag angelegt";
 
     // Balken: erreichter Anteil des Anspruchs, Marke sitzt beim Anspruch selbst.
@@ -60,10 +115,12 @@
     document.getElementById("hNote").textContent = OBJ.length
       ? "Aus " + fEur(P.cumEinlage) + " Einlagen werden " + fEur(P.cashFinal) + " Liquidität. " +
         (nachschuss > 0
-          ? "Zwischenzeitlich fehlen bis zu " + fEur(nachschuss) + " auf dem Konto."
-          : "Das Konto bleibt durchgehend positiv.")
+          ? "Zwischenzeitlich fehlen bis zu " + fEur(nachschuss) + " auf dem Konto. "
+          : "Das Konto bleibt durchgehend positiv. ") +
+        "Gerechnet wird je Vertrag mit einer Haltedauer — der eingestellten Dauer oder, bei Kopplung " +
+        "an die Sterbetafel, dem Median. Wie sich die Verkaufszeitpunkte darum verteilen, zeigt die Analyse."
       : "Jeder Vertrag trägt seine eigenen Annahmen — Immobilienwert, Anteil, Nutzungsentgelt, Finanzierung. " +
-        "Auf Gesellschaftsebene gelten nur laufende Kosten, Steuersätze und den Renditeanspruch.";
+        "Auf Gesellschaftsebene gelten nur laufende Kosten, Steuersätze und der Renditeanspruch.";
 
     document.getElementById("kObj").textContent = OBJ.length
       ? OBJ.length + (OBJ.length === 1 ? " Vertrag" : " Verträge")
@@ -94,6 +151,19 @@
       pG.dataset.zustand = gesZustand;
       baueGruppen(pG, GES_GROUPS, G, "g", gesGeaendert);
     }
+
+    // Erst hier, nicht früher: Der Aufbau darüber erzeugt diese drei Felder neu.
+    // Zuvor gesetzte Werte wären damit wieder verworfen — beim ersten Aufruf stand
+    // deshalb überall nur der Platzhalter.
+    // Die erweiterte Kürzung entscheidet über die Gewerbesteuer. Beide Sätze
+    // nebeneinander zeigen, worum es geht, ohne dass der Schalter dafür
+    // betätigt werden muss.
+    var satzOhne = KST + 3.5 * G.hebesatz / 100;
+    document.getElementById("taxRateOut").textContent = G.erwKuerzung
+      ? fPct(P.taxRate, 2) + " · ohne erweiterte Kürzung " + fPct(satzOhne, 2)
+      : fPct(P.taxRate, 2) + " · mit erweiterter Kürzung " + fPct(KST, 2);
+    document.getElementById("investOut").textContent = fEur(P.investTotal);
+    document.getElementById("equityOut").textContent = fEur(P.cumEinlage);
 
     // Die Einleitung erklärt den Aufbau des Modells und gehört auf die Einstiegsseite.
     // Auf Objekt- und Analyseseite kostet sie nur Platz über dem eigentlichen Inhalt.
@@ -143,6 +213,7 @@
       }
     }
 
+    schiebehinweise();
     sichern();
   }
 
@@ -251,5 +322,13 @@
     zeigeStandZeit();
 
     baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", gesGeaendert);
+
+    // Beim Drehen des Geräts ändert sich, was noch rechts steht.
+    var wartend = null;
+    window.addEventListener("resize", function () {
+      clearTimeout(wartend);
+      wartend = setTimeout(schiebehinweise, 120);
+    }, { passive: true });
+
     refresh();
   }

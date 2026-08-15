@@ -84,7 +84,7 @@
       h += '<div class="card"><h2>Trägt sich dieser Vertrag?</h2>';
       h += '<p class="sub">Gemessen am gewichteten Kapitalwert über alle möglichen Haltedauern, gegen einen Renditeanspruch von ' +
         fPct(zielZins(), 2) + " an das eingesetzte Eigenkapital.</p>";
-      h += '<div class="derived"><span>Vereinbartes Nutzungsentgelt</span><b>' + fPct(o.ne, 2) + " p.a.</b></div>";
+      h += '<div class="derived"><span>Vereinbartes Nutzungsentgelt<em> auf die Auszahlung</em></span><b>' + fPct(o.ne, 2) + " p.a.</b></div>";
       if (F.status === "gefunden") {
         var reserve = o.ne - F.ne;
         h += '<div class="derived tight"><span>Nötiges Nutzungsentgelt</span><b class="' + (reserve < 0 ? "warnzahl" : "") + '">' +
@@ -116,9 +116,9 @@
       var jahrE = fest ? A.gewaehlt.ende : LZ.bindung;
       var npv = Rk.jetzt;                       // dieselbe Größe wie im Ankaufsfilter
       var barwertR = npv + eq0;                 // Kapitalwert = Barwert − Einsatz
-      var faktor = eq0 !== 0 ? barwertR / rueckfluss : 0;
+      var faktor = rueckfluss !== 0 ? barwertR / rueckfluss : 0;
 
-      h += '<div class="card"><h2>Kapitalwert (NPV)</h2>';
+      h += '<div class="card"><h2>Kapitalwert dieser Beteiligung</h2>';
       h += '<p class="sub">Alle Zahlungen auf den Erwerbszeitpunkt abgezinst, Maßstab ist der Renditeanspruch von ' +
         fPct(G.mindestRendite, 2) + '. Ein positiver Kapitalwert heißt: Das Projekt bringt mehr als den Anspruch — ein negativer, dass der Anspruch nicht gedeckt ist.</p>';
       h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
@@ -212,10 +212,11 @@
       h += '<p class="sub">Ziel sind ' + fPct(G.mindestRendite, 2) +
         ' auf das Eigenkapital, gerechnet einschließlich der anteiligen Gemeinkosten. Jede Zeile verändert genau eine Größe, alle übrigen bleiben unverändert; der kritische Wert ist der Punkt, an dem der gewichtete Kapitalwert gerade null wird.</p>';
 
-      // Über welche Zeit gerechnet wird — eine Rendite ohne Laufzeit sagt nichts aus
+      // Über welche Zeit gerechnet wird — eine Rendite ohne Zeitbezug sagt nichts aus
       h += '<div class="lz-box">';
-      h += '<div class="derived tight"><span>Vertragslaufzeit ' +
-        (LZ.kredit === null ? "<em>ohne Darlehen</em>" : "<em>= Kreditbindung</em>") + "</span><b>" +
+      h += '<div class="derived tight"><span>Kreditbindung ' +
+        (LZ.kredit === null ? "<em>ohne Darlehen</em>"
+          : (o.weiterfuehren ? "<em>Untergrenze der Kapitalbindung</em>" : "<em>Ablösung beim Verkauf</em>")) + "</span><b>" +
         (LZ.kredit === null ? "—" : fJahre(LZ.kredit)) + "</b></div>";
       h += '<div class="derived tight"><span>Verkauf des Anteils' +
         (LZ.auto ? ' <em>= Sterbetafel</em>' : ' <em>= feste Annahme</em>') + "</span><b>" +
@@ -282,18 +283,25 @@
       h += "</div>";
     }
     h += '<div class="card"><div class="stat-row">';
-    h += '<div><div class="stat-label">Erwartete Haltedauer</div><div class="stat-num">' +
-      A.eH.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
-      '</div><div class="stat-sub">Median ' + (A.median || "–") + " Jahre · " +
-      (A.lz.auto ? "gerechnet wird die Verteilung" : "gerechnet wird die Annahme von " + fJahre(o.hold)) + "</div></div>";
-    h += '<div><div class="stat-label"><span class="dot s2"></span>Break-even</div><div class="stat-num">' +
+    h += '<div><div class="stat-label">Haltedauer laut Sterbetafel</div><div class="stat-num">' +
+      (A.median || "–") + ' <span class="einheit">Jahre</span>' +
+      '</div><div class="stat-sub">Median · die mittlere Hälfte der Fälle liegt zwischen ' +
+      A.p25 + " und " + A.p75 + " Jahren · Erwartungswert " +
+      A.eH.toLocaleString("de-DE", { maximumFractionDigits: 1 }) + " Jahre" +
+      (A.ueber40 >= 0.5 ? " · in " + fPct(A.ueber40, 0) + " der Fälle länger als 40 Jahre, dort wird mit 40 gerechnet" : "") +
+      " · " + (A.lz.auto
+        ? "Bilanz und Liquidität rechnen mit dem Median, Kapitalwert und Rendite über die gesamte Verteilung"
+        : "gerechnet wird durchgehend die eingestellte Dauer: " + fJahre(o.hold)) + "</div></div>";
+    h += '<div><div class="stat-label">Break-even</div><div class="stat-num">' +
       (A.beKW ? A.beKW + " J." : "nie") +
       '</div><div class="stat-sub">' +
       (A.beKW ? "ab hier über " + fPct(G.mindestRendite, 2) : "Renditeanspruch nie erreicht") +
       (A.beNull ? " · Kapitalerhalt ab " + A.beNull + " J." : "") + "</div></div>";
-    h += '<div><div class="stat-label">Verkauf davor</div><div class="stat-num">' + fPct(A.pVorBE, 0) +
-      '</div><div class="stat-sub">' + (A.beKW ? "Wahrscheinlichkeit eines Frühexits" : "kein Zeitpunkt erreicht die Hürde") + "</div></div>";
-    h += '<div><div class="stat-label"><span class="dot s3"></span>' +
+    h += '<div><div class="stat-label">Kapitalwert negativ</div><div class="stat-num">' + fPct(A.pVorBE, 0) +
+      '</div><div class="stat-sub">' + (A.beKW
+        ? "Wahrscheinlichkeit eines Verkaufs in einem Jahr, dessen Kapitalwert den Anspruch verfehlt — auch nach dem Break-even möglich"
+        : "kein Verkaufszeitpunkt deckt den Anspruch") + "</div></div>";
+    h += '<div><div class="stat-label">' +
       (A.lz.auto ? "Erwartete Rendite" : "Rendite der Annahme") + '</div><div class="stat-num">' + fPct(A.eIrr) +
       '</div><div class="stat-sub">' + (A.lz.auto
         ? "über die Verteilung · " + fJahre(A.lz.bindung) + " gebunden"
@@ -315,8 +323,10 @@
       '<span><span class="swatch" style="background:var(--s1)"></span>Kapitalwert der Beteiligung</span></div>';
     h += '<div class="chart-box">' + exitChart(A, o) + "</div>";
     h += '<p class="caption">Der Kapitalwert misst gegen den Renditeanspruch von ' + fPct(G.mindestRendite, 2) +
-      " — oberhalb der Nulllinie erreicht das Projekt den Anspruch. " +
-      "Die rot hinterlegte Zone ist die Verlustzone: Dort sind Grunderwerbsteuer und Notarkosten noch nicht verdient.</p>";
+      " — oberhalb der Nulllinie trägt der Vertrag den Anspruch. Die hinterlegte Zone darunter ist kein Verlust: " +
+      "Dort bleibt die Rendite unter dem Anspruch. Ein Verlust im engeren Sinn beginnt erst unterhalb des " +
+      "nominalen Kapitalerhalts" +
+      (A.beNull ? ", der ab " + A.beNull + " Jahren Haltedauer erreicht ist." : ", der bei keiner Haltedauer erreicht wird.") + "</p>";
     h += "</div>";
     return h;
   }
@@ -400,15 +410,17 @@
     h += '<p class="sub">Die Haltedauer ist keine Entscheidung, sondern eine Verteilung — sie hängt daran, wie lange die Eigentümer wohnen bleiben. Diese Sicht fasst alle Verträge zusammen.</p>';
     h += '<div class="stat-row">';
     h += '<div><div class="stat-label">Erwartete Haltedauer</div><div class="stat-num">' +
-      gewDauer.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
-      '</div><div class="stat-sub">nach Kapitaleinsatz gewichtet</div></div>';
-    h += '<div><div class="stat-label"><span class="dot s2"></span>Frühexit-Risiko</div><div class="stat-num">' + fPct(gewFrueh, 0) +
-      '</div><div class="stat-sub">' + (ohneBE ? ohneBE + " von " + R.reihen.length + " ohne Break-even" : "alle Objekte erreichen den Break-even") + "</div></div>";
-    h += '<div><div class="stat-label"><span class="dot s3"></span>Kapitalwert</div><div class="stat-num' + (kwSumme < 0 ? " warnzahl" : "") + '">' + fEur(kwSumme) +
+      gewDauer.toLocaleString("de-DE", { maximumFractionDigits: 1 }) + ' <span class="einheit">Jahre</span>' +
+      '</div><div class="stat-sub">nach Kapitaleinsatz gewichtet · stets über die Sterbetafel, unabhängig von der eingestellten Dauer</div></div>';
+    h += '<div><div class="stat-label">Kapitalwert negativ</div><div class="stat-num">' + fPct(gewFrueh, 0) +
+      '</div><div class="stat-sub">Verkauf in einem Jahr, das den Anspruch von ' +
+      fPct(G.mindestRendite, 2) + ' verfehlt · nach Kapitaleinsatz gewichtet' +
+      (ohneBE ? " · " + ohneBE + " von " + R.reihen.length + " Objekten decken ihn in keinem Jahr" : "") + "</div></div>";
+    h += '<div><div class="stat-label">Kapitalwert</div><div class="stat-num' + (kwSumme < 0 ? " warnzahl" : "") + '">' + fEur(kwSumme) +
       '</div><div class="stat-sub">gewichtet, gegen den Renditeanspruch von ' + fPct(G.mindestRendite, 2) + "</div></div>";
     h += '<div><div class="stat-label">Abweichung</div><div class="stat-num">' +
-      abweichung.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
-      '</div><div class="stat-sub">Jahre zwischen Eingabe und Erwartung</div></div>';
+      abweichung.toLocaleString("de-DE", { maximumFractionDigits: 1 }) + ' <span class="einheit">Jahre</span>' +
+      '</div><div class="stat-sub">zwischen eingestellter Dauer und Erwartung</div></div>';
     h += "</div>";
     if (abweichung >= 2) {
       h += '<div class="warn-note">Die eingestellten Haltedauern weichen im Mittel um ' +
@@ -428,14 +440,14 @@
     h += "</div>";
 
     h += '<div class="card"><h2>Objekte im Vergleich</h2>';
-    h += '<p class="sub">Wie die Laufzeiten je Vertrag auseinanderfallen und was das für die Rendite bedeutet. Ein Klick öffnet das Projekt.</p>';
+    h += '<p class="sub">Wie Haltedauer, Kreditbindung und Kapitalbindung je Vertrag auseinanderfallen und was das für die Rendite bedeutet. Der Objektname öffnet das zugehörige Projekt.</p>';
     h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
       "<th>Objekt</th><th>Haushalt</th><th>Alter</th><th>Verkauf</th><th>Kredit</th><th>Bindung</th><th>Entgelt</th><th>nötig</th><th>Kapitalwert negativ</th><th>Rendite</th>" +
       "</tr></thead><tbody>";
     R.reihen.forEach(function (r, i) {
       var g2 = r.A.gewaehlt;
-      h += '<tr class="zeile" data-open="' + i + '" style="cursor:pointer" title="Projekt öffnen"><td style="color:var(--accent);font-weight:600">' +
-        esc(r.o.name || "Objekt " + (i + 1)) + "</td>";
+      h += '<tr class="zeile"><td><button type="button" class="zeilen-knopf" data-open="' + i + '">' +
+        esc(r.o.name || "Objekt " + (i + 1)) + "</button></td>";
       var F = kennzahlenFuer(r.ob).mindestEntgelt();
       var noetig = F.status === "gefunden" ? fPct(F.ne, 2)
         : (F.status === "nicht bindend" ? "unter " + fPct(NE_MIN, 0) : "nicht erreichbar");
@@ -469,8 +481,8 @@
       "sie dominiert die ersten Jahre der Verteilung.</p></div>";
 
     host.innerHTML = h;
-    host.querySelectorAll("tr.zeile[data-open]").forEach(function (tr) {
-      tr.addEventListener("click", function () { openDetail(+tr.dataset.open); });
+    host.querySelectorAll("button[data-open]").forEach(function (b) {
+      b.addEventListener("click", function () { openDetail(+b.dataset.open); });
     });
   }
 

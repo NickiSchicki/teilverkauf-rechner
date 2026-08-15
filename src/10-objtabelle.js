@@ -1,6 +1,9 @@
   // ---------- Objekttabelle: reine Übersicht ----------
   var SPALTEN = [
-    { h: "Objekt", sub: "Bezeichnung", col: "w-name", links: true, get: function (o, x, i) { return esc(o.name || "Objekt " + (i + 1)); } },
+    { h: "Objekt", sub: "Bezeichnung", col: "w-name", links: true,
+      // Der Name ist die Schaltfläche zum Öffnen — als echter Knopf ist er mit
+      // der Tastatur erreichbar und wird Vorleseprogrammen angesagt.
+      get: function (o, x, i) { return '<button type="button" class="zeilen-knopf" data-open="' + i + '">' + esc(o.name || "Objekt " + (i + 1)) + "</button>"; } },
     { h: "Wert", sub: "bei Erwerb", col: "w-num", get: function (o) { return fEur(o.v0); } },
     { h: "Anteil", sub: "%", col: "w-narrow", get: function (o) { return fPct(o.share, 0); } },
     { h: "Entgelt", sub: "% p.a.", col: "w-mid", get: function (o) { return fPct(o.ne, 2); } },
@@ -48,7 +51,12 @@
     t.querySelectorAll("button[data-del]").forEach(function (b) {
       b.addEventListener("click", function (e) {
         e.stopPropagation();
-        OBJ.splice(+b.dataset.del, 1);
+        var i = +b.dataset.del;
+        var nam = OBJ[i].a.name || "Objekt " + (i + 1);
+        // Ohne Rückgängig muss die Rückfrage stehen: Auf dem Telefon liegt dieser
+        // Knopf dicht neben dem Öffnen, und der Stand wird sofort gesichert.
+        if (!window.confirm(nam + " entfernen? Das lässt sich nicht rückgängig machen.")) return;
+        OBJ.splice(i, 1);
         refresh();
       });
     });
@@ -57,7 +65,6 @@
     });
     t.querySelectorAll("tr.zeile").forEach(function (tr) {
       tr.addEventListener("click", function () { openDetail(+tr.dataset.row); });
-      tr.setAttribute("title", "Projekt öffnen");
     });
 
     var perObj = OBJ.length ? G.opex / OBJ.length : 0;

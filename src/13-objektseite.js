@@ -72,8 +72,8 @@
       '</div><div class="stat-sub">an den Eigentümer</div></div>';
     h += '<div><div class="stat-label">Monatliche Rate</div><div class="stat-num">' + fEur(x.P * (o.ne / 100) / 12) +
       '</div><div class="stat-sub">' + (o.esc === 0 ? "fest bis zum Verkauf" : "steigt um " + fPct(o.esc, 2) + " p.a.") + "</div></div>";
-    h += '<div><div class="stat-label">Laufzeit</div><div class="stat-num">' + o.hold +
-      '</div><div class="stat-sub">Jahre bis zum Verkauf</div></div>';
+    h += '<div><div class="stat-label">Haltedauer</div><div class="stat-num">' + o.hold +
+      ' <span class="einheit">Jahre</span></div><div class="stat-sub">bis zum Verkauf des Anteils</div></div>';
     h += '<div><div class="stat-label"><span class="dot s1"></span>Kosten Eigentümer</div><div class="stat-num">' + fPct(x.ownerCost) +
       '</div><div class="stat-sub">effektiv pro Jahr</div></div>';
     h += "</div></div>";

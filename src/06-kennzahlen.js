@@ -204,6 +204,7 @@
     gew.irr = rGew === null ? null : rGew * 100;
     this._c.a = {
       kurve: kurve, beKW: beKW, beNull: beNull, median: GW.median, eH: GW.eH,
+      p25: GW.p25, p75: GW.p75, ueber40: GW.ueber40,
       eEnd: eEnd, eEndR: eEndR, pVorBE: pVorBE * 100, lz: LZ, w: w, wR: wR,
       hEff: hEff, gewaehlt: gew,
       // Die Rendite kommt aus derselben Bisektion wie die Stellschraubentabelle,

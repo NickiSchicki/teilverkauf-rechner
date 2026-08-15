@@ -75,13 +75,19 @@
     w[HMAX] += V.restNachEnde;
     summe += V.restNachEnde;
     if (summe > 0) for (var j = 1; j <= HMAX; j++) w[j] /= summe;
-    var kum = 0, median = HMAX, eH = 0;
+    var kum = 0, median = HMAX, eH = 0, p25 = HMAX, p75 = HMAX;
     for (var m = 1; m <= HMAX; m++) {
       kum += w[m];
       eH += w[m] * m;
+      if (p25 === HMAX && kum >= 0.25) p25 = m;
       if (median === HMAX && kum >= 0.5) median = m;
+      if (p75 === HMAX && kum >= 0.75) p75 = m;
     }
-    GEW_CACHE[key] = { w: w, median: median, eH: eH };
+    // Ein Median ohne Spanne verschweigt, wie weit die Fälle auseinanderliegen.
+    // ueber40 ist der Anteil, der erst jenseits des Horizonts verkauft und oben
+    // dem letzten Jahr zugeschlagen wurde — dort steht er sonst unbemerkt.
+    GEW_CACHE[key] = { w: w, median: median, eH: eH, p25: p25, p75: p75,
+      ueber40: (summe > 0 ? V.restNachEnde / summe : 0) * 100 };
     return GEW_CACHE[key];
   }
 

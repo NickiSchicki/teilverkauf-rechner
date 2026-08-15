@@ -6,7 +6,7 @@
     --surface: #fcfcfb;
     --ink: #0b0b0b;
     --ink-2: #52514e;
-    --ink-3: #898781;
+    --ink-3: #74736e;
     --grid: #e1e0d9;
     --axis: #c3c2b7;
     --border: rgba(11, 11, 11, 0.10);
@@ -17,6 +17,11 @@
     --s1-wash: rgba(42, 120, 214, 0.08);
     --tooltip-bg: #ffffff;
     --field: #ffffff;
+    /* Diagrammfarben taugen als Fläche, aber nicht als Text: --s2 erreicht auf der
+       Karte nur 3,1:1, --s3 sogar 2,7:1. Geschriebene Zahlen nehmen deshalb die
+       abgedunkelte Fassung — gemessen 4,6:1 bzw. 4,5:1 auf beiden Untergründen. */
+    --s2-text: #bc532a;
+    --s3-text: #14835b;
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) {
@@ -36,6 +41,10 @@
       --s1-wash: rgba(57, 135, 229, 0.12);
       --tooltip-bg: #262624;
       --field: #131312;
+      /* Im Dunkeln tragen die Reihenfarben fast: --s2 kam auf 4,48:1 und wird
+         leicht angehoben, --s3 besteht mit 5,1:1 unverändert. */
+      --s2-text: #e06a3a;
+      --s3-text: #199e70;
     }
   }
   :root[data-theme="dark"] {
@@ -55,6 +64,10 @@
     --s1-wash: rgba(57, 135, 229, 0.12);
     --tooltip-bg: #262624;
     --field: #131312;
+    /* Im Dunkeln tragen die Reihenfarben fast: --s2 kam auf 4,48:1 und wird
+       leicht angehoben, --s3 besteht mit 5,1:1 unverändert. */
+    --s2-text: #e06a3a;
+    --s3-text: #199e70;
   }
 
   * { box-sizing: border-box; }
@@ -104,7 +117,9 @@
     background: var(--field); color: var(--ink);
     border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px;
   }
-  input.textfeld:focus { border-color: var(--accent); outline: none; }
+  /* Der Rahmenwechsel allein ist kein Fokusring: die Seite setzt für alle
+     Bedienelemente einen zwei Pixel starken Ring, der hier nicht entfallen darf. */
+  input.textfeld:focus { border-color: var(--accent); }
   .seg { display: flex; gap: 4px; }
   .seg button {
     flex: 1; font: inherit; font-size: 12.5px; color: var(--ink-2);
@@ -152,7 +167,7 @@
   .derived.tight { border-top: none; margin-top: 0; padding-top: 4px; }
   .derived.need { border-top: 1px solid var(--axis); margin-top: 8px; padding-top: 8px; }
   .derived.need span, .derived.need b { color: var(--ink); font-weight: 700; }
-  .derived.need b.warnzahl { color: var(--s2); }
+  .derived.need b.warnzahl { color: var(--s2-text); }
 
   main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
@@ -162,6 +177,9 @@
   .stat-label { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); }
   .stat-num { font-size: clamp(21px, 2.6vw, 27px); font-weight: 700; line-height: 1.2; margin-top: 3px; font-variant-numeric: tabular-nums; }
   .stat-sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  /* Die Einheit gehört an die Zahl, darf ihr aber nicht die Aufmerksamkeit
+     nehmen — deshalb kleiner und im Text der Nebenzeile. */
+  .stat-num .einheit { font-size: 0.55em; font-weight: 600; color: var(--ink-2); letter-spacing: 0.01em; }
   .stat-foot { color: var(--ink-2); font-size: 13px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--grid); }
 
   .head-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
@@ -199,7 +217,6 @@
   table.obj tbody tr:hover td { background: var(--s1-wash); }
   table.obj tbody tr:hover td.c-name { background: linear-gradient(var(--s1-wash), var(--s1-wash)), var(--surface); }
   table.obj tbody td.c-name { color: var(--accent); font-weight: 600; }
-  table.obj tbody tr:hover td.c-name { text-decoration: underline; text-underline-offset: 2px; }
   table.obj tbody tr:hover button.open { color: var(--accent); transform: translateX(2px); }
   table.obj tbody tr:focus-within td { background: var(--s1-wash); }
   button.open { transition: transform 0.12s, color 0.12s; }
@@ -222,7 +239,7 @@
   table.obj input:hover { border-color: var(--border); }
   table.obj input:focus {
     background: var(--field); border-color: var(--accent);
-    outline: none; box-shadow: 0 0 0 3px var(--s1-wash);
+    box-shadow: 0 0 0 3px var(--s1-wash);
   }
   table.obj input.name { text-align: left; font-weight: 600; font-size: 13px; }
   table.obj td.calc { font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; padding-right: 5px; }
@@ -240,7 +257,7 @@
     padding: 3px 5px; border-radius: 4px; opacity: 0;
   }
   tr:hover button.del, button.del:focus-visible { opacity: 1; }
-  button.del:hover { color: var(--s2); background: var(--bg); }
+  button.del:hover { color: var(--s2-text); background: var(--bg); }
   @media (hover: none) { button.del { opacity: 1; } }
   .empty { color: var(--ink-3); font-size: 13px; padding: 14px 0; }
 
@@ -284,7 +301,7 @@
     border-bottom: 1px solid var(--axis);
   }
   table.fin tr.sum td { font-weight: 700; border-top: 1px solid var(--axis); }
-  table.fin .neg { color: var(--s2); }
+  table.fin .neg { color: var(--s2-text); }
   table.fin tr.spacer td { height: 10px; border-bottom: none; padding: 0; }
 
   .fine { font-size: 12.5px; color: var(--ink-3); line-height: 1.55; }
@@ -296,9 +313,9 @@
   .hero-big {
     font-family: Charter, "Bitstream Charter", Cambria, Georgia, serif;
     font-size: clamp(34px, 6vw, 52px); font-weight: 700; line-height: 1.05;
-    margin-top: 6px; font-variant-numeric: tabular-nums; color: var(--s3);
+    margin-top: 6px; font-variant-numeric: tabular-nums; color: var(--s3-text);
   }
-  .hero-big.neg { color: var(--s2); }
+  .hero-big.neg { color: var(--s2-text); }
   .hero-note { color: var(--ink-2); font-size: 13.5px; margin-top: 10px; max-width: 46ch; }
   /* Zielbalken: die Rendite gegen den eigenen Anspruch. Ohne diesen Bezug sagt
      eine absolute Zuwachssumme nichts darüber, ob sich der Vertrag lohnt. */
@@ -328,7 +345,7 @@
   .cb > div { height: 100%; background: var(--s1); border-radius: 4px; }
   .cb > div.neg { background: var(--s2); }
   .contrib-val { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; white-space: nowrap; }
-  .warnzahl { color: var(--s2); }
+  .warnzahl { color: var(--s2-text); }
   .contrib-sub { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 
   /* Objektseite: zwei klar abgesetzte Teile */
@@ -403,13 +420,40 @@
   table.sched { width: 100%; border-collapse: collapse; font-size: 12.5px; white-space: nowrap; }
   table.sched th, table.sched td { text-align: right; padding: 5px 10px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
   table.sched thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); color: var(--ink-2); font-weight: 600; border-bottom: 1px solid var(--axis); }
-  table.sched th:first-child, table.sched td:first-child { text-align: left; padding-left: 2px; }
+  /* Die erste Spalte trägt die Bezeichnung der Zeile. Scrollt sie mit, stehen auf
+     schmalen Geräten nur noch Zahlen ohne Bezug da — deshalb bleibt sie stehen,
+     wie in den anderen beiden Tabellenbauarten auch. */
+  table.sched th:first-child, table.sched td:first-child {
+    position: sticky; left: 0; z-index: 1; background: var(--surface);
+    text-align: left; padding-left: 2px; padding-right: 16px;
+  }
+  table.sched thead th:first-child { z-index: 3; }
+  /* Die Hervorhebung ist durchscheinend und taugt allein nicht für eine
+     feststehende Zelle — darunter liefe der Inhalt durch. Sie wird deshalb über
+     eine deckende Fläche gelegt. */
+  table.sched tr.exit-row td:first-child {
+    background: linear-gradient(var(--s1-wash), var(--s1-wash)), var(--surface);
+  }
   table.sched tr.exit-row td { background: var(--s1-wash); font-weight: 600; border-bottom: 1px solid var(--axis); }
   table.sched tr.exit-row td .zsub { display: block; font-weight: 400; font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
   .lz-box { border: 1px solid var(--axis); border-radius: 10px; padding: 10px 12px; margin: 14px 0 16px; background: var(--bg); }
   .lz-box .derived em { font-style: normal; color: var(--ink-3); font-size: 12px; }
   table.sched tfoot td { font-weight: 700; border-top: 1px solid var(--axis); border-bottom: none; }
-  table.sched .neg { color: var(--s2); }
+  table.sched .neg { color: var(--s2-text); }
+
+  /* Der Objektname ist die Schaltfläche, die das Projekt öffnet — als echter
+     Knopf ist er mit der Tastatur erreichbar und wird angesagt. Die
+     Unterstreichung steht dauerhaft: Ohne Zeiger gibt es kein Überfahren. */
+  button.zeilen-knopf {
+    font: inherit; font-size: inherit; font-weight: 600; color: var(--accent);
+    background: none; border: none; padding: 0; cursor: pointer;
+    text-align: left; text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-color: var(--axis); text-decoration-thickness: 1px;
+  }
+  table.obj tbody tr:hover button.zeilen-knopf,
+  button.zeilen-knopf:hover { text-decoration-color: currentColor; }
+  table.sched tr.zeile:hover td,
+  table.sched tr.zeile:focus-within td { background: var(--s1-wash); }
 
   /* Ausklappbare Karten: Referenztext und Feinjustierung sollen die Seite nicht
      dominieren. Zusammengeklappt kosten sie eine Zeile statt mehrerer Bildschirme. */
@@ -440,8 +484,8 @@
   .urteil { display: flex; align-items: center; gap: 20px; margin-top: 16px;
     padding-top: 16px; border-top: 1px solid var(--border); flex-wrap: wrap; }
   .urteil-zahl { font-size: 34px; font-weight: 700; letter-spacing: -0.5px;
-    font-variant-numeric: tabular-nums; color: var(--s3); }
-  .urteil.knapp .urteil-zahl { color: var(--s2); }
+    font-variant-numeric: tabular-nums; color: var(--s3-text); }
+  .urteil.knapp .urteil-zahl { color: var(--s2-text); }
   .urteil-rest { flex: 1; min-width: 240px; }
   .urteil .ziel-text { margin-top: 7px; }
   button.act.gross { margin-top: 16px; padding: 9px 16px; font-size: 14px;
@@ -470,6 +514,51 @@
   .stand { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 14px; }
   .stand-info { font-size: 12px; color: var(--ink-3); }
   .stand-akt { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ---------- Bedienung mit dem Finger ----------
+     Ein Zeigegerät mit grober Auflösung trifft keine 17 mal 22 Pixel. Die
+     Schaltflächen wachsen deshalb auf 44 Pixel in beiden Richtungen, ohne dass
+     die Zeilen dadurch auseinandergehen: Der Zuwachs liegt im Innenabstand. */
+  @media (pointer: coarse) {
+    button.open, button.del {
+      min-width: 44px; min-height: 44px;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0;
+    }
+    .tab { padding: 12px 16px; min-height: 44px; }
+    .stand-akt button, button.act { min-height: 44px; padding-top: 10px; padding-bottom: 10px; }
+    /* Ein Schieberegler mit 16 Pixel Höhe ist mit dem Finger kaum zu fassen.
+       Die Bahn bleibt schlank, die Grifffläche wächst nach oben und unten. */
+    input[type="range"] { height: 44px; }
+    /* Sonst drücken die vergrößerten Knöpfe gegen eine 26 px schmale Spalte. */
+    table.obj col.w-act { width: 46px; }
+  }
+
+  /* ---------- Hinweis auf waagerecht Verschiebbares ----------
+     Eine Tabelle, die über den Rand hinausreicht, sieht auf einem Telefon aus
+     wie eine vollständige Tabelle. Ein weicher Verlauf an der Kante zeigt, dass
+     rechts noch etwas steht; er verschwindet, sobald das Ende erreicht ist. */
+  /* Der Verlauf gehört an den sichtbaren Rand, nicht an das Ende des Inhalts.
+     Er liegt deshalb auf einer Hülle um den Schiebebereich, nicht auf diesem
+     selbst — ein absolut gesetztes Element in einem scrollenden Kasten wandert
+     sonst mit dem Inhalt aus dem Bild. */
+  .schiebbar { position: relative; }
+  .schiebbar::after {
+    content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 34px;
+    pointer-events: none; opacity: var(--mehr, 0); transition: opacity 0.15s ease;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0), var(--surface));
+  }
+  @media (prefers-reduced-motion: reduce) { .schiebbar::after { transition: none; } }
+  /* Nur auf schmalen Geräten: auf breiten steht die Tabelle ohnehin ganz da,
+     und eine Zeile, die nichts erklärt, kostet nur Aufmerksamkeit. */
+  .schiebe-hinweis { display: none; }
+  @media (max-width: 700px) {
+    .schiebe-hinweis[data-zeigen="ja"] {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--ink-2); margin: 0 0 8px;
+    }
+    .schiebe-hinweis[data-zeigen="ja"]::before { content: "\2194"; font-size: 14px; }
+  }
 </style>
 <div class="wrap">
   <header>
@@ -519,10 +608,10 @@
         </div>
         <div class="hero-side">
           <div class="hs"><span>Objekte</span><b id="kObj">–</b></div>
-          <div class="hs"><span>Kapitalbedarf</span><b id="kNeed">–</b></div>
-          <div class="hs"><span>Vermögenszuwachs</span><b id="kZuw">–</b></div>
+          <div class="hs"><span>Kapitalbedarf mit Spitze</span><b id="kNeed">–</b></div>
+          <div class="hs"><span>Vermögenszuwachs vor Ausschüttung</span><b id="kZuw">–</b></div>
           <div class="hs"><span>Liquidität am Ende</span><b id="kCash">–</b></div>
-          <div class="hs"><span>Steuern &amp; Gemeinkosten</span><b id="kCost">–</b></div>
+          <div class="hs"><span>Steuern und Gemeinkosten gesamt</span><b id="kCost">–</b></div>
         </div>
       </div>
 
@@ -542,7 +631,7 @@
 
       <div class="card" id="cardBeitrag">
         <h2>Beitrag der Objekte</h2>
-        <p class="sub">Direkt zurechenbares Ergebnis je Projekt über die gesamte Laufzeit, vor Gemeinkosten und Steuern.</p>
+        <p class="sub">Direkt zurechenbares Ergebnis je Projekt über die gesamte Kapitalbindung, vor Gemeinkosten und Steuern.</p>
         <div id="contribList"></div>
         <p class="caption" id="contribCaption"></p>
       </div>
@@ -602,7 +691,7 @@
         <p><b>Zinsbindung und Geldanlage:</b> Fällt der Verkauf in die Zinsbindung, lässt sich das Darlehen nicht entschädigungsfrei ablösen. Ist der entsprechende Schalter gesetzt, läuft es bis zum Ende der Zinsbindung weiter, während der Verkaufserlös zum Anlagezins geparkt wird — als Näherung für kurzlaufende Bundeswertpapiere. Aus der Differenz zwischen Sollzins und Anlagezins entsteht ein laufender Verlust auf dem geparkten Betrag; im Gegenzug entfällt eine Vorfälligkeitsentschädigung, die hier nicht gerechnet wird. Ohne den Schalter wird beim Verkauf abgelöst, ebenfalls ohne Entschädigung — die Wahrheit liegt dazwischen. Guthaben werden durchgehend zum Anlagezins verzinst, negative Salden zum Sollzins plus Aufschlag; beides läuft über die GuV und erhöht oder mindert die Steuer. Eine Zinsänderung nach Ablauf der Bindung ist nicht modelliert. Die Rendite ist der interne Zinsfuß der Einlagen gegen die Schlussliquidität; der Schalter „Abgeltungsteuer“ zeigt als Nebenrechnung, was nach einer späteren Entnahme bliebe (26,375 % auf den Betrag oberhalb der Einlagen).</p>
         <p><b>Haltedauer:</b> Sie lässt sich je Objekt frei setzen oder über den Schalter „Haltedauer aus Sterbetafel“ an den Median der Exit-Verteilung koppeln. Ist die Kopplung aktiv, wirkt das Alter des Haushalts bis in Bilanz, Rendite und Liquiditätsverlauf durch; andernfalls beeinflusst es nur die Analyse. Verwendet wird der Median und nicht der Erwartungswert, weil die Rechenwerke eine ganze Zahl brauchen und der Median einen konkreten Vertrag beschreibt, während der Erwartungswert durch die lange rechte Flanke der Verteilung nach oben gezogen wird.</p>
         <p><b>Ankaufsfilter:</b> Die Umkehrung der Renditerechnung — gesucht wird der Wert, bei dem der wahrscheinlichkeitsgewichtete Kapitalwert gerade null wird, gemessen gegen den auf Gesellschaftsebene eingestellten Renditeanspruch. Diese Zielgröße kommt <b>ohne unterstellte Haltedauer</b> aus: Weil der Kapitalwert linear in den Zahlungen ist, entspricht der gewichtete Kapitalwert exakt dem Kapitalwert des gewichteten Zahlungsstroms. Gerechnet wird einschließlich der anteiligen laufenden Kosten der Gesellschaft — dieselbe Kostenbasis wie in der übrigen Objektrechnung, damit auf einer Seite nicht zwei verschiedene Renditen für denselben Vertrag stehen.</p>
-        <p><b>Laufzeiten:</b> Drei Zeiträume fallen auseinander. Die <em>Vertragslaufzeit</em> ist an die Kreditbindung gekoppelt — so lange ist die Gesellschaft gebunden. Der <em>Verkauf des Anteils</em> erfolgt entweder zum angenommenen Zeitpunkt oder, bei zugeschalteter Sterbetafel-Kopplung, über die Exit-Verteilung gewichtet. Liegt der Verkauf vor dem Ende der Kreditbindung, läuft das Darlehen weiter und der Erlös wird bis zur Ablösung zum Anlagezins geparkt; die <em>Kapitalbindung</em> ist dann länger als die Zeit bis zum Verkauf. Da diese Nachlaufzeit kein Nutzungsentgelt trägt, der Sollzins aber weiterläuft, drückt sie die Rendite — sie steht deshalb neben dem Renditeanspruch. Alle Renditeangaben beziehen sich auf die Kapitalbindung, nicht auf die Zeit bis zum Verkauf.</p>
+        <p><b>Laufzeiten:</b> Drei Zeiträume fallen auseinander. Die <em>Kreditbindung</em> ist die Zinsbindung des Darlehens. Der <em>Verkauf des Anteils</em> erfolgt entweder zum angenommenen Zeitpunkt oder, bei zugeschalteter Sterbetafel-Kopplung, über die Exit-Verteilung gewichtet. Liegt der Verkauf vor dem Ende der Kreditbindung, läuft das Darlehen weiter und der Erlös wird bis zur Ablösung zum Anlagezins geparkt; die <em>Kapitalbindung</em> ist dann länger als die Zeit bis zum Verkauf. Da diese Nachlaufzeit kein Nutzungsentgelt trägt, der Sollzins aber weiterläuft, drückt sie die Rendite — sie steht deshalb neben dem Renditeanspruch. Alle Renditeangaben beziehen sich auf die Kapitalbindung, nicht auf die Zeit bis zum Verkauf.</p>
         <p><b>Umkehrrechnung je Stellschraube:</b> Jede Zeile der Stellschraubentabelle beantwortet dieselbe Frage für genau eine Größe, alle übrigen unverändert. Die Suche läuft als Bisektion; die Wirkungsrichtung wird gemessen und nicht unterstellt. Liegt die Lösung außerhalb des zulässigen Bereichs, erscheint „reicht allein nicht aus“ oder „im gesamten Bereich unkritisch“ statt eines an den Rand geklemmten Werts. Die erste Zeile behandelt den Renditeanspruch selbst als Stellschraube: Sein kritischer Wert ist die Rendite, die der Vertrag bei den aktuellen Annahmen tatsächlich abwirft, und stimmt mit der erwarteten Rendite der Analyse überein — beides ist der Zinsfuß, bei dem derselbe gewichtete Kapitalwert null wird.</p>
         <p><b>Effektive Kosten je Eigentümer</b> sind der interne Zinsfuß aus dessen Sicht: Auszahlung heute gegen Nutzungsentgelte und den Anteil, der beim Verkauf an die GmbH geht. Verkaufskosten des Eigentümers zählen nicht dazu, weil sie bei einem Verkauf ohne Teilverkauf ebenso anfielen.</p>
         <p>Alle Werte jährlich nachschüssig, vor Inflation. Ausfall-, Instandhaltungs- und Bewertungsrisiken sind nicht modelliert.</p>
@@ -889,13 +978,19 @@
     w[HMAX] += V.restNachEnde;
     summe += V.restNachEnde;
     if (summe > 0) for (var j = 1; j <= HMAX; j++) w[j] /= summe;
-    var kum = 0, median = HMAX, eH = 0;
+    var kum = 0, median = HMAX, eH = 0, p25 = HMAX, p75 = HMAX;
     for (var m = 1; m <= HMAX; m++) {
       kum += w[m];
       eH += w[m] * m;
+      if (p25 === HMAX && kum >= 0.25) p25 = m;
       if (median === HMAX && kum >= 0.5) median = m;
+      if (p75 === HMAX && kum >= 0.75) p75 = m;
     }
-    GEW_CACHE[key] = { w: w, median: median, eH: eH };
+    // Ein Median ohne Spanne verschweigt, wie weit die Fälle auseinanderliegen.
+    // ueber40 ist der Anteil, der erst jenseits des Horizonts verkauft und oben
+    // dem letzten Jahr zugeschlagen wurde — dort steht er sonst unbemerkt.
+    GEW_CACHE[key] = { w: w, median: median, eH: eH, p25: p25, p75: p75,
+      ueber40: (summe > 0 ? V.restNachEnde / summe : 0) * 100 };
     return GEW_CACHE[key];
   }
 
@@ -1504,6 +1599,7 @@
     gew.irr = rGew === null ? null : rGew * 100;
     this._c.a = {
       kurve: kurve, beKW: beKW, beNull: beNull, median: GW.median, eH: GW.eH,
+      p25: GW.p25, p75: GW.p75, ueber40: GW.ueber40,
       eEnd: eEnd, eEndR: eEndR, pVorBE: pVorBE * 100, lz: LZ, w: w, wR: wR,
       hEff: hEff, gewaehlt: gew,
       // Die Rendite kommt aus derselben Bisektion wie die Stellschraubentabelle,
@@ -1533,9 +1629,9 @@
       { id: "basisjahr", label: "Basisjahr", min: 2015, max: 2040, step: 1, fmt: function (v) { return String(v); }, note: "Bezugsjahr der Zeitachse; Objekte dürfen davor liegen" },
       { id: "opex", label: "Laufende Kosten", min: 0, max: 20000, step: 250, fmt: function (v) { return fEur(v) + " / Jahr"; }, note: "je Geschäftsjahr, unabhängig von der Objektzahl" },
       { id: "hebesatz", label: "Gewerbesteuer-Hebesatz", min: 200, max: 600, step: 10, fmt: function (v) { return fPct(v, 0); }, note: "nur ohne erweiterte Kürzung relevant" },
-      { id: "anlage", label: "Anlagezins", min: 0, max: 6, step: 0.1, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "Bundeswertpapiere für geparkte Mittel" },
+      { id: "anlage", label: "Anlagezins", min: 0, max: 6, step: 0.1, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "verzinst jedes Guthaben der Gesellschaft, nicht nur geparkte Verkaufserlöse" },
       { id: "kkZins", label: "Kontokorrentzins", min: 0, max: 12, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "bei negativem Konto der Gesellschaft" },
-      { id: "mindestRendite", label: "Renditeanspruch", min: 0, max: 12, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "eigene Vorgabe an die Eigenkapitalrendite — Maßstab für Break-even und Ankaufsfilter" }
+      { id: "mindestRendite", label: "Renditeanspruch", min: 0, max: 12, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "eigene Vorgabe an die Eigenkapitalrendite nach Steuern der GmbH, vor Ausschüttung — Maßstab für Break-even und Ankaufsfilter" }
     ], tax: true }
   ];
 
@@ -1545,7 +1641,7 @@
       { id: "name", label: "Bezeichnung", text: true },
       { id: "v0", label: "Wert bei Erwerb", min: 50000, max: 2000000, step: 10000, fmt: fEur },
       { id: "share", label: "Verkaufter Anteil", min: 5, max: 90, step: 1, fmt: function (v) { return fPct(v, 0); } },
-      { id: "alter", label: "Alter im Haushalt", min: 55, max: 95, step: 1, fmt: fJahre, note: "bei Paaren die jüngere Person" },
+      { id: "alter", label: "Alter im Haushalt", min: 55, max: 95, step: 1, fmt: fJahre, note: "bei Paaren für beide Personen unterstellt" },
       { id: "haus", label: "Haushalt", choices: ["m", "w", "Paar"], note: "bei Paaren zählt die zuletzt lebende Person" },
       { id: "pflege", label: "Auszugswahrscheinlichkeit", min: 0, max: 6, step: 0.5, fmt: function (v) { return fPct(v, 1) + " p.a."; }, note: "Pflegeheim oder Auszug, zusätzlich zur Sterblichkeit" },
       { id: "growth", label: "Wertentwicklung", min: -2, max: 5, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "Marktentwicklung dieser Lage" },
@@ -1553,12 +1649,12 @@
       { id: "abschlag", label: "Ankaufsabschlag", min: 0, max: 40, step: 0.5, fmt: function (v) { return v === 0 ? "keiner" : "−" + fPct(v, 1); }, note: "unter dem anteiligen Verkehrswert gekaufter Anteil" }
     ] },
     { title: "Vertrag", dot: "s1", items: [
-      { id: "ne", label: "Nutzungsentgelt", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "auf den Auszahlungsbetrag, fest" },
+      { id: "ne", label: "Nutzungsentgelt", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "in Prozent des Auszahlungsbetrags, nicht des Immobilienwerts" },
       { id: "esc", label: "Jährliche Anpassung", min: 0, max: 4, step: 0.25, fmt: function (v) { return v === 0 ? "keine" : fPct(v, 2) + " p.a."; }, note: "0 % = feste Rate bis zum Verkauf" },
       { id: "start", label: "Erwerbsjahr", min: -40, max: 40, step: 1, fmt: function (v) {
         return fJahr(v) + (v === 0 ? " (Basisjahr)" : (v < 0 ? " (Bestand, vor " + -v + (v === -1 ? " Jahr)" : " Jahren)") : " (in " + v + (v === 1 ? " Jahr)" : " Jahren)")));
       } },
-      { id: "holdAuto", label: "Haltedauer aus Sterbetafel", bool: true, note: "rechnet über die Exit-Verteilung statt über eine feste Annahme" },
+      { id: "holdAuto", label: "Haltedauer aus Sterbetafel", bool: true, note: "Bilanz, Liquidität und Steuern rechnen dann mit der Median-Haltedauer; Kapitalwert und erwartete Rendite über die gesamte Verteilung" },
       { id: "hold", label: "Haltedauer", min: 1, max: 40, step: 1, fmt: fJahre, note: "angenommener Verkaufszeitpunkt, wirkt nur ohne Sterbetafel-Kopplung" },
       { id: "de", label: "Durchführungsentgelt", min: 0, max: 8, step: 0.25, fmt: function (v) { return v === 0 ? "keines" : fPct(v, 2); }, note: "vom Gesamterlös beim Verkauf" },
       { id: "min", label: "Mindesterlös", min: 0, max: 250, step: 5, fmt: fAufschlag, note: "Vertragsklausel: Untergrenze in Prozent der Auszahlung, unabhängig vom Marktpreis. In Klammern der Aufschlag über die Auszahlung hinaus" },
@@ -1569,11 +1665,11 @@
       { id: "notar", label: "Notar & Grundbuch", min: 0, max: 3, step: 0.25, fmt: function (v) { return fPct(v, 2); } },
       { id: "akquise", label: "Akquisitionskosten", min: 0, max: 40000, step: 500, fmt: function (v) { return v === 0 ? "keine" : fEur(v); }, note: "Werbung und Vertrieb je Abschluss, sofort abzugsfähiger Aufwand" },
       { id: "makler", label: "Maklercourtage", min: 0, max: 8, step: 0.595, fmt: function (v) { return v === 0 ? "keine" : fPct(v, 2); }, note: "volle Provision, von der Gesellschaft allein getragen — 7,14 % sind 6 % zzgl. Umsatzsteuer" },
-      { id: "ltv", label: "Beleihung", min: 0, max: 95, step: 5, fmt: function (v) { return fPct(v, 0); }, note: "Darlehen in % des Anteilskaufpreises" },
+      { id: "ltv", label: "Beleihung", min: 0, max: 95, step: 5, fmt: function (v) { return fPct(v, 0); }, note: "Darlehen in % der Auszahlung nach Ankaufsabschlag — Nebenkosten werden nicht mitfinanziert" },
       { id: "zins", label: "Sollzins", min: 1, max: 9, step: 0.05, fmt: function (v) { return fPct(v, 2) + " p.a."; } },
       { id: "tilg", label: "Anfangstilgung", min: 0, max: 5, step: 0.25, fmt: function (v) { return fPct(v, 2) + " p.a."; }, note: "0 % = endfälliges Darlehen" },
-      { id: "zinsbindung", label: "Zinsbindung", min: 5, max: 30, step: 1, fmt: fJahre, note: "Vertragslaufzeit — vorher keine Ablösung ohne Entschädigung" },
-      { id: "weiterfuehren", label: "Bei Verkauf weiterführen", bool: true, note: "Darlehen läuft bis Ende der Vertragslaufzeit, der Erlös wird bis dahin angelegt" }
+      { id: "zinsbindung", label: "Zinsbindung", min: 5, max: 30, step: 1, fmt: fJahre, note: "Bindung des Darlehens — vorher keine Ablösung ohne Entschädigung" },
+      { id: "weiterfuehren", label: "Bei Verkauf weiterführen", bool: true, note: "Darlehen läuft bis zum Ende der Zinsbindung weiter, der Erlös wird bis dahin angelegt" }
     ] },
     { title: "Steuerliche Angaben", zu: true, hinweis: "AfA und Gebäudeanteil", items: [
       { id: "afaSatz", label: "AfA-Satz", min: 1, max: 4, step: 0.5, fmt: function (v) { return fPct(v, 1) + " p.a."; }, note: "2 % Standard · 2,5 % vor 1925 · 3 % Neubau" },
@@ -1858,7 +1954,14 @@
       });
 
       if (g.tax) {
-        [["erwKuerzung", "Erweiterte Kürzung (§ 9 Nr. 1 S. 2 GewStG)"], ["ausschuetten", "Abgeltungsteuer auf die Schlussentnahme"]].forEach(function (pair) {
+        // Beide Schalter verschieben das Ergebnis erheblich und dürfen nicht wie
+        // beiläufige Voreinstellungen wirken — jeder trägt deshalb seine Wirkung
+        // im Klartext neben sich.
+        [["erwKuerzung", "Erweiterte Kürzung (§ 9 Nr. 1 S. 2 GewStG)",
+          "Voreingestellt. Ohne sie kommt die Gewerbesteuer hinzu; beide Sätze stehen unten beim Steuersatz."],
+         ["ausschuetten", "Ausschüttung an eine natürliche Person unterstellen",
+          "Vereinfachtes Szenario: Am Ende geht alles oberhalb der Einlagen an einen privaten Gesellschafter, darauf 26,375 % Abgeltungsteuer. Es wirkt allein auf die ausgewiesene Rendite; Liquidität und Vermögenszuwachs bleiben Werte vor Ausschüttung."]
+        ].forEach(function (pair) {
           var lb2 = document.createElement("label");
           lb2.className = "check";
           var cb2 = document.createElement("input");
@@ -1867,10 +1970,17 @@
           lb2.appendChild(cb2);
           lb2.appendChild(document.createTextNode(pair[1]));
           card.appendChild(lb2);
+          if (pair[2]) {
+            var n2 = document.createElement("div");
+            n2.className = "ctl-note";
+            n2.style.marginLeft = "22px";
+            n2.textContent = pair[2];
+            card.appendChild(n2);
+          }
         });
         var t1 = document.createElement("div");
         t1.className = "derived";
-        t1.innerHTML = '<span>Steuersatz</span><b id="taxRateOut">–</b>';
+        t1.innerHTML = '<span>Steuersatz auf das Ergebnis</span><b id="taxRateOut">–</b>';
         card.appendChild(t1);
         var t2 = document.createElement("div");
         t2.className = "derived tight";
@@ -1888,7 +1998,10 @@
   // ══════════ 10-objtabelle.js ══════════
   // ---------- Objekttabelle: reine Übersicht ----------
   var SPALTEN = [
-    { h: "Objekt", sub: "Bezeichnung", col: "w-name", links: true, get: function (o, x, i) { return esc(o.name || "Objekt " + (i + 1)); } },
+    { h: "Objekt", sub: "Bezeichnung", col: "w-name", links: true,
+      // Der Name ist die Schaltfläche zum Öffnen — als echter Knopf ist er mit
+      // der Tastatur erreichbar und wird Vorleseprogrammen angesagt.
+      get: function (o, x, i) { return '<button type="button" class="zeilen-knopf" data-open="' + i + '">' + esc(o.name || "Objekt " + (i + 1)) + "</button>"; } },
     { h: "Wert", sub: "bei Erwerb", col: "w-num", get: function (o) { return fEur(o.v0); } },
     { h: "Anteil", sub: "%", col: "w-narrow", get: function (o) { return fPct(o.share, 0); } },
     { h: "Entgelt", sub: "% p.a.", col: "w-mid", get: function (o) { return fPct(o.ne, 2); } },
@@ -1936,7 +2049,12 @@
     t.querySelectorAll("button[data-del]").forEach(function (b) {
       b.addEventListener("click", function (e) {
         e.stopPropagation();
-        OBJ.splice(+b.dataset.del, 1);
+        var i = +b.dataset.del;
+        var nam = OBJ[i].a.name || "Objekt " + (i + 1);
+        // Ohne Rückgängig muss die Rückfrage stehen: Auf dem Telefon liegt dieser
+        // Knopf dicht neben dem Öffnen, und der Stand wird sofort gesichert.
+        if (!window.confirm(nam + " entfernen? Das lässt sich nicht rückgängig machen.")) return;
+        OBJ.splice(i, 1);
         refresh();
       });
     });
@@ -1945,7 +2063,6 @@
     });
     t.querySelectorAll("tr.zeile").forEach(function (tr) {
       tr.addEventListener("click", function () { openDetail(+tr.dataset.row); });
-      tr.setAttribute("title", "Projekt öffnen");
     });
 
     var perObj = OBJ.length ? G.opex / OBJ.length : 0;
@@ -2420,8 +2537,8 @@
       '</div><div class="stat-sub">an den Eigentümer</div></div>';
     h += '<div><div class="stat-label">Monatliche Rate</div><div class="stat-num">' + fEur(x.P * (o.ne / 100) / 12) +
       '</div><div class="stat-sub">' + (o.esc === 0 ? "fest bis zum Verkauf" : "steigt um " + fPct(o.esc, 2) + " p.a.") + "</div></div>";
-    h += '<div><div class="stat-label">Laufzeit</div><div class="stat-num">' + o.hold +
-      '</div><div class="stat-sub">Jahre bis zum Verkauf</div></div>';
+    h += '<div><div class="stat-label">Haltedauer</div><div class="stat-num">' + o.hold +
+      ' <span class="einheit">Jahre</span></div><div class="stat-sub">bis zum Verkauf des Anteils</div></div>';
     h += '<div><div class="stat-label"><span class="dot s1"></span>Kosten Eigentümer</div><div class="stat-num">' + fPct(x.ownerCost) +
       '</div><div class="stat-sub">effektiv pro Jahr</div></div>';
     h += "</div></div>";
@@ -2673,7 +2790,7 @@
       h += '<div class="card"><h2>Trägt sich dieser Vertrag?</h2>';
       h += '<p class="sub">Gemessen am gewichteten Kapitalwert über alle möglichen Haltedauern, gegen einen Renditeanspruch von ' +
         fPct(zielZins(), 2) + " an das eingesetzte Eigenkapital.</p>";
-      h += '<div class="derived"><span>Vereinbartes Nutzungsentgelt</span><b>' + fPct(o.ne, 2) + " p.a.</b></div>";
+      h += '<div class="derived"><span>Vereinbartes Nutzungsentgelt<em> auf die Auszahlung</em></span><b>' + fPct(o.ne, 2) + " p.a.</b></div>";
       if (F.status === "gefunden") {
         var reserve = o.ne - F.ne;
         h += '<div class="derived tight"><span>Nötiges Nutzungsentgelt</span><b class="' + (reserve < 0 ? "warnzahl" : "") + '">' +
@@ -2705,9 +2822,9 @@
       var jahrE = fest ? A.gewaehlt.ende : LZ.bindung;
       var npv = Rk.jetzt;                       // dieselbe Größe wie im Ankaufsfilter
       var barwertR = npv + eq0;                 // Kapitalwert = Barwert − Einsatz
-      var faktor = eq0 !== 0 ? barwertR / rueckfluss : 0;
+      var faktor = rueckfluss !== 0 ? barwertR / rueckfluss : 0;
 
-      h += '<div class="card"><h2>Kapitalwert (NPV)</h2>';
+      h += '<div class="card"><h2>Kapitalwert dieser Beteiligung</h2>';
       h += '<p class="sub">Alle Zahlungen auf den Erwerbszeitpunkt abgezinst, Maßstab ist der Renditeanspruch von ' +
         fPct(G.mindestRendite, 2) + '. Ein positiver Kapitalwert heißt: Das Projekt bringt mehr als den Anspruch — ein negativer, dass der Anspruch nicht gedeckt ist.</p>';
       h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
@@ -2801,10 +2918,11 @@
       h += '<p class="sub">Ziel sind ' + fPct(G.mindestRendite, 2) +
         ' auf das Eigenkapital, gerechnet einschließlich der anteiligen Gemeinkosten. Jede Zeile verändert genau eine Größe, alle übrigen bleiben unverändert; der kritische Wert ist der Punkt, an dem der gewichtete Kapitalwert gerade null wird.</p>';
 
-      // Über welche Zeit gerechnet wird — eine Rendite ohne Laufzeit sagt nichts aus
+      // Über welche Zeit gerechnet wird — eine Rendite ohne Zeitbezug sagt nichts aus
       h += '<div class="lz-box">';
-      h += '<div class="derived tight"><span>Vertragslaufzeit ' +
-        (LZ.kredit === null ? "<em>ohne Darlehen</em>" : "<em>= Kreditbindung</em>") + "</span><b>" +
+      h += '<div class="derived tight"><span>Kreditbindung ' +
+        (LZ.kredit === null ? "<em>ohne Darlehen</em>"
+          : (o.weiterfuehren ? "<em>Untergrenze der Kapitalbindung</em>" : "<em>Ablösung beim Verkauf</em>")) + "</span><b>" +
         (LZ.kredit === null ? "—" : fJahre(LZ.kredit)) + "</b></div>";
       h += '<div class="derived tight"><span>Verkauf des Anteils' +
         (LZ.auto ? ' <em>= Sterbetafel</em>' : ' <em>= feste Annahme</em>') + "</span><b>" +
@@ -2871,18 +2989,25 @@
       h += "</div>";
     }
     h += '<div class="card"><div class="stat-row">';
-    h += '<div><div class="stat-label">Erwartete Haltedauer</div><div class="stat-num">' +
-      A.eH.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
-      '</div><div class="stat-sub">Median ' + (A.median || "–") + " Jahre · " +
-      (A.lz.auto ? "gerechnet wird die Verteilung" : "gerechnet wird die Annahme von " + fJahre(o.hold)) + "</div></div>";
-    h += '<div><div class="stat-label"><span class="dot s2"></span>Break-even</div><div class="stat-num">' +
+    h += '<div><div class="stat-label">Haltedauer laut Sterbetafel</div><div class="stat-num">' +
+      (A.median || "–") + ' <span class="einheit">Jahre</span>' +
+      '</div><div class="stat-sub">Median · die mittlere Hälfte der Fälle liegt zwischen ' +
+      A.p25 + " und " + A.p75 + " Jahren · Erwartungswert " +
+      A.eH.toLocaleString("de-DE", { maximumFractionDigits: 1 }) + " Jahre" +
+      (A.ueber40 >= 0.5 ? " · in " + fPct(A.ueber40, 0) + " der Fälle länger als 40 Jahre, dort wird mit 40 gerechnet" : "") +
+      " · " + (A.lz.auto
+        ? "Bilanz und Liquidität rechnen mit dem Median, Kapitalwert und Rendite über die gesamte Verteilung"
+        : "gerechnet wird durchgehend die eingestellte Dauer: " + fJahre(o.hold)) + "</div></div>";
+    h += '<div><div class="stat-label">Break-even</div><div class="stat-num">' +
       (A.beKW ? A.beKW + " J." : "nie") +
       '</div><div class="stat-sub">' +
       (A.beKW ? "ab hier über " + fPct(G.mindestRendite, 2) : "Renditeanspruch nie erreicht") +
       (A.beNull ? " · Kapitalerhalt ab " + A.beNull + " J." : "") + "</div></div>";
-    h += '<div><div class="stat-label">Verkauf davor</div><div class="stat-num">' + fPct(A.pVorBE, 0) +
-      '</div><div class="stat-sub">' + (A.beKW ? "Wahrscheinlichkeit eines Frühexits" : "kein Zeitpunkt erreicht die Hürde") + "</div></div>";
-    h += '<div><div class="stat-label"><span class="dot s3"></span>' +
+    h += '<div><div class="stat-label">Kapitalwert negativ</div><div class="stat-num">' + fPct(A.pVorBE, 0) +
+      '</div><div class="stat-sub">' + (A.beKW
+        ? "Wahrscheinlichkeit eines Verkaufs in einem Jahr, dessen Kapitalwert den Anspruch verfehlt — auch nach dem Break-even möglich"
+        : "kein Verkaufszeitpunkt deckt den Anspruch") + "</div></div>";
+    h += '<div><div class="stat-label">' +
       (A.lz.auto ? "Erwartete Rendite" : "Rendite der Annahme") + '</div><div class="stat-num">' + fPct(A.eIrr) +
       '</div><div class="stat-sub">' + (A.lz.auto
         ? "über die Verteilung · " + fJahre(A.lz.bindung) + " gebunden"
@@ -2904,8 +3029,10 @@
       '<span><span class="swatch" style="background:var(--s1)"></span>Kapitalwert der Beteiligung</span></div>';
     h += '<div class="chart-box">' + exitChart(A, o) + "</div>";
     h += '<p class="caption">Der Kapitalwert misst gegen den Renditeanspruch von ' + fPct(G.mindestRendite, 2) +
-      " — oberhalb der Nulllinie erreicht das Projekt den Anspruch. " +
-      "Die rot hinterlegte Zone ist die Verlustzone: Dort sind Grunderwerbsteuer und Notarkosten noch nicht verdient.</p>";
+      " — oberhalb der Nulllinie trägt der Vertrag den Anspruch. Die hinterlegte Zone darunter ist kein Verlust: " +
+      "Dort bleibt die Rendite unter dem Anspruch. Ein Verlust im engeren Sinn beginnt erst unterhalb des " +
+      "nominalen Kapitalerhalts" +
+      (A.beNull ? ", der ab " + A.beNull + " Jahren Haltedauer erreicht ist." : ", der bei keiner Haltedauer erreicht wird.") + "</p>";
     h += "</div>";
     return h;
   }
@@ -2989,15 +3116,17 @@
     h += '<p class="sub">Die Haltedauer ist keine Entscheidung, sondern eine Verteilung — sie hängt daran, wie lange die Eigentümer wohnen bleiben. Diese Sicht fasst alle Verträge zusammen.</p>';
     h += '<div class="stat-row">';
     h += '<div><div class="stat-label">Erwartete Haltedauer</div><div class="stat-num">' +
-      gewDauer.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
-      '</div><div class="stat-sub">nach Kapitaleinsatz gewichtet</div></div>';
-    h += '<div><div class="stat-label"><span class="dot s2"></span>Frühexit-Risiko</div><div class="stat-num">' + fPct(gewFrueh, 0) +
-      '</div><div class="stat-sub">' + (ohneBE ? ohneBE + " von " + R.reihen.length + " ohne Break-even" : "alle Objekte erreichen den Break-even") + "</div></div>";
-    h += '<div><div class="stat-label"><span class="dot s3"></span>Kapitalwert</div><div class="stat-num' + (kwSumme < 0 ? " warnzahl" : "") + '">' + fEur(kwSumme) +
+      gewDauer.toLocaleString("de-DE", { maximumFractionDigits: 1 }) + ' <span class="einheit">Jahre</span>' +
+      '</div><div class="stat-sub">nach Kapitaleinsatz gewichtet · stets über die Sterbetafel, unabhängig von der eingestellten Dauer</div></div>';
+    h += '<div><div class="stat-label">Kapitalwert negativ</div><div class="stat-num">' + fPct(gewFrueh, 0) +
+      '</div><div class="stat-sub">Verkauf in einem Jahr, das den Anspruch von ' +
+      fPct(G.mindestRendite, 2) + ' verfehlt · nach Kapitaleinsatz gewichtet' +
+      (ohneBE ? " · " + ohneBE + " von " + R.reihen.length + " Objekten decken ihn in keinem Jahr" : "") + "</div></div>";
+    h += '<div><div class="stat-label">Kapitalwert</div><div class="stat-num' + (kwSumme < 0 ? " warnzahl" : "") + '">' + fEur(kwSumme) +
       '</div><div class="stat-sub">gewichtet, gegen den Renditeanspruch von ' + fPct(G.mindestRendite, 2) + "</div></div>";
     h += '<div><div class="stat-label">Abweichung</div><div class="stat-num">' +
-      abweichung.toLocaleString("de-DE", { maximumFractionDigits: 1 }) +
-      '</div><div class="stat-sub">Jahre zwischen Eingabe und Erwartung</div></div>';
+      abweichung.toLocaleString("de-DE", { maximumFractionDigits: 1 }) + ' <span class="einheit">Jahre</span>' +
+      '</div><div class="stat-sub">zwischen eingestellter Dauer und Erwartung</div></div>';
     h += "</div>";
     if (abweichung >= 2) {
       h += '<div class="warn-note">Die eingestellten Haltedauern weichen im Mittel um ' +
@@ -3017,14 +3146,14 @@
     h += "</div>";
 
     h += '<div class="card"><h2>Objekte im Vergleich</h2>';
-    h += '<p class="sub">Wie die Laufzeiten je Vertrag auseinanderfallen und was das für die Rendite bedeutet. Ein Klick öffnet das Projekt.</p>';
+    h += '<p class="sub">Wie Haltedauer, Kreditbindung und Kapitalbindung je Vertrag auseinanderfallen und was das für die Rendite bedeutet. Der Objektname öffnet das zugehörige Projekt.</p>';
     h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
       "<th>Objekt</th><th>Haushalt</th><th>Alter</th><th>Verkauf</th><th>Kredit</th><th>Bindung</th><th>Entgelt</th><th>nötig</th><th>Kapitalwert negativ</th><th>Rendite</th>" +
       "</tr></thead><tbody>";
     R.reihen.forEach(function (r, i) {
       var g2 = r.A.gewaehlt;
-      h += '<tr class="zeile" data-open="' + i + '" style="cursor:pointer" title="Projekt öffnen"><td style="color:var(--accent);font-weight:600">' +
-        esc(r.o.name || "Objekt " + (i + 1)) + "</td>";
+      h += '<tr class="zeile"><td><button type="button" class="zeilen-knopf" data-open="' + i + '">' +
+        esc(r.o.name || "Objekt " + (i + 1)) + "</button></td>";
       var F = kennzahlenFuer(r.ob).mindestEntgelt();
       var noetig = F.status === "gefunden" ? fPct(F.ne, 2)
         : (F.status === "nicht bindend" ? "unter " + fPct(NE_MIN, 0) : "nicht erreichbar");
@@ -3058,8 +3187,8 @@
       "sie dominiert die ersten Jahre der Verteilung.</p></div>";
 
     host.innerHTML = h;
-    host.querySelectorAll("tr.zeile[data-open]").forEach(function (tr) {
-      tr.addEventListener("click", function () { openDetail(+tr.dataset.open); });
+    host.querySelectorAll("button[data-open]").forEach(function (b) {
+      b.addEventListener("click", function () { openDetail(+b.dataset.open); });
     });
   }
 
@@ -3085,6 +3214,65 @@
       : "Noch nichts gespeichert";
   }
 
+  // Eine Tabelle, die über den Rand hinausreicht, sieht auf einem schmalen Gerät
+  // aus wie eine vollständige Tabelle — die Spalten rechts bleiben unentdeckt.
+  // Jeder Schiebebereich bekommt deshalb eine Markierung, solange rechts noch
+  // etwas steht, und meldet das auch Vorleseprogrammen.
+  function schiebehinweise() {
+    var bereiche = document.querySelectorAll(".obj-scroll, .fin-scroll, .sched-scroll, .chart-box");
+    Array.prototype.forEach.call(bereiche, function (b) {
+      var huelle = b.parentElement;
+      if (!huelle || !huelle.classList.contains("schiebbar")) {
+        // Der Verlauf braucht einen ruhenden Bezugspunkt: läge er auf dem
+        // scrollenden Kasten, wanderte er mit dem Inhalt aus dem Bild.
+        huelle = document.createElement("div");
+        huelle.className = "schiebbar";
+        b.parentNode.insertBefore(huelle, b);
+        huelle.appendChild(b);
+        b.addEventListener("scroll", function () { markieren(b); }, { passive: true });
+      }
+      markieren(b);
+    });
+  }
+
+  function markieren(b) {
+    var huelle = b.parentElement;
+    var rest = b.scrollWidth - b.clientWidth - b.scrollLeft;
+    var mehr = rest > 4;
+    if (huelle) huelle.style.setProperty("--mehr", mehr ? "1" : "0");
+    // Ein Bereich, in dem etwas verborgen liegt, muss mit der Tastatur erreichbar
+    // sein — sonst kommt man ohne Zeigegerät nicht an die rechten Spalten.
+    var scrollbar = b.scrollWidth - b.clientWidth > 4;
+
+    // Ein Verlauf am Rand sagt nicht, was zu tun ist, und ein Vorleseprogramm
+    // sieht ihn gar nicht. Auf schmalen Geräten steht deshalb eine Zeile darüber.
+    if (huelle) {
+      var hinweis = huelle.previousElementSibling;
+      if (!hinweis || !hinweis.classList.contains("schiebe-hinweis")) {
+        hinweis = document.createElement("p");
+        hinweis.className = "schiebe-hinweis";
+        hinweis.textContent = b.classList.contains("chart-box")
+          ? "Diagramm seitlich verschiebbar"
+          : "Weitere Spalten rechts — Tabelle seitlich verschiebbar";
+        huelle.parentNode.insertBefore(hinweis, huelle);
+      }
+      hinweis.dataset.zeigen = scrollbar ? "ja" : "nein";
+    }
+
+    if (scrollbar) {
+      if (!b.hasAttribute("tabindex")) {
+        b.setAttribute("tabindex", "0");
+        b.setAttribute("role", "region");
+        b.setAttribute("aria-label",
+          (b.classList.contains("chart-box") ? "Diagramm" : "Tabelle") + ", waagerecht verschiebbar");
+      }
+    } else if (b.getAttribute("role") === "region") {
+      b.removeAttribute("tabindex");
+      b.removeAttribute("role");
+      b.removeAttribute("aria-label");
+    }
+  }
+
   function refresh() {
     Object.keys(fmtOf).forEach(function (id) {
       var el = document.getElementById("valg_" + id);
@@ -3092,10 +3280,6 @@
     });
 
     var P = portfolioJetzt().rechnen();
-
-    document.getElementById("taxRateOut").textContent = fPct(P.taxRate, 2);
-    document.getElementById("investOut").textContent = fEur(P.investTotal);
-    document.getElementById("equityOut").textContent = fEur(P.cumEinlage);
 
     var nachschuss = Math.max(0, -P.minCash);
     var zuwachs = P.cashFinal - P.cumEinlage;
@@ -3106,7 +3290,7 @@
     hz.textContent = OBJ.length ? fPct(ist, 1) : "";
     hz.className = "hero-big" + (OBJ.length && ist !== null && ist < ziel - 0.05 ? " neg" : "");
     document.getElementById("hLabel").textContent = OBJ.length
-      ? "Rendite auf das Eigenkapital bis " + fJahr(P.T)
+      ? "Rendite auf das Eigenkapital · Planfall bis " + fJahr(P.T)
       : "Noch kein Vertrag angelegt";
 
     // Balken: erreichter Anteil des Anspruchs, Marke sitzt beim Anspruch selbst.
@@ -3129,10 +3313,12 @@
     document.getElementById("hNote").textContent = OBJ.length
       ? "Aus " + fEur(P.cumEinlage) + " Einlagen werden " + fEur(P.cashFinal) + " Liquidität. " +
         (nachschuss > 0
-          ? "Zwischenzeitlich fehlen bis zu " + fEur(nachschuss) + " auf dem Konto."
-          : "Das Konto bleibt durchgehend positiv.")
+          ? "Zwischenzeitlich fehlen bis zu " + fEur(nachschuss) + " auf dem Konto. "
+          : "Das Konto bleibt durchgehend positiv. ") +
+        "Gerechnet wird je Vertrag mit einer Haltedauer — der eingestellten Dauer oder, bei Kopplung " +
+        "an die Sterbetafel, dem Median. Wie sich die Verkaufszeitpunkte darum verteilen, zeigt die Analyse."
       : "Jeder Vertrag trägt seine eigenen Annahmen — Immobilienwert, Anteil, Nutzungsentgelt, Finanzierung. " +
-        "Auf Gesellschaftsebene gelten nur laufende Kosten, Steuersätze und den Renditeanspruch.";
+        "Auf Gesellschaftsebene gelten nur laufende Kosten, Steuersätze und der Renditeanspruch.";
 
     document.getElementById("kObj").textContent = OBJ.length
       ? OBJ.length + (OBJ.length === 1 ? " Vertrag" : " Verträge")
@@ -3163,6 +3349,19 @@
       pG.dataset.zustand = gesZustand;
       baueGruppen(pG, GES_GROUPS, G, "g", gesGeaendert);
     }
+
+    // Erst hier, nicht früher: Der Aufbau darüber erzeugt diese drei Felder neu.
+    // Zuvor gesetzte Werte wären damit wieder verworfen — beim ersten Aufruf stand
+    // deshalb überall nur der Platzhalter.
+    // Die erweiterte Kürzung entscheidet über die Gewerbesteuer. Beide Sätze
+    // nebeneinander zeigen, worum es geht, ohne dass der Schalter dafür
+    // betätigt werden muss.
+    var satzOhne = KST + 3.5 * G.hebesatz / 100;
+    document.getElementById("taxRateOut").textContent = G.erwKuerzung
+      ? fPct(P.taxRate, 2) + " · ohne erweiterte Kürzung " + fPct(satzOhne, 2)
+      : fPct(P.taxRate, 2) + " · mit erweiterter Kürzung " + fPct(KST, 2);
+    document.getElementById("investOut").textContent = fEur(P.investTotal);
+    document.getElementById("equityOut").textContent = fEur(P.cumEinlage);
 
     // Die Einleitung erklärt den Aufbau des Modells und gehört auf die Einstiegsseite.
     // Auf Objekt- und Analyseseite kostet sie nur Platz über dem eigentlichen Inhalt.
@@ -3212,6 +3411,7 @@
       }
     }
 
+    schiebehinweise();
     sichern();
   }
 
@@ -3320,6 +3520,14 @@
     zeigeStandZeit();
 
     baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", gesGeaendert);
+
+    // Beim Drehen des Geräts ändert sich, was noch rechts steht.
+    var wartend = null;
+    window.addEventListener("resize", function () {
+      clearTimeout(wartend);
+      wartend = setTimeout(schiebehinweise, 120);
+    }, { passive: true });
+
     refresh();
   }
 
