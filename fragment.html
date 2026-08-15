@@ -266,7 +266,10 @@
      Daten stehen deshalb als Kartenliste; das Markup bleibt eine Tabelle, nur
      ihre Darstellung wechselt. */
   @media (max-width: 620px) {
-    .obj-scroll { overflow-x: visible; }
+    /* Nur die Objektübersicht wird zur Kartenliste. Die Klasse .obj-scroll tragen
+       auch die Jahres- und Stellschraubentabellen — nähme man ihnen das Schieben,
+       läge ihr Inhalt unerreichbar außerhalb der Karte. */
+    .objekt-liste { overflow-x: visible; }
     table.obj { display: block; width: 100%; min-width: 0; table-layout: auto; }
     table.obj colgroup, table.obj thead { display: none; }
     table.obj tbody, table.obj tfoot { display: block; }
@@ -475,6 +478,40 @@
     text-align: left; padding-left: 2px; padding-right: 16px;
   }
   table.sched thead th:first-child { z-index: 3; }
+
+  /* Die letzte Spalte trägt die Schaltfläche. Wird die Tabelle schmaler, ist sie
+     das Erste, was rechts hinausläuft — ausgerechnet das einzige Bedienelement.
+     Sie bleibt deshalb am rechten Rand stehen, so wie die Bezeichnung links. */
+  table.sched th:last-child, table.sched td:last-child {
+    position: sticky; right: 0; z-index: 1; background: var(--surface);
+    padding-right: 2px;
+  }
+  table.sched thead th:last-child { z-index: 3; }
+  table.sched tr.exit-row td:last-child {
+    background: linear-gradient(var(--s1-wash), var(--s1-wash)), var(--surface);
+  }
+  /* Eine Kante zeigt, dass links davon noch etwas liegt. Sie läuft durch alle
+     Zeilen, auch durch die ohne Schaltfläche: Die feststehende Spalte ist eine
+     durchgehende Spur, und jede Zelle darin muss decken — sonst scheint beim
+     Schieben der Inhalt dahinter durch. */
+  table.sched th:last-child, table.sched td:last-child { border-left: 1px solid var(--grid); }
+
+  /* Auf schmalen Geräten geht das nicht auf: Bezeichnungsspalte und Schaltfläche
+     belegen zusammen mehr als die verfügbare Breite, die Datenspalten dazwischen
+     wären nie zu sehen. Dort bleibt nur die Bezeichnung stehen — sie ist für die
+     Orientierung wichtiger, die Schaltfläche wird herangeschoben. */
+  @media (max-width: 620px) {
+    table.sched th:last-child, table.sched td:last-child {
+      position: static; border-left: none; background: none;
+    }
+    table.sched tr.exit-row td:last-child { background: none; }
+    /* Ungebremst nimmt die Bezeichnungsspalte 223 von 297 Pixeln ein und deckt
+       als feststehende Spur alles zu, was danebensteht. Sie bricht deshalb um
+       und gibt den Rest der Breite für die Zahlen frei. */
+    table.sched th:first-child, table.sched td:first-child {
+      max-width: 132px; white-space: normal; padding-right: 8px;
+    }
+  }
   /* Die Hervorhebung ist durchscheinend und taugt allein nicht für eine
      feststehende Zelle — darunter liefe der Inhalt durch. Sie wird deshalb über
      eine deckende Fläche gelegt. */
@@ -674,7 +711,7 @@
           </div>
           <button type="button" class="act primary" id="addBtn">+ Objekt hinzufügen</button>
         </div>
-        <div class="obj-scroll">
+        <div class="obj-scroll objekt-liste">
           <table class="obj" id="objTable"></table>
         </div>
         <p class="caption" id="objCaption"></p>
@@ -2863,9 +2900,36 @@
         h += '<div class="ctl-note" style="margin-top:8px">Auch bei ' + fPct(NE_MAX, 2) +
           " bleibt der gewichtete Kapitalwert negativ. Ursache sind meist zu kurze erwartete Haltedauer, hohe Kaufnebenkosten oder Instandhaltungsverfall.</div>";
       }
+
+      // Über welche Zeit gerechnet wird — eine Rendite ohne Zeitbezug sagt nichts
+      // aus. Die drei Zeiträume stehen hier, weil sich jede folgende Karte auf die
+      // Kapitalbindung beruft; weiter unten kämen sie zu spät.
+      var LZ = A.lz;
+      h += '<div class="lz-box">';
+      h += '<div class="derived tight"><span>Kreditbindung ' +
+        (LZ.kredit === null ? "<em>ohne Darlehen</em>"
+          : (o.weiterfuehren ? "<em>Untergrenze der Kapitalbindung</em>" : "<em>Ablösung beim Verkauf</em>")) + "</span><b>" +
+        (LZ.kredit === null ? "—" : fJahre(LZ.kredit)) + "</b></div>";
+      h += '<div class="derived tight"><span>Verkauf des Anteils' +
+        (LZ.auto ? ' <em>= Sterbetafel</em>' : ' <em>= feste Annahme</em>') + "</span><b>" +
+        fJahre(LZ.verkauf) + "</b></div>";
+      h += '<div class="derived need"><span>Kapitalbindung</span><b>' + fJahre(LZ.bindung) + "</b></div>";
+      if (LZ.nachlauf > 0.05) {
+        h += '<div class="ctl-note" style="margin-top:8px">Der Anteil wird vor dem Ende der Kreditbindung verkauft. Das Darlehen läuft weiter, der Erlös liegt ' +
+          fJahre(LZ.nachlauf) + " in der Geldanlage zu " + fPct(G.anlage, 2) + ", während er " + fPct(o.zins, 2) +
+          " Zinsen kostet — diese Zeit senkt die Rendite, ohne dass ein Nutzungsentgelt gegenübersteht." +
+          (LZ.pNachlauf < 99.5 ? " Das betrifft " + fPct(LZ.pNachlauf, 0) + " der Fälle." : "") + "</div>";
+      } else if (LZ.kredit !== null && LZ.verkauf > LZ.kredit + 0.05) {
+        h += '<div class="ctl-note" style="margin-top:8px">Der Vertrag läuft über die Kreditbindung hinaus. Für die Zeit danach ist keine Anschlusskondition unterstellt — der Sollzins gilt unverändert weiter.</div>';
+      }
+      h += "</div>";
       h += "</div>";
 
-      var LZ = A.lz;
+      // Die Stellschraubenkarte wird weiter unten gebaut, weil sie Größen braucht,
+      // die erst dort entstehen — angezeigt wird sie aber gleich hier hinter der
+      // Frage, ob sich der Vertrag trägt. Erst der Befund, dann die Hebel.
+      var kopfKarte = h; h = "";
+
       var Rk = F.rendite;
 
       // ---- Kapitalwert: die Rechnung offengelegt ----
@@ -2970,29 +3034,11 @@
       }
 
       // Umkehrrechnung je Stellschraube
+      var mitteKarten = h; h = "";
       h += '<div class="card"><h2>Welche Stellschraube bringt den Renditeanspruch?</h2>';
       h += '<p class="sub">Ziel sind ' + fPct(G.mindestRendite, 2) +
         ' auf das Eigenkapital, gerechnet einschließlich der anteiligen Gemeinkosten. Jede Zeile verändert genau eine Größe, alle übrigen bleiben unverändert; der kritische Wert ist der Punkt, an dem der gewichtete Kapitalwert gerade null wird.</p>';
 
-      // Über welche Zeit gerechnet wird — eine Rendite ohne Zeitbezug sagt nichts aus
-      h += '<div class="lz-box">';
-      h += '<div class="derived tight"><span>Kreditbindung ' +
-        (LZ.kredit === null ? "<em>ohne Darlehen</em>"
-          : (o.weiterfuehren ? "<em>Untergrenze der Kapitalbindung</em>" : "<em>Ablösung beim Verkauf</em>")) + "</span><b>" +
-        (LZ.kredit === null ? "—" : fJahre(LZ.kredit)) + "</b></div>";
-      h += '<div class="derived tight"><span>Verkauf des Anteils' +
-        (LZ.auto ? ' <em>= Sterbetafel</em>' : ' <em>= feste Annahme</em>') + "</span><b>" +
-        fJahre(LZ.verkauf) + "</b></div>";
-      h += '<div class="derived need"><span>Kapitalbindung</span><b>' + fJahre(LZ.bindung) + "</b></div>";
-      if (LZ.nachlauf > 0.05) {
-        h += '<div class="ctl-note" style="margin-top:8px">Der Anteil wird vor dem Ende der Kreditbindung verkauft. Das Darlehen läuft weiter, der Erlös liegt ' +
-          fJahre(LZ.nachlauf) + " in der Geldanlage zu " + fPct(G.anlage, 2) + ", während er " + fPct(o.zins, 2) +
-          " Zinsen kostet — diese Zeit senkt die Rendite, ohne dass ein Nutzungsentgelt gegenübersteht." +
-          (LZ.pNachlauf < 99.5 ? " Das betrifft " + fPct(LZ.pNachlauf, 0) + " der Fälle." : "") + "</div>";
-      } else if (LZ.kredit !== null && LZ.verkauf > LZ.kredit + 0.05) {
-        h += '<div class="ctl-note" style="margin-top:8px">Der Vertrag läuft über die Kreditbindung hinaus. Für die Zeit danach ist keine Anschlusskondition unterstellt — der Sollzins gilt unverändert weiter.</div>';
-      }
-      h += "</div>";
       h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
         "<th>Stellschraube</th><th>eingestellt</th><th>kritischer Wert</th><th>Abstand<span class=\"th-sub\">Anteil am Reglerweg</span></th><th>Status</th><th></th></tr></thead><tbody>";
 
@@ -3043,6 +3089,7 @@
       h += "</tbody></table></div>";
       h += '<p class="caption">Die erste Zeile ist der Anspruch selbst: Sein kritischer Wert ist die Rendite, die dieser Vertrag tatsächlich abwirft — als Gesamtrendite über die Kapitalbindung, weil nichts ausgeschüttet wird. Sie gilt für die ganze Gesellschaft, die übrigen Zeilen nur für dieses Objekt. „Reicht allein nicht aus“ heißt: Selbst am günstigsten Ende dieser Größe bleibt der Kapitalwert negativ.</p>';
       h += "</div>";
+      h = kopfKarte + h + mitteKarten;
     }
     h += '<div class="card"><div class="stat-row">';
     h += '<div><div class="stat-label">Haltedauer laut Sterbetafel</div><div class="stat-num">' +

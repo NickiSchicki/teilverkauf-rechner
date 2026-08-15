@@ -264,7 +264,10 @@
      Daten stehen deshalb als Kartenliste; das Markup bleibt eine Tabelle, nur
      ihre Darstellung wechselt. */
   @media (max-width: 620px) {
-    .obj-scroll { overflow-x: visible; }
+    /* Nur die Objektübersicht wird zur Kartenliste. Die Klasse .obj-scroll tragen
+       auch die Jahres- und Stellschraubentabellen — nähme man ihnen das Schieben,
+       läge ihr Inhalt unerreichbar außerhalb der Karte. */
+    .objekt-liste { overflow-x: visible; }
     table.obj { display: block; width: 100%; min-width: 0; table-layout: auto; }
     table.obj colgroup, table.obj thead { display: none; }
     table.obj tbody, table.obj tfoot { display: block; }
@@ -473,6 +476,40 @@
     text-align: left; padding-left: 2px; padding-right: 16px;
   }
   table.sched thead th:first-child { z-index: 3; }
+
+  /* Die letzte Spalte trägt die Schaltfläche. Wird die Tabelle schmaler, ist sie
+     das Erste, was rechts hinausläuft — ausgerechnet das einzige Bedienelement.
+     Sie bleibt deshalb am rechten Rand stehen, so wie die Bezeichnung links. */
+  table.sched th:last-child, table.sched td:last-child {
+    position: sticky; right: 0; z-index: 1; background: var(--surface);
+    padding-right: 2px;
+  }
+  table.sched thead th:last-child { z-index: 3; }
+  table.sched tr.exit-row td:last-child {
+    background: linear-gradient(var(--s1-wash), var(--s1-wash)), var(--surface);
+  }
+  /* Eine Kante zeigt, dass links davon noch etwas liegt. Sie läuft durch alle
+     Zeilen, auch durch die ohne Schaltfläche: Die feststehende Spalte ist eine
+     durchgehende Spur, und jede Zelle darin muss decken — sonst scheint beim
+     Schieben der Inhalt dahinter durch. */
+  table.sched th:last-child, table.sched td:last-child { border-left: 1px solid var(--grid); }
+
+  /* Auf schmalen Geräten geht das nicht auf: Bezeichnungsspalte und Schaltfläche
+     belegen zusammen mehr als die verfügbare Breite, die Datenspalten dazwischen
+     wären nie zu sehen. Dort bleibt nur die Bezeichnung stehen — sie ist für die
+     Orientierung wichtiger, die Schaltfläche wird herangeschoben. */
+  @media (max-width: 620px) {
+    table.sched th:last-child, table.sched td:last-child {
+      position: static; border-left: none; background: none;
+    }
+    table.sched tr.exit-row td:last-child { background: none; }
+    /* Ungebremst nimmt die Bezeichnungsspalte 223 von 297 Pixeln ein und deckt
+       als feststehende Spur alles zu, was danebensteht. Sie bricht deshalb um
+       und gibt den Rest der Breite für die Zahlen frei. */
+    table.sched th:first-child, table.sched td:first-child {
+      max-width: 132px; white-space: normal; padding-right: 8px;
+    }
+  }
   /* Die Hervorhebung ist durchscheinend und taugt allein nicht für eine
      feststehende Zelle — darunter liefe der Inhalt durch. Sie wird deshalb über
      eine deckende Fläche gelegt. */

@@ -101,9 +101,36 @@
         h += '<div class="ctl-note" style="margin-top:8px">Auch bei ' + fPct(NE_MAX, 2) +
           " bleibt der gewichtete Kapitalwert negativ. Ursache sind meist zu kurze erwartete Haltedauer, hohe Kaufnebenkosten oder Instandhaltungsverfall.</div>";
       }
+
+      // Über welche Zeit gerechnet wird — eine Rendite ohne Zeitbezug sagt nichts
+      // aus. Die drei Zeiträume stehen hier, weil sich jede folgende Karte auf die
+      // Kapitalbindung beruft; weiter unten kämen sie zu spät.
+      var LZ = A.lz;
+      h += '<div class="lz-box">';
+      h += '<div class="derived tight"><span>Kreditbindung ' +
+        (LZ.kredit === null ? "<em>ohne Darlehen</em>"
+          : (o.weiterfuehren ? "<em>Untergrenze der Kapitalbindung</em>" : "<em>Ablösung beim Verkauf</em>")) + "</span><b>" +
+        (LZ.kredit === null ? "—" : fJahre(LZ.kredit)) + "</b></div>";
+      h += '<div class="derived tight"><span>Verkauf des Anteils' +
+        (LZ.auto ? ' <em>= Sterbetafel</em>' : ' <em>= feste Annahme</em>') + "</span><b>" +
+        fJahre(LZ.verkauf) + "</b></div>";
+      h += '<div class="derived need"><span>Kapitalbindung</span><b>' + fJahre(LZ.bindung) + "</b></div>";
+      if (LZ.nachlauf > 0.05) {
+        h += '<div class="ctl-note" style="margin-top:8px">Der Anteil wird vor dem Ende der Kreditbindung verkauft. Das Darlehen läuft weiter, der Erlös liegt ' +
+          fJahre(LZ.nachlauf) + " in der Geldanlage zu " + fPct(G.anlage, 2) + ", während er " + fPct(o.zins, 2) +
+          " Zinsen kostet — diese Zeit senkt die Rendite, ohne dass ein Nutzungsentgelt gegenübersteht." +
+          (LZ.pNachlauf < 99.5 ? " Das betrifft " + fPct(LZ.pNachlauf, 0) + " der Fälle." : "") + "</div>";
+      } else if (LZ.kredit !== null && LZ.verkauf > LZ.kredit + 0.05) {
+        h += '<div class="ctl-note" style="margin-top:8px">Der Vertrag läuft über die Kreditbindung hinaus. Für die Zeit danach ist keine Anschlusskondition unterstellt — der Sollzins gilt unverändert weiter.</div>';
+      }
+      h += "</div>";
       h += "</div>";
 
-      var LZ = A.lz;
+      // Die Stellschraubenkarte wird weiter unten gebaut, weil sie Größen braucht,
+      // die erst dort entstehen — angezeigt wird sie aber gleich hier hinter der
+      // Frage, ob sich der Vertrag trägt. Erst der Befund, dann die Hebel.
+      var kopfKarte = h; h = "";
+
       var Rk = F.rendite;
 
       // ---- Kapitalwert: die Rechnung offengelegt ----
@@ -208,29 +235,11 @@
       }
 
       // Umkehrrechnung je Stellschraube
+      var mitteKarten = h; h = "";
       h += '<div class="card"><h2>Welche Stellschraube bringt den Renditeanspruch?</h2>';
       h += '<p class="sub">Ziel sind ' + fPct(G.mindestRendite, 2) +
         ' auf das Eigenkapital, gerechnet einschließlich der anteiligen Gemeinkosten. Jede Zeile verändert genau eine Größe, alle übrigen bleiben unverändert; der kritische Wert ist der Punkt, an dem der gewichtete Kapitalwert gerade null wird.</p>';
 
-      // Über welche Zeit gerechnet wird — eine Rendite ohne Zeitbezug sagt nichts aus
-      h += '<div class="lz-box">';
-      h += '<div class="derived tight"><span>Kreditbindung ' +
-        (LZ.kredit === null ? "<em>ohne Darlehen</em>"
-          : (o.weiterfuehren ? "<em>Untergrenze der Kapitalbindung</em>" : "<em>Ablösung beim Verkauf</em>")) + "</span><b>" +
-        (LZ.kredit === null ? "—" : fJahre(LZ.kredit)) + "</b></div>";
-      h += '<div class="derived tight"><span>Verkauf des Anteils' +
-        (LZ.auto ? ' <em>= Sterbetafel</em>' : ' <em>= feste Annahme</em>') + "</span><b>" +
-        fJahre(LZ.verkauf) + "</b></div>";
-      h += '<div class="derived need"><span>Kapitalbindung</span><b>' + fJahre(LZ.bindung) + "</b></div>";
-      if (LZ.nachlauf > 0.05) {
-        h += '<div class="ctl-note" style="margin-top:8px">Der Anteil wird vor dem Ende der Kreditbindung verkauft. Das Darlehen läuft weiter, der Erlös liegt ' +
-          fJahre(LZ.nachlauf) + " in der Geldanlage zu " + fPct(G.anlage, 2) + ", während er " + fPct(o.zins, 2) +
-          " Zinsen kostet — diese Zeit senkt die Rendite, ohne dass ein Nutzungsentgelt gegenübersteht." +
-          (LZ.pNachlauf < 99.5 ? " Das betrifft " + fPct(LZ.pNachlauf, 0) + " der Fälle." : "") + "</div>";
-      } else if (LZ.kredit !== null && LZ.verkauf > LZ.kredit + 0.05) {
-        h += '<div class="ctl-note" style="margin-top:8px">Der Vertrag läuft über die Kreditbindung hinaus. Für die Zeit danach ist keine Anschlusskondition unterstellt — der Sollzins gilt unverändert weiter.</div>';
-      }
-      h += "</div>";
       h += '<div class="obj-scroll"><table class="sched"><thead><tr>' +
         "<th>Stellschraube</th><th>eingestellt</th><th>kritischer Wert</th><th>Abstand<span class=\"th-sub\">Anteil am Reglerweg</span></th><th>Status</th><th></th></tr></thead><tbody>";
 
@@ -281,6 +290,7 @@
       h += "</tbody></table></div>";
       h += '<p class="caption">Die erste Zeile ist der Anspruch selbst: Sein kritischer Wert ist die Rendite, die dieser Vertrag tatsächlich abwirft — als Gesamtrendite über die Kapitalbindung, weil nichts ausgeschüttet wird. Sie gilt für die ganze Gesellschaft, die übrigen Zeilen nur für dieses Objekt. „Reicht allein nicht aus“ heißt: Selbst am günstigsten Ende dieser Größe bleibt der Kapitalwert negativ.</p>';
       h += "</div>";
+      h = kopfKarte + h + mitteKarten;
     }
     h += '<div class="card"><div class="stat-row">';
     h += '<div><div class="stat-label">Haltedauer laut Sterbetafel</div><div class="stat-num">' +
