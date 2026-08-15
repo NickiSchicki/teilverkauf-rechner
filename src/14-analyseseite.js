@@ -212,7 +212,7 @@
         h += "<td>" + (R.reicht ? "+" : "−") + fPct(Math.abs(zielGes - istGes), 1) +
           '<span class="zsub">' + (R.reicht ? "+" : "−") + fPct(Math.abs(G.mindestRendite - R.wert), 2) + "</span></td>";
         h += '<td class="' + (R.reicht ? "" : "neg") + '">' + (R.reicht ? "erreicht" : "verfehlt") + "</td>";
-        h += '<td><button type="button" class="act" data-setzR="1" title="Anspruch auf das Erreichbare senken">setzen</button></td>';
+        h += "<td></td>";   // Der Anspruch wird vorgegeben, nicht ans Ergebnis angepasst.
       } else {
         h += '<td colspan="3" class="neg">kein Wert im Bereich −20 bis 40 %</td><td></td>';
       }
@@ -229,7 +229,8 @@
           // Größe: Wie weit müsste man diesen einen Regler ziehen?
           var anteil = Math.max(0, Math.min(1, delta / Math.max(1e-9, sch.max - sch.min)));
           h += '<td><div class="weg">' +
-            '<span class="weg-zahl">' + (K.reicht ? "+" : "−") + sch.fmt(delta).replace(" p.a.", "") + "</span>" +
+            '<span class="weg-zahl">' + (K.reicht ? "+" : "−") +
+            (sch.fmtDelta ? sch.fmtDelta(delta) : sch.fmt(delta).replace(" p.a.", "")) + "</span>" +
             '<span class="weg-bar"><i class="' + (K.reicht ? "" : "fern") + '" style="width:' +
             (anteil * 100).toFixed(1) + '%"></i></span></div></td>';
           h += '<td class="' + (K.reicht ? "" : "neg") + '">' + (K.reicht ? "reicht" : "reicht nicht") + "</td>";

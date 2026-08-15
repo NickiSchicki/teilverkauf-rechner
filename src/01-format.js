@@ -23,6 +23,16 @@
     return v.toLocaleString("de-DE", { minimumFractionDigits: d || 4, maximumFractionDigits: d || 4 });
   }
 
+  // Der Mindesterlös ist eine Untergrenze in Prozent der Auszahlung; interessant ist
+  // aber der Teil oberhalb von 100 % — das ist der Aufschlag, den die GmbH beim
+  // Verkauf mindestens erhält. Die Anzeige nennt beides, damit der Abstand in der
+  // Stellschraubentabelle in derselben Skala rechnet wie die Beschriftung.
+  function fAufschlag(v) {
+    if (v === 0) return "keiner";
+    var d = Math.round(v - 100);
+    return fPct(v, 0) + (d === 0 ? " (±0)" : " (" + (d > 0 ? "+" : "−") + Math.abs(d) + ")");
+  }
+
   function csvNum(v) { return (Math.round(v * 100) / 100).toFixed(2).replace(".", ","); }
 
   // Jahresangaben: ganze Zahlen ohne Nachkomma, gemittelte mit einer Stelle

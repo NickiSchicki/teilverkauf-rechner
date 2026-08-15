@@ -622,6 +622,16 @@
     return v.toLocaleString("de-DE", { minimumFractionDigits: d || 4, maximumFractionDigits: d || 4 });
   }
 
+  // Der Mindesterlös ist eine Untergrenze in Prozent der Auszahlung; interessant ist
+  // aber der Teil oberhalb von 100 % — das ist der Aufschlag, den die GmbH beim
+  // Verkauf mindestens erhält. Die Anzeige nennt beides, damit der Abstand in der
+  // Stellschraubentabelle in derselben Skala rechnet wie die Beschriftung.
+  function fAufschlag(v) {
+    if (v === 0) return "keiner";
+    var d = Math.round(v - 100);
+    return fPct(v, 0) + (d === 0 ? " (±0)" : " (" + (d > 0 ? "+" : "−") + Math.abs(d) + ")");
+  }
+
   function csvNum(v) { return (Math.round(v * 100) / 100).toFixed(2).replace(".", ","); }
 
   // Jahresangaben: ganze Zahlen ohne Nachkomma, gemittelte mit einer Stelle
@@ -1433,7 +1443,7 @@
       { id: "holdAuto", label: "Haltedauer aus Sterbetafel", bool: true, note: "rechnet über die Exit-Verteilung statt über eine feste Annahme" },
       { id: "hold", label: "Haltedauer", min: 1, max: 40, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "angenommener Verkaufszeitpunkt, wirkt nur ohne Sterbetafel-Kopplung" },
       { id: "de", label: "Durchführungsentgelt", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "vom Gesamterlös beim Verkauf" },
-      { id: "min", label: "Mindesterlös", min: 0, max: 140, step: 1, fmt: function (v) { return v === 0 ? "keiner" : fPct(v, 0); }, note: "Vertragsklausel: garantierter Rückfluss an die GmbH, unabhängig vom Marktpreis" },
+      { id: "min", label: "Mindesterlös", min: 0, max: 250, step: 5, fmt: fAufschlag, note: "Vertragsklausel: Untergrenze in Prozent der Auszahlung, unabhängig vom Marktpreis. In Klammern der Aufschlag über die Auszahlung hinaus" },
       { id: "vkKosten", label: "Verkaufskosten beim Exit", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "Makler etc., anteilig getragen" }
     ] },
     { title: "Ankauf & Finanzierung", dot: "s2", zu: true, hinweis: "Nebenkosten, Darlehen", items: [
@@ -1457,6 +1467,8 @@
   // Umkehrrechnung: Welcher Wert bringt ceteris paribus den Renditeanspruch?
   var STELLSCHRAUBEN = [
     { k: "ne", label: "Nutzungsentgelt", min: 0.5, max: 15, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
+    { k: "min", label: "Mindesterlös", min: 0, max: 250, fmt: fAufschlag,
+      fmtDelta: function (v) { return fPct(v, 0) + "-Punkte"; }, richtung: "mehr" },
     { k: "abschlag", label: "Ankaufsabschlag", min: 0, max: 60, fmt: function (v) { return fPct(v, 1); }, richtung: "mehr" },
     { k: "growth", label: "Wertentwicklung", min: -5, max: 10, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
     { k: "verfall", label: "Instandhaltungsverfall", min: 0, max: 6, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "weniger" },
@@ -2301,14 +2313,6 @@
 
     host.innerHTML = h;
     document.getElementById("backBtn").addEventListener("click", closeDetail);
-    var bR = host.querySelector("button[data-setzR]");
-    if (bR) bR.addEventListener("click", function () {
-      if (F.rendite.status !== "gefunden") return;
-      G.mindestRendite = Math.max(0, Math.floor(F.rendite.wert * 4) / 4); // Schrittweite 0,25
-      document.getElementById("panelGes").dataset.rebuild = "1";
-      baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", gesGeaendert);
-      refresh();
-    });
     host.querySelectorAll("button[data-setz]").forEach(function (b) {
       b.addEventListener("click", function () {
         var sch = STELLSCHRAUBEN[+b.dataset.setz];
@@ -2551,7 +2555,7 @@
         h += "<td>" + (R.reicht ? "+" : "−") + fPct(Math.abs(zielGes - istGes), 1) +
           '<span class="zsub">' + (R.reicht ? "+" : "−") + fPct(Math.abs(G.mindestRendite - R.wert), 2) + "</span></td>";
         h += '<td class="' + (R.reicht ? "" : "neg") + '">' + (R.reicht ? "erreicht" : "verfehlt") + "</td>";
-        h += '<td><button type="button" class="act" data-setzR="1" title="Anspruch auf das Erreichbare senken">setzen</button></td>';
+        h += "<td></td>";   // Der Anspruch wird vorgegeben, nicht ans Ergebnis angepasst.
       } else {
         h += '<td colspan="3" class="neg">kein Wert im Bereich −20 bis 40 %</td><td></td>';
       }
@@ -2568,7 +2572,8 @@
           // Größe: Wie weit müsste man diesen einen Regler ziehen?
           var anteil = Math.max(0, Math.min(1, delta / Math.max(1e-9, sch.max - sch.min)));
           h += '<td><div class="weg">' +
-            '<span class="weg-zahl">' + (K.reicht ? "+" : "−") + sch.fmt(delta).replace(" p.a.", "") + "</span>" +
+            '<span class="weg-zahl">' + (K.reicht ? "+" : "−") +
+            (sch.fmtDelta ? sch.fmtDelta(delta) : sch.fmt(delta).replace(" p.a.", "")) + "</span>" +
             '<span class="weg-bar"><i class="' + (K.reicht ? "" : "fern") + '" style="width:' +
             (anteil * 100).toFixed(1) + '%"></i></span></div></td>';
           h += '<td class="' + (K.reicht ? "" : "neg") + '">' + (K.reicht ? "reicht" : "reicht nicht") + "</td>";

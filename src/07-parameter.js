@@ -33,7 +33,7 @@
       { id: "holdAuto", label: "Haltedauer aus Sterbetafel", bool: true, note: "rechnet über die Exit-Verteilung statt über eine feste Annahme" },
       { id: "hold", label: "Haltedauer", min: 1, max: 40, step: 1, fmt: function (v) { return v + " Jahre"; }, note: "angenommener Verkaufszeitpunkt, wirkt nur ohne Sterbetafel-Kopplung" },
       { id: "de", label: "Durchführungsentgelt", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "vom Gesamterlös beim Verkauf" },
-      { id: "min", label: "Mindesterlös", min: 0, max: 140, step: 1, fmt: function (v) { return v === 0 ? "keiner" : fPct(v, 0); }, note: "Vertragsklausel: garantierter Rückfluss an die GmbH, unabhängig vom Marktpreis" },
+      { id: "min", label: "Mindesterlös", min: 0, max: 250, step: 5, fmt: fAufschlag, note: "Vertragsklausel: Untergrenze in Prozent der Auszahlung, unabhängig vom Marktpreis. In Klammern der Aufschlag über die Auszahlung hinaus" },
       { id: "vkKosten", label: "Verkaufskosten beim Exit", min: 0, max: 8, step: 0.25, fmt: function (v) { return fPct(v, 2); }, note: "Makler etc., anteilig getragen" }
     ] },
     { title: "Ankauf & Finanzierung", dot: "s2", zu: true, hinweis: "Nebenkosten, Darlehen", items: [
@@ -57,6 +57,8 @@
   // Umkehrrechnung: Welcher Wert bringt ceteris paribus den Renditeanspruch?
   var STELLSCHRAUBEN = [
     { k: "ne", label: "Nutzungsentgelt", min: 0.5, max: 15, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
+    { k: "min", label: "Mindesterlös", min: 0, max: 250, fmt: fAufschlag,
+      fmtDelta: function (v) { return fPct(v, 0) + "-Punkte"; }, richtung: "mehr" },
     { k: "abschlag", label: "Ankaufsabschlag", min: 0, max: 60, fmt: function (v) { return fPct(v, 1); }, richtung: "mehr" },
     { k: "growth", label: "Wertentwicklung", min: -5, max: 10, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "mehr" },
     { k: "verfall", label: "Instandhaltungsverfall", min: 0, max: 6, fmt: function (v) { return fPct(v, 2) + " p.a."; }, richtung: "weniger" },

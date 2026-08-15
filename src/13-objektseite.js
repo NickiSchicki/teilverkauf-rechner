@@ -209,14 +209,6 @@
 
     host.innerHTML = h;
     document.getElementById("backBtn").addEventListener("click", closeDetail);
-    var bR = host.querySelector("button[data-setzR]");
-    if (bR) bR.addEventListener("click", function () {
-      if (F.rendite.status !== "gefunden") return;
-      G.mindestRendite = Math.max(0, Math.floor(F.rendite.wert * 4) / 4); // Schrittweite 0,25
-      document.getElementById("panelGes").dataset.rebuild = "1";
-      baueGruppen(document.getElementById("panelGes"), GES_GROUPS, G, "g", gesGeaendert);
-      refresh();
-    });
     host.querySelectorAll("button[data-setz]").forEach(function (b) {
       b.addEventListener("click", function () {
         var sch = STELLSCHRAUBEN[+b.dataset.setz];
