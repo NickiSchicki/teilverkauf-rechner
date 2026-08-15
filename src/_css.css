@@ -259,6 +259,53 @@
   @media (hover: none) { button.del { opacity: 1; } }
   .empty { color: var(--ink-3); font-size: 13px; padding: 14px 0; }
 
+  /* Unter 620 px hat die Objektübersicht in keiner Tabellenform Platz — zehn
+     Spalten auf 375 px heißt: die Hälfte liegt unerreichbar rechts. Dieselben
+     Daten stehen deshalb als Kartenliste; das Markup bleibt eine Tabelle, nur
+     ihre Darstellung wechselt. */
+  @media (max-width: 620px) {
+    .obj-scroll { overflow-x: visible; }
+    table.obj { display: block; width: 100%; min-width: 0; table-layout: auto; }
+    table.obj colgroup, table.obj thead { display: none; }
+    table.obj tbody, table.obj tfoot { display: block; }
+
+    table.obj tbody tr.zeile {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 7px 14px;
+      position: relative; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg); padding: 11px 12px 12px; margin-bottom: 10px;
+    }
+    table.obj tbody tr:hover td,
+    table.obj tbody tr:hover td.c-name { background: none; }
+    table.obj tbody td {
+      display: block; text-align: left; padding: 0;
+      border-bottom: none; white-space: normal;
+    }
+    table.obj tbody td.c-name {
+      position: static; grid-column: 1 / -1; background: none;
+      font-size: 15px; padding: 0 46px 5px 0; margin-bottom: 2px;
+      border-bottom: 1px solid var(--grid);
+    }
+    table.obj tbody td.calc { font-size: 14px; color: var(--ink); }
+    table.obj tbody td.calc::before {
+      content: attr(data-l); display: block;
+      font-size: 11px; color: var(--ink-3); letter-spacing: 0.02em;
+    }
+    /* Die Karte trägt den Namen als Knopf — der Pfeil wäre nur ein zweites
+       kleines Ziel neben dem Entfernen. */
+    table.obj tbody td:nth-last-child(2) { display: none; }
+    table.obj tbody td:last-child { position: absolute; top: 4px; right: 4px; padding: 0; }
+
+    table.obj tfoot tr {
+      display: flex; flex-wrap: wrap; gap: 4px 18px;
+      border-top: 1px solid var(--axis); padding-top: 10px;
+    }
+    table.obj tfoot td { display: none; }
+    table.obj tfoot td.c-name, table.obj tfoot td[data-l] {
+      display: block; padding: 0; border: none; background: none;
+    }
+    table.obj tfoot td[data-l]::before { content: attr(data-l) " "; font-weight: 400; color: var(--ink-3); }
+  }
+
   .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin: 2px 0 10px; }
   .legend span { display: inline-flex; align-items: center; gap: 7px; }
   .swatch { width: 14px; height: 4px; border-radius: 2px; flex: none; }
@@ -530,6 +577,10 @@
     input[type="range"] { height: 44px; }
     /* Sonst drücken die vergrößerten Knöpfe gegen eine 26 px schmale Spalte. */
     table.obj col.w-act { width: 46px; }
+    /* Der Objektname ist die Hauptschaltfläche der Zeile. Als reiner Text misst er
+       23 px in der Höhe — zu wenig für den Finger. Die Zeile wächst dadurch, was
+       auf einem Zeigegerät ohne Feinauflösung der richtige Tausch ist. */
+    button.zeilen-knopf { display: inline-block; padding: 13px 0; }
   }
 
   /* ---------- Hinweis auf waagerecht Verschiebbares ----------

@@ -4,15 +4,15 @@
       // Der Name ist die Schaltfläche zum Öffnen — als echter Knopf ist er mit
       // der Tastatur erreichbar und wird Vorleseprogrammen angesagt.
       get: function (o, x, i) { return '<button type="button" class="zeilen-knopf" data-open="' + i + '">' + esc(o.name || "Objekt " + (i + 1)) + "</button>"; } },
-    { h: "Wert", sub: "bei Erwerb", col: "w-num", get: function (o) { return fEur(o.v0); } },
+    { h: "Wert", sub: "bei Erwerb", kurz: "Wert bei Erwerb", col: "w-num", get: function (o) { return fEur(o.v0); } },
     { h: "Anteil", sub: "%", col: "w-narrow", get: function (o) { return fPct(o.share, 0); } },
-    { h: "Entgelt", sub: "% p.a.", col: "w-mid", get: function (o) { return fPct(o.ne, 2); } },
-    { h: "Erwerb", sub: "Jahr", col: "w-narrow", get: function (o) { return fJahr(o.start); } },
-    { h: "Dauer", sub: "Jahre", col: "w-narrow", get: function (o) { return String(o.hold); } },
+    { h: "Entgelt", sub: "% p.a. der Auszahlung", kurz: "Entgelt, % p.a. der Auszahlung", col: "w-calc", get: function (o) { return fPct(o.ne, 2); } },
+    { h: "Erwerb", sub: "Jahr", kurz: "Erwerbsjahr", col: "w-narrow", get: function (o) { return fJahr(o.start); } },
+    { h: "Haltedauer", sub: "Jahre · ◆", kurz: "Haltedauer in Jahren", col: "w-mid", get: function (o) { return String(o.hold) + (o.holdAuto ? " ◆" : ""); } },
     { h: "Haushalt", sub: "Art / Alter", col: "w-mid", get: function (o) { return (o.haus || "Paar") + " " + (o.alter || 75); } },
     { h: "Auszahlung", sub: "heute", col: "w-calc", lead: true, get: function (o, x) { return fEur(x.P); } },
     { h: "Eigenkapital", sub: "beim Erwerb", col: "w-calc", get: function (o, x) { return fEur(x.equity0); } },
-    { h: "Kosten", sub: "Eigentümer", col: "w-calc", get: function (o, x) { return fPct(x.ownerCost); } }
+    { h: "Kosten Eigentümer", sub: "effektiv % p.a.", kurz: "Kosten Eigentümer, effektiv % p.a.", col: "w-calc", get: function (o, x) { return fPct(x.ownerCost); } }
   ];
 
   function buildObjectTable(P) {
@@ -34,7 +34,10 @@
       var x = P.verlaeufe[idx];
       html += '<tr class="zeile" data-row="' + idx + '">';
       SPALTEN.forEach(function (c, i) {
-        html += "<td class=\"" + (i === 0 ? "c-name" : "calc") + (c.lead ? " lead" : "") + "\">" + c.get(x.o, x, idx) + "</td>";
+        // Der Feldname reist mit: Unter 620 px steht er als Beschriftung über
+        // dem Wert, weil dort keine Spaltenköpfe mehr sichtbar sind.
+        html += '<td class="' + (i === 0 ? "c-name" : "calc") + (c.lead ? " lead" : "") +
+          '" data-l="' + esc(c.kurz || c.h + " " + c.sub) + '">' + c.get(x.o, x, idx) + "</td>";
       });
       html += '<td><button type="button" class="open" data-open="' + idx +
         '" aria-label="Objekt ' + (idx + 1) + ' öffnen" title="Öffnen">›</button></td>';
@@ -45,7 +48,8 @@
 
     html += '</tbody><tfoot><tr><td class="c-name">Summe</td>';
     for (var c2 = 1; c2 < 7; c2++) html += "<td></td>";
-    html += "<td>" + fEur(P.payoutTotal) + "</td><td>" + fEur(P.cumEinlage) + "</td><td></td><td></td><td></td></tr></tfoot>";
+    html += '<td data-l="Auszahlung">' + fEur(P.payoutTotal) + '</td><td data-l="Eigenkapital">' +
+      fEur(P.cumEinlage) + "</td><td></td><td></td><td></td></tr></tfoot>";
     t.innerHTML = html;
 
     t.querySelectorAll("button[data-del]").forEach(function (b) {
@@ -71,7 +75,8 @@
     document.getElementById("objCaption").textContent =
       "Laufende Kosten von " + fEur(G.opex) + " je Jahr verteilen sich auf " + OBJ.length +
       (OBJ.length === 1 ? " Objekt" : " Objekte") + " — " + fEur(perObj) +
-      " je Vertrag und Jahr. Alle weiteren Annahmen stehen auf der jeweiligen Objektseite.";
+      " je Vertrag und Jahr. Ein ◆ hinter der Haltedauer heißt: Der Wert ist der Median der Sterbetafel, " +
+      "nicht die eingestellte Annahme. Alle weiteren Annahmen stehen auf der jeweiligen Objektseite.";
   }
 
   function objektAnlegen() {
